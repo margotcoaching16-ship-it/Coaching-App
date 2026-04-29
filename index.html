@@ -161,6 +161,11 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 
 .exo-card-footer{display:flex;gap:6px;padding:0 12px 10px}
 
+/* ── CHRONO REPOS ── */
+#rest-timer-overlay{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:14px 20px;display:none;flex-direction:column;align-items:center;gap:10px;box-shadow:0 4px 28px rgba(0,0,0,.22);z-index:900;min-width:200px}
+#rest-timer-overlay.active{display:flex;animation:slideUp .22s ease}
+@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
 /* ── MODAL ── */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .overlay.open{opacity:1;pointer-events:all}
@@ -1151,6 +1156,7 @@ html.theme-night .btn-primary{
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="rest-timer-overlay"></div>
 
 <script>
 // ─────────────────────────────────────────
@@ -1396,6 +1402,7 @@ function persist(){
   lsSet('c_dietes',S.dietes||{});
   lsSet('c_customAliments',S.customAliments||[]);
   lsSet('c_recettes',S.recettes||[]);
+  lsSet('c_customCats',S.customCategories||[]);
 }
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
@@ -2302,7 +2309,13 @@ render.menu=function(){
       <div class="menu-card-icon">📈</div>
       <div class="menu-card-label">Bilan hebdomadaire</div>
       <div class="menu-card-sub">Photos · Mensurations · Comparaison</div>
-    </div></div>
+    </div>
+    ${currentIsCoach?`<div class="menu-card" onclick="showWeeklyRecap('${c.id}')" style="grid-column:span 2;border-color:var(--green)">
+      <div class="menu-card-icon">📊</div>
+      <div class="menu-card-label">Récap semaine</div>
+      <div class="menu-card-sub">PRs · Commentaires · Séances</div>
+    </div>`:''}
+    </div>
   `;
 };
 
@@ -2314,7 +2327,8 @@ function goTraining(){navigate('training');}
 // RENDER: TRAINING
 // ─────────────────────────────────────────
 render.training=function(){
-  setTopbar('Entraînement',S.client.prenom+' '+S.client.nom,`<div style="display:flex;gap:6px"><div class="icon-btn" onclick="navigate('exercices')" title="Base exercices">📋</div><div class="icon-btn" onclick="showNewProgModal()">＋</div></div>`);
+  const recapBtn=currentIsCoach?`<div class="icon-btn" onclick="showWeeklyRecap()" title="Récap semaine">📊</div>`:'';
+  setTopbar('Entraînement',S.client.prenom+' '+S.client.nom,`<div style="display:flex;gap:6px">${recapBtn}<div class="icon-btn" onclick="navigate('exercices')" title="Base exercices">📋</div><div class="icon-btn" onclick="showNewProgModal()">＋</div></div>`);
   const progs=S.programmes.filter(p=>p.client_id===S.client.id);
   const el=document.getElementById('training-content');
   if(!progs.length){el.innerHTML=`<div class="empty"><div class="empty-icon">💪</div><div class="empty-title">Pas encore de programme</div><div class="empty-sub">Crée un programme d'entraînement pour ${S.client.prenom}</div><div style="padding:0 32px;margin-top:8px"><button class="btn btn-primary" onclick="showNewProgModal()">+ Créer un programme</button></div></div>`;return;}
@@ -2631,6 +2645,7 @@ render.log=function(){
               </div>
               ${videoUrl?`<a class="exo-mini-btn" href="${videoUrl}" target="_blank" rel="noopener noreferrer" title="Vidéo" style="text-decoration:none;width:auto;padding:0 8px;border-radius:999px">▶️ Vidéo</a>`:''}
               <button class="exo-mini-btn" onclick="openHistorique('${e.exo_id}')" title="Historique">📈</button>
+              ${!isCardio&&e.repos?`<button class="exo-mini-btn" onclick="startRestTimer(${e.repos})" title="Lancer le chrono (${e.repos}s)" style="font-size:15px">⏱</button>`:''}
               <button class="intens-picker-btn" onclick="showIntensificationPicker(${i},'log')" title="Méthode d'intensification">···</button>
             </div>
             <div class="exo-card-body">
@@ -2652,6 +2667,7 @@ render.log=function(){
                   </div>`).join('')}
                 ${extraSeries}
               </div>
+              <textarea class="form-inp form-inp-sm" rows="2" placeholder="💬 Commentaire (ressenti, douleur, question…)" style="margin-top:8px;font-size:13px;resize:none" oninput="updateLogComment(${i},this.value)">${e.commentaire||''}</textarea>
             </div>
           </div>`;
         };
@@ -2829,15 +2845,225 @@ function isSerieDone(serie){
   return String(serie?.poids ?? '').trim()!=='' && String(serie?.reps ?? '').trim()!=='';
 }
 
+// ─────────────────────────────────────────
+// CHRONO DE REPOS
+// ─────────────────────────────────────────
+S.restTimer={active:false,remaining:0,total:0,_interval:null};
+
+function startRestTimer(seconds){
+  if(!seconds||seconds<=0)return;
+  stopRestTimer();
+  // Demander la permission de notification si pas encore accordée
+  if('Notification' in window && Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+  S.restTimer={active:true,remaining:seconds,total:seconds,_interval:null};
+  renderRestTimerOverlay();
+  S.restTimer._interval=setInterval(()=>{
+    S.restTimer.remaining--;
+    if(S.restTimer.remaining<=0){
+      stopRestTimer();
+      if(navigator.vibrate) navigator.vibrate([150,80,150,80,150]);
+      // Notification web
+      if('Notification' in window && Notification.permission==='granted'){
+        new Notification('💪 Repos terminé !',{
+          body:'C\'est reparti !',
+          icon:'https://margotcoaching16-ship-it.github.io/Coaching-App/favicon.ico',
+          silent:false
+        });
+      }
+      toast('✅ Repos terminé !');
+    } else {
+      updateRestTimerDisplay();
+    }
+  },1000);
+}
+
+function stopRestTimer(){
+  if(S.restTimer._interval) clearInterval(S.restTimer._interval);
+  S.restTimer={active:false,remaining:0,total:0,_interval:null};
+  const el=document.getElementById('rest-timer-overlay');
+  if(el){el.classList.remove('active');el.innerHTML='';}
+}
+
+function adjustRestTimer(delta){
+  if(!S.restTimer.active)return;
+  S.restTimer.remaining=Math.max(1,S.restTimer.remaining+delta);
+  if(delta>0) S.restTimer.total=Math.max(S.restTimer.total,S.restTimer.remaining);
+  updateRestTimerDisplay();
+}
+
+function updateRestTimerDisplay(){
+  const countEl=document.getElementById('rtimer-count');
+  if(countEl){
+    const m=Math.floor(S.restTimer.remaining/60);
+    const s=S.restTimer.remaining%60;
+    countEl.textContent=m>0?`${m}:${String(s).padStart(2,'0')}`:S.restTimer.remaining+'s';
+  }
+  const circEl=document.getElementById('rtimer-arc');
+  if(circEl){
+    const circ=2*Math.PI*38;
+    const pct=S.restTimer.remaining/S.restTimer.total;
+    circEl.style.strokeDashoffset=circ*(1-pct);
+  }
+}
+
+function renderRestTimerOverlay(){
+  const el=document.getElementById('rest-timer-overlay');
+  if(!el)return;
+  const circ=2*Math.PI*38;
+  const m=Math.floor(S.restTimer.remaining/60);
+  const s=S.restTimer.remaining%60;
+  const timeStr=m>0?`${m}:${String(s).padStart(2,'0')}`:S.restTimer.remaining+'s';
+  el.innerHTML=`
+    <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.6px;text-transform:uppercase">Temps de repos</div>
+    <div style="position:relative;width:96px;height:96px">
+      <svg width="96" height="96" viewBox="0 0 96 96" style="transform:rotate(-90deg)">
+        <circle cx="48" cy="48" r="38" fill="none" stroke="var(--border)" stroke-width="5"/>
+        <circle id="rtimer-arc" cx="48" cy="48" r="38" fill="none" stroke="var(--green)" stroke-width="5"
+          stroke-dasharray="${circ}" stroke-dashoffset="0"
+          style="transition:stroke-dashoffset .9s linear;stroke-linecap:round"/>
+      </svg>
+      <div id="rtimer-count" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--text)">${timeStr}</div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-secondary btn-sm" style="width:auto;padding:0 10px" onclick="adjustRestTimer(-15)">−15s</button>
+      <button class="btn btn-secondary btn-sm" style="width:auto;padding:0 10px" onclick="adjustRestTimer(30)">+30s</button>
+      <button class="btn btn-primary btn-sm" style="width:auto;padding:0 12px" onclick="stopRestTimer()">Skip ⏭</button>
+    </div>`;
+  el.classList.add('active');
+}
+
 function updateLogSerie(ei,si,field,val,inputEl){
   if(!(S.logSeance&&S.logSeance.exercices[ei]))return;
   const cleaned=val==='' ? '' : (parseFloat(val) || 0);
   S.logSeance.exercices[ei].series[si][field]=cleaned;
   const serie=S.logSeance.exercices[ei].series[si];
+  const wasDone=serie.done;
   serie.done=isSerieDone(serie);
   const row=inputEl?.closest('.serie-row');
   const doneEl=row?.querySelector('.serie-done');
   if(doneEl) doneEl.classList.toggle('on',serie.done);
+  lsSet('c_activeLog',S.logSeance);
+}
+
+// ─────────────────────────────────────────
+// RÉCAP HEBDOMADAIRE COACH
+// ─────────────────────────────────────────
+function showWeeklyRecap(clientId, periodOffset){
+  const cid=clientId||S.client?.id;
+  const offset=periodOffset||0; // 0=7 derniers jours, -1=7j avant, etc.
+  const client=S.clients.find(c=>c.id===cid)||S.client;
+  if(!cid||!client)return;
+
+  // Période : 7 jours glissants avec navigation
+  const now=new Date(); now.setHours(23,59,59,999);
+  const endDate=new Date(now); endDate.setDate(now.getDate()+offset*7);
+  const startDate=new Date(endDate); startDate.setDate(endDate.getDate()-6); startDate.setHours(0,0,0,0);
+
+  // Tous les logs du client triés chronologiquement
+  const allLogs=S.logsSeances.filter(l=>l.client_id===cid).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const periodLogs=allLogs.filter(l=>{ const d=new Date(l.date); return d>=startDate&&d<=endDate; });
+
+  const fmtDate=d=>d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+  const dateRange=`${fmtDate(startDate)} – ${fmtDate(endDate)}`;
+  const cidStr=JSON.stringify(cid);
+
+  // Navigation prev/next
+  const navHtml=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px">
+    <button onclick="closeModal();showWeeklyRecap(${cidStr},${offset-1})" style="background:var(--bg2);border:none;border-radius:8px;padding:6px 12px;font-size:16px;cursor:pointer;color:var(--text)">◀</button>
+    <div style="text-align:center;flex:1">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">${client.prenom} ${client.nom}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:1px">${dateRange}</div>
+    </div>
+    <button onclick="closeModal();showWeeklyRecap(${cidStr},${offset+1})" style="background:var(--bg2);border:none;border-radius:8px;padding:6px 12px;font-size:16px;cursor:pointer;color:${offset<0?'var(--text)':'var(--text3)'};pointer-events:${offset<0?'auto':'none'}">▶</button>
+  </div>`;
+
+  let html=`<div class="modal-title">📊 Récap perfs</div>${navHtml}`;
+
+  if(!periodLogs.length){
+    html+=`<div class="empty" style="padding:20px 0"><div class="empty-icon">😴</div><div class="empty-title">Aucune séance sur cette période</div></div>`;
+    openModal(html); return;
+  }
+
+  // ── Par séance (ordre antéchronologique dans l'affichage) ──
+  periodLogs.slice().reverse().forEach(log=>{
+    const logDate=new Date(log.date);
+    html+=`<div style="margin-bottom:18px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)">
+        🏋️ ${logDate.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})} — ${log.seance_nom}
+      </div>`;
+
+    (log.exercices||[]).forEach(exo=>{
+      const isCardio=exo.cat==='Cardio';
+
+      // Trouver la session précédente (avant ce log) où cet exo apparaît
+      const prevLog=allLogs.filter(l=>new Date(l.date)<new Date(log.date)&&(l.exercices||[]).some(e=>e.exo_id===exo.exo_id)).slice(-1)[0];
+      const prevExo=prevLog?(prevLog.exercices||[]).find(e=>e.exo_id===exo.exo_id):null;
+
+      let perfLine=''; let badge='';
+
+      if(isCardio){
+        const dur=Math.max(...(exo.series||[]).map(s=>parseFloat(s.duree)||0).filter(v=>v>0),0);
+        const prevDur=prevExo?Math.max(...(prevExo.series||[]).map(s=>parseFloat(s.duree)||0).filter(v=>v>0),0):0;
+        if(!dur){ perfLine='<span style="color:var(--text3)">—</span>'; }
+        else if(!prevDur){ perfLine=`<strong>${dur} min</strong> <span style="color:var(--text3);font-size:11px">1ère fois</span>`; badge='🆕'; }
+        else {
+          const diff=dur-prevDur;
+          if(diff>0){ perfLine=`<strong>${dur} min</strong> <span style="color:var(--green)">▲ +${diff}min</span>`; badge='🏆'; }
+          else if(diff<0){ perfLine=`<strong>${dur} min</strong> <span style="color:var(--red)">▼ ${diff}min</span>`; badge='📉'; }
+          else { perfLine=`<strong>${dur} min</strong> <span style="color:var(--text3)">= même</span>`; }
+        }
+      } else {
+        const maxPoids=Math.max(...(exo.series||[]).map(s=>parseFloat(s.poids)||0).filter(v=>v>0),0);
+        const maxReps=Math.max(...(exo.series||[]).map(s=>parseInt(s.reps)||0).filter(v=>v>0),0);
+        const prevMaxPoids=prevExo?Math.max(...(prevExo.series||[]).map(s=>parseFloat(s.poids)||0).filter(v=>v>0),0):0;
+        const prevMaxReps=prevExo?Math.max(...(prevExo.series||[]).map(s=>parseInt(s.reps)||0).filter(v=>v>0),0):0;
+
+        if(!maxPoids&&!maxReps){ perfLine='<span style="color:var(--text3)">— pas de données</span>'; }
+        else if(!prevExo){
+          perfLine=`<strong>${maxPoids?maxPoids+'kg ':''}</strong><strong>${maxReps?'× '+maxReps+' reps':''}</strong> <span style="color:var(--text3);font-size:11px">1ère fois</span>`;
+          badge='🆕';
+        } else {
+          const diffP=maxPoids-prevMaxPoids; const diffR=maxReps-prevMaxReps;
+          let parts=[];
+          if(maxPoids||prevMaxPoids){
+            if(diffP>0) parts.push(`<strong>${maxPoids}kg</strong> <span style="color:var(--green)">▲ +${diffP}kg</span>`);
+            else if(diffP<0) parts.push(`<strong>${maxPoids}kg</strong> <span style="color:var(--red)">▼ ${diffP}kg</span>`);
+            else parts.push(`<strong>${maxPoids}kg</strong> <span style="color:var(--text3)">=</span>`);
+          }
+          if(maxReps||prevMaxReps){
+            if(diffR>0) parts.push(`<strong>× ${maxReps}</strong> <span style="color:var(--green)">▲ +${diffR}</span>`);
+            else if(diffR<0) parts.push(`<strong>× ${maxReps}</strong> <span style="color:var(--red)">▼ ${diffR}</span>`);
+            else parts.push(`<strong>× ${maxReps}</strong> <span style="color:var(--text3)">=</span>`);
+          }
+          perfLine=parts.join(' · ');
+          if(diffP>0||diffR>0) badge='🏆';
+          else if(diffP<0||diffR<0) badge='📉';
+        }
+      }
+
+      const prevDateStr=prevLog?`<span style="font-size:10px;color:var(--text3)">vs ${fmtDate(new Date(prevLog.date))}</span>`:'';
+
+      html+=`<div style="background:var(--bg2);border-radius:8px;padding:8px 10px;margin-bottom:5px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:600">${exo.nom}</span>
+          <div style="display:flex;align-items:center;gap:5px">${prevDateStr}${badge?`<span style="font-size:14px">${badge}</span>`:''}</div>
+        </div>
+        <div style="font-size:12px;margin-top:3px">${perfLine}</div>
+        ${exo.commentaire&&exo.commentaire.trim()?`<div style="margin-top:6px;padding:5px 8px;background:var(--amber-light);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:12px;color:var(--text)">💬 ${exo.commentaire}</div>`:''}
+      </div>`;
+    });
+
+    html+=`</div>`;
+  });
+
+  openModal(html);
+}
+
+function updateLogComment(ei, val){
+  if(!(S.logSeance&&S.logSeance.exercices[ei]))return;
+  S.logSeance.exercices[ei].commentaire=val.trim();
   lsSet('c_activeLog',S.logSeance);
 }
 
@@ -3143,7 +3369,7 @@ function startLog(seanceTypeId){
     date:new Date().toISOString(),
     exercices:st.exercices.map(exo=>({
       exo_id:exo.exo_id,nom:exo.nom,cat:exo.cat,video:exo.video||'',desc:exo.desc||'',notes:exo.notes||'',duree_min:exo.duree_min||0,
-      nb_series:exo.nb_series,reps_min:exo.reps_min,reps_max:exo.reps_max,
+      nb_series:exo.nb_series,reps_min:exo.reps_min,reps_max:exo.reps_max,repos:exo.repos||90,
       methode:exo.methode||null,supersetWith:exo.supersetWith||null,
       series:Array.from({length:exo.cat==='Cardio'?1:exo.nb_series},()=>exo.cat==='Cardio'?{duree:'',done:false}:{poids:'',reps:'',done:false})
     }))
@@ -3927,7 +4153,6 @@ const DB_BASE={
   "Huile":[{n:"Huile d'olive",k:900,p:0,g:0,l:100},{n:"Huile de tournesol",k:884,p:0,g:0,l:100},{n:"Huile de colza",k:884,p:0,g:0,l:100}],
   "Produits sucrés":[{n:"Miel",k:304,p:0.3,g:82.4,l:0},{n:"Sirop d'agave",k:310,p:0,g:76,l:0},{n:"Confiture",k:250,p:0.5,g:60,l:0.1}],
   "Sauce":[{n:"Crème fraiche 15%",k:165,p:3.1,g:4.9,l:15},{n:"Crème fraiche entière",k:300,p:2,g:3,l:30},{n:"Mayonnaise",k:680,p:1,g:1,l:75},{n:"Ketchup",k:112,p:1.3,g:26,l:0.2},{n:"Sauce soja",k:53,p:8,g:4,l:0.6}],
-  "Margot":[{n:"Pain de seigle aux graines",k:297,p:12,g:37,l:9.6,gpu:35.7},{n:"Pain d'épice",k:310,p:3.2,g:69.9,l:1.1,gpu:22},{n:"Sauce béarnaise",k:557,p:1.2,g:5.1,l:59.1},{n:"Poêlée champêtre",k:78,p:2,g:9.9,l:2.6},{n:"Pépites de chocolat",k:515,p:7,g:55,l:28},{n:"Écart du jour",k:403,p:29.1,g:36.2,l:16.7},{n:"Barbell Marshmallow",k:381,p:31,g:32,l:18,gpu:55},{n:"Amix Protein Nuts",k:540,p:21.3,g:32.9,l:35.1,gpu:40},{n:"Nutella",k:539,p:6.3,g:57.5,l:30.9}]
 };
 
 // ─────────────────────────────────────────
@@ -3936,11 +4161,14 @@ const DB_BASE={
 S.dietes = lsGet('c_dietes')||{};
 S.customAliments = lsGet('c_customAliments')||[];
 S.recettes = lsGet('c_recettes')||[];
+S.customCategories = lsGet('c_customCats')||[];
 S.dieteState = { day:'on', sel:null, creatorCat:null, unitOn:false, recetteEnCours:null };
 
 function getDieteDB(){
   const db={};
   for(const c in DB_BASE) db[c]=[...DB_BASE[c]];
+  // Catégories custom vides (créées par l'utilisateur mais sans aliment encore)
+  (S.customCategories||[]).forEach(c=>{ if(!db[c]) db[c]=[]; });
   // Custom aliments
   // Filtrer par client courant (ou aliments sans client_id pour rétrocompat)
   const clientId=S.client?.id;
@@ -4088,6 +4316,7 @@ render.diete=function(){
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="meal-kcal-d">${mealKcalD(meal.items)} kcal</span>
+          <button onclick="dScanAddToMeal(${mi})" title="Scanner une étiquette" style="width:24px;height:24px;border-radius:50%;border:.5px solid var(--border);background:var(--bg3);color:var(--text2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;margin-right:2px">📷</button>
           <button onclick="dAddItemToMeal(${mi})" style="width:24px;height:24px;border-radius:50%;border:.5px solid var(--green);background:var(--green-light);color:var(--green-dark);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
         </div>
       </div>
@@ -4148,11 +4377,118 @@ function dAddItemToMeal(mi){
   meals[mi].items.push({food:'',cat:'',type:null,qty:100,enabled:true});
   S.dieteState.sel={mi,ii,tab:'cat',cat:null};
   render.diete();
-  // Scroll to the new item
   setTimeout(()=>{
     const content=document.getElementById('diete-content');
     if(content) content.scrollTop=content.scrollHeight;
   },100);
+}
+
+function dScanAddToMeal(mi){
+  // Créer un input caméra temporaire
+  let inp=document.getElementById('meal-scan-input');
+  if(!inp){
+    inp=document.createElement('input');
+    inp.type='file';inp.accept='image/*';inp.capture='environment';
+    inp.id='meal-scan-input';inp.style.display='none';
+    document.body.appendChild(inp);
+  }
+  inp.value='';
+  inp.onchange=()=>_processMealScan(inp,mi);
+  inp.click();
+}
+
+async function _processMealScan(input,mi){
+  const file=input.files[0];if(!file)return;
+  input.value='';
+  toast('⏳ Analyse en cours…');
+  try{
+    const {base64,mediaType}=await fileToBase64(file);
+    const reply=await callAnthropicVision(base64,mediaType,
+      `Analyse cette étiquette nutritionnelle. Extrait les valeurs pour 100g et réponds UNIQUEMENT avec ce JSON :
+{"nom":"[nom du produit]","kcal":[nombre],"proteines":[nombre],"glucides":[nombre],"lipides":[nombre],"poids_unite":[poids total en g si c'est un produit entier, sinon null]}`,
+      'Tu es un expert en nutrition. Tu lis les étiquettes et retournes uniquement le JSON demandé, sans texte supplémentaire.'
+    );
+    const match=reply.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('Format inattendu');
+    const vals=JSON.parse(match[0]);
+
+    // Afficher modal de confirmation
+    const isUnit=vals.poids_unite&&vals.poids_unite>0;
+    openModal(`
+      <div class="modal-title">📷 Aliment scanné</div>
+      <div class="form-group">
+        <label class="form-label">Nom</label>
+        <input class="form-inp" id="ms-nom" value="${vals.nom||''}" placeholder="Nom de l'aliment"/>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label class="form-label">kcal/100g</label><input class="form-inp form-inp-sm" id="ms-kcal" type="number" value="${vals.kcal||0}"/></div>
+        <div><label class="form-label">Protéines</label><input class="form-inp form-inp-sm" id="ms-prot" type="number" value="${vals.proteines||0}"/></div>
+        <div><label class="form-label">Glucides</label><input class="form-inp form-inp-sm" id="ms-gluc" type="number" value="${vals.glucides||0}"/></div>
+        <div><label class="form-label">Lipides</label><input class="form-inp form-inp-sm" id="ms-lip" type="number" value="${vals.lipides||0}"/></div>
+      </div>
+      <div class="form-group" style="margin-top:8px">
+        <label class="form-label">Quantité à ajouter</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input class="form-inp form-inp-sm" id="ms-qty" type="number" value="${isUnit?1:100}" style="width:80px"/>
+          <span style="font-size:13px;color:var(--text2)">${isUnit?'unité(s)':'grammes'}</span>
+          ${isUnit?`<span style="font-size:11px;color:var(--text3)">(1 unité = ${vals.poids_unite}g)</span>`:''}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Catégorie</label>
+        <select class="form-inp form-inp-sm form-select" id="ms-cat" onchange="if(this.value==='__new__'){document.getElementById('ms-cat-new').style.display='block';}else{document.getElementById('ms-cat-new').style.display='none';}">
+          ${Object.keys(getDieteDB()).map(c=>`<option value="${c}">${c}</option>`).join('')}
+          <option value="__new__">✏️ Nouvelle catégorie…</option>
+        </select>
+        <input class="form-inp form-inp-sm" id="ms-cat-new" placeholder="Nom de la nouvelle catégorie" style="display:none;margin-top:6px"/>
+      </div>
+      <button class="btn btn-primary" onclick="_confirmMealScan(${mi},${isUnit},${vals.poids_unite||null})">✅ Ajouter au repas</button>
+    `);
+  } catch(e){
+    toast('⚠ Erreur : '+e.message);
+  }
+}
+
+function _confirmMealScan(mi,isUnit,poids_unite){
+  const nom=document.getElementById('ms-nom')?.value.trim();
+  if(!nom){toast('⚠ Saisis un nom');return;}
+  const kcal=parseFloat(document.getElementById('ms-kcal')?.value)||0;
+  const prot=parseFloat(document.getElementById('ms-prot')?.value)||0;
+  const gluc=parseFloat(document.getElementById('ms-gluc')?.value)||0;
+  const lip=parseFloat(document.getElementById('ms-lip')?.value)||0;
+  const qty=parseFloat(document.getElementById('ms-qty')?.value)||100;
+  const catSel=document.getElementById('ms-cat')?.value;
+  const cat=(catSel==='__new__'?document.getElementById('ms-cat-new')?.value.trim():catSel)||'Divers';
+  // Sauvegarder la nouvelle catégorie si besoin
+  if(catSel==='__new__'&&cat&&cat!=='Divers'){
+    if(!S.customCategories) S.customCategories=[];
+    if(!S.customCategories.includes(cat)){S.customCategories.push(cat);lsSet('c_customCats',S.customCategories);}
+  }
+
+  // Créer l'aliment custom
+  const newAliment={
+    id:uid(),nom,categorie:cat,kcal,proteines:prot,glucides:gluc,lipides:lip,
+    poids_unite:isUnit?poids_unite:null,
+    client_id:S.client?.id||null
+  };
+  if(!S.customAliments) S.customAliments=[];
+  if(!S.customAliments.find(a=>a.nom.toLowerCase()===nom.toLowerCase())){
+    S.customAliments.push(newAliment);
+    lsSet('c_customAliments',S.customAliments);
+    saveCustomAlimentToSupa(newAliment);
+  }
+
+  // Ajouter au repas
+  const meals=getClientDiete(S.client.id,S.dieteState.day).meals;
+  meals[mi].items.push({
+    food:nom,cat,
+    type:isUnit?'Unité':null,
+    qty,enabled:true
+  });
+  persist();
+  closeModal();
+  render.diete();
+  toast(`✓ "${nom}" ajouté au repas !`);
 }
 
 function dRemoveItem(mi,ii){
@@ -4256,7 +4592,7 @@ function saveCibles(){
 // ─────────────────────────────────────────
 // IA NUTRITION ASSISTANT
 // ─────────────────────────────────────────
-const IA_KEY = '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';
+const IA_KEY = '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';
 S.iaChat = [];
 S.iaLoading = false;
 
@@ -4297,7 +4633,7 @@ RÈGLES ABSOLUES :
 1. Tu réponds UNIQUEMENT à ce que le client demande. Zéro conseil non sollicité, zéro remarque sur ses choix, zéro suggestion d'amélioration s'il n'en demande pas. Si quelqu'un veut manger une pizza, tu l'aides à composer sa pizza — tu ne lui proposes pas une salade à la place.
 2. Tu n'es PAS un coach nutritionnel. Tu es un outil de calcul et de réponse. Le coaching appartient à Margot, pas à toi.
 3. Sois TRÈS concis : uniquement ce qui est demandé, sans introduction ni conclusion. Pas de Markdown (*, **, #, tirets en début de ligne). Retours à la ligne et emojis uniquement si nécessaire.
-4. PRIORITÉ à la base de données pour les aliments. Pour tout aliment absent (restaurant, plat cuisiné…), estime les macros à partir de tes connaissances et précise "(estimation)".
+4. PRIORITÉ des sources nutritionnelles : 1) Base de données locale (noms exacts), 2) Données Open Food Facts si fournies ci-dessous (valeurs réelles, utilise-les sans dire "(estimation)"), 3) Tes connaissances en dernier recours (précise alors "(estimation)"). Ne dis JAMAIS que tu n'as pas accès à internet si des données OFFF sont fournies dans ce prompt.
 5. Donne des quantités précises en grammes. Pour les plats de resto, estime en portions réalistes.
 6. Quand tu mentionnes des macros, affiche-les ainsi : Nkcal | PXg | GXg | LXg
 7. Pour les suggestions de repas : "🍽️ [Nom]\n- Aliment : Xg\n→ Total : Nkcal | PXg | GXg | LXg"
@@ -4306,7 +4642,9 @@ RÈGLES ABSOLUES :
 [MODIF_PLAN]{"meals":[{"name":"Petit-déjeuner","items":[{"food":"Flocons d'avoine","cat":"Céréales","qty":80}]},{"name":"Déjeuner","items":[{"food":"Salade Sodebo","cat":"Plats préparés","qty":1,"type":"Unité"}]}],"new_foods":[{"nom":"Salade Sodebo","cat":"Plats préparés","kcal":145,"proteines":6.5,"glucides":16,"lipides":6,"poids_unite":320}]}[/MODIF_PLAN]
 RÈGLES pour le bloc JSON :
 - Dans "meals" : utilise en priorité les noms EXACTS de la base. Pour les aliments absents, invente un nom clair.
-- Dans "new_foods" : liste UNIQUEMENT les aliments utilisés dans "meals" qui sont ABSENTS de la base. Donne les valeurs nutritionnelles pour 100g (ou par unité si c'est un produit vendu à l'unité avec poids_unite en grammes). Ces aliments seront créés automatiquement.`;
+- Dans "new_foods" : liste UNIQUEMENT les aliments utilisés dans "meals" qui sont ABSENTS de la base. Donne les valeurs nutritionnelles pour 100g. Ces aliments seront créés automatiquement.
+- RÈGLE IMPORTANTE pour les plats complets (burger, pizza, plat préparé, sandwich…) : utilise TOUJOURS qty:1 + type:"Unité" dans "meals", et ajoute poids_unite (poids réel en grammes) dans "new_foods". Exemple : Big Mac (215g) → meals: {"food":"Big Mac","qty":1,"type":"Unité"}, new_foods: {"nom":"Big Mac","kcal":237,"proteines":13,"glucides":26,"lipides":9,"poids_unite":215}. Ne mets JAMAIS le poids en grammes directement dans qty pour un plat complet.
+- AFFICHAGE des calories pour les plats complets : quand tu parles d'un plat complet dans ta réponse, affiche toujours les calories TOTALES pour 1 unité (= kcal_pour_100g × poids_en_grammes / 100). Ex : Big Mac = 237 × 215 / 100 = 510 kcal pour 1 unité. Ne dis jamais "X kcal pour 1 unité" en utilisant la valeur pour 100g.`;
 }
 
 function buildFoodListForPrompt(){
@@ -4432,12 +4770,18 @@ async function iaAddPhotos(input){
   const files=Array.from(input.files||[]);
   if(!files.length) return;
   if(!S._iaPendingPhotos) S._iaPendingPhotos=[];
+  // Sauvegarder le texte en cours
+  const savedText=document.getElementById('ia-txt')?.value||'';
   for(const file of files){
     const {base64,mediaType}=await fileToBase64(file);
     S._iaPendingPhotos.push({base64,mediaType});
   }
   input.value='';
   render.ia();
+  // Restaurer le texte après le rendu
+  const txt=document.getElementById('ia-txt');
+  if(txt&&savedText){txt.value=savedText;txt.style.height='auto';txt.style.height=txt.scrollHeight+'px';}
+  if(txt) txt.focus();
 }
 
 function iaRemovePhoto(idx){
@@ -4604,7 +4948,36 @@ render.ia=function(){
 };
 
 function iaKeydown(e){
-  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendIaMessage();}
+  if(e.key==='Enter'&&e.shiftKey){e.preventDefault();sendIaMessage();}
+  // Enter seul = retour à la ligne (comportement naturel du textarea)
+}
+
+// ─────────────────────────────────────────
+// OPEN FOOD FACTS — fallback nutritionnel
+// ─────────────────────────────────────────
+async function searchOpenFoodFacts(query){
+  try{
+    // Nettoyer la requête : garder seulement les mots-clés (enlever les mots communs français)
+    const stopWords=['mets','met','ajoute','ajouter','dans','ma','mon','moi','le','la','les','un','une','des','du','de','je','veux','voudrais','peut','peux','donne','donner','avec','sans','pour','par','sur','quelle','quelles','quels','quel','est','sont','valeurs','nutritionnelles','diète','repas','aliment','menu','programme','combien','kcal','calorie','calories','macro','macros'];
+    const cleaned=query.toLowerCase().split(/\s+/).filter(w=>w.length>2&&!stopWords.includes(w)).slice(0,4).join(' ')||query;
+    console.log('[OFFF] Recherche :', cleaned);
+    const url=`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(cleaned)}&json=1&page_size=8&fields=product_name,nutriments&action=process&search_simple=1`;
+    const res=await fetch(url);
+    const data=await res.json();
+    const results=(data.products||[])
+      .filter(p=>p.product_name&&p.nutriments)
+      .map(p=>({
+        nom:p.product_name,
+        kcal:Math.round(p.nutriments['energy-kcal_100g']||p.nutriments['energy-kcal']||0),
+        proteines:Math.round((p.nutriments.proteins_100g||0)*10)/10,
+        glucides:Math.round((p.nutriments.carbohydrates_100g||0)*10)/10,
+        lipides:Math.round((p.nutriments.fat_100g||0)*10)/10
+      }))
+      .filter(p=>p.kcal>0)
+      .slice(0,5);
+    console.log('[OFFF] Résultats :', results.length, results.map(r=>r.nom));
+    return results;
+  }catch(e){ console.error('[OFFF] Erreur fetch:', e); return []; }
 }
 
 async function sendIaMessage(){
@@ -4635,12 +5008,23 @@ async function sendIaMessage(){
   render.ia();
 
   try{
+    // Recherche Open Food Facts en parallèle (uniquement si message texte)
+    let offContext='';
+    if(msg){
+      const offResults=await searchOpenFoodFacts(msg);
+      if(offResults.length>0){
+        offContext='\n\n=== DONNÉES OPEN FOOD FACTS DISPONIBLES (source réelle, valeurs pour 100g) ===\nTu AS accès à ces données réelles. Utilise-les OBLIGATOIREMENT, ne dis pas que tu n\'as pas internet :\n'+
+          offResults.map(f=>`• ${f.nom} : ${f.kcal}kcal | P${f.proteines}g | G${f.glucides}g | L${f.lipides}g`).join('\n')+
+          '\nPour un produit entier, multiplie par le poids réel du produit / 100. Choisis le résultat le plus pertinent pour la question posée.\n=== FIN DONNÉES OPEN FOOD FACTS ===';
+      }
+    }
+
     // Construire les messages API en utilisant _rawContent si disponible
     const apiMessages=S.iaChat.filter(m=>m.role==='user'||m.role==='assistant').map(m=>({
       role:m.role,
       content:m._rawContent||m.content
     }));
-    const reply=await callAnthropicAPI(apiMessages, buildIASystemPrompt());
+    const reply=await callAnthropicAPI(apiMessages, buildIASystemPrompt()+offContext);
     S.iaChat.push({role:'assistant',content:cleanIaText(reply)});
   } catch(err){
     if(err.message==='NO_KEY'){
@@ -4737,7 +5121,12 @@ function dPickCreatorCat(cat){S.dieteState.creatorCat=cat;renderCreatorCatGrid()
 function dAddNewCat(){
   const inp=document.getElementById('new-cat-inp');const name=inp.value.trim();
   if(!name){toast('⚠ Saisis un nom');return;}
-  S.dieteState.creatorCat=name;inp.value='';renderCreatorCatGrid();toast('✓ Catégorie créée');
+  if(!S.customCategories) S.customCategories=[];
+  if(!S.customCategories.includes(name)){
+    S.customCategories.push(name);
+    lsSet('c_customCats',S.customCategories);
+  }
+  S.dieteState.creatorCat=name;inp.value='';renderCreatorCatGrid();toast('✓ Catégorie "'+name+'" créée');
 }
 function dToggleUnit(){
   const cb=document.getElementById('fa-unit-toggle');
@@ -5175,7 +5564,18 @@ async function saveBilanHebdoToSupa(bilan){
 async function saveCustomAlimentToSupa(aliment){
   const existing=await supa('GET','aliments_custom','',`?id=eq.${aliment.id}`);
   if(!existing||!existing.length){
-    await supa('POST','aliments_custom',aliment);
+    const payload={
+      id:aliment.id,
+      categorie:aliment.categorie||'Divers',
+      nom:aliment.nom,
+      kcal:aliment.kcal||0,
+      proteines:aliment.proteines||0,
+      glucides:aliment.glucides||0,
+      lipides:aliment.lipides||0,
+      poids_unite:aliment.poids_unite||null,
+      client_id:aliment.client_id||S.client?.id||null
+    };
+    await supa('POST','aliments_custom',payload);
   }
 }
 
@@ -5197,6 +5597,17 @@ async function saveExoCustomToSupa(exo){
 
 async function deleteClientFromSupa(id){
   await supa('DELETE','clients','',`?id=eq.${id}`);
+}
+
+async function _deleteExo(id){
+  if(!confirm('Supprimer cet exercice ?')) return;
+  S.exercices=S.exercices.filter(e=>e.id!==id);
+  lsSet('c_exercices',S.exercices);
+  persist();
+  await supa('DELETE','exercices','',`?id=eq.${id}`);
+  closeModal();
+  navigate('exercices');
+  toast('Exercice supprimé');
 }
 
 function showClientOptionsModal(clientId){
