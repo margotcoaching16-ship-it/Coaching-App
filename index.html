@@ -124,6 +124,10 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .client-avatar-lg{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;margin:0 auto 8px}
 .client-fullname{font-size:18px;font-weight:700}
 .client-objectif{font-size:13px;color:var(--text2);margin-top:4px}
+.client-goals-strip{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px;padding:0 4px}
+.goal-chip{display:flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:13px;font-weight:500}
+.goal-chip span{color:var(--text)}
+.goal-edit-btn{background:none;border:1px solid var(--border);border-radius:20px;padding:6px 10px;font-size:13px;cursor:pointer;color:var(--text2)}
 
 .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}
 .menu-card{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:all .15s;text-align:center}
@@ -2295,10 +2299,21 @@ render.menu=function(){
   const idx=S.clients.indexOf(c);
   const [bg,text]=avatarColors(idx>=0?idx:0);
   setTopbar(c.prenom+' '+c.nom,c.objectif||'');
+  const g=c.goals||{};
+  const goalsHtml=(g.pas||g.hydra_jour||g.hydra_seance||g.seances)?`
+    <div class="client-goals-strip">
+      ${g.pas?`<div class="goal-chip">👟 <span>${Number(g.pas).toLocaleString('fr-FR')} pas</span></div>`:''}
+      ${g.hydra_jour?`<div class="goal-chip">💧 <span>${g.hydra_jour}L / jour</span></div>`:''}
+      ${g.hydra_seance?`<div class="goal-chip">🏋️ <span>${g.hydra_seance}L / séance</span></div>`:''}
+      ${g.seances?`<div class="goal-chip">🗓️ <span>${g.seances} séance${g.seances>1?'s':''} / sem.</span></div>`:''}
+      ${currentIsCoach?`<button class="goal-edit-btn" onclick="showEditGoalsModal('${c.id}')">✏️</button>`:''}
+    </div>`
+  :(currentIsCoach?`<div style="text-align:center;margin-top:6px"><button class="btn btn-secondary" style="font-size:12px;padding:6px 14px" onclick="showEditGoalsModal('${c.id}')">+ Ajouter des objectifs</button></div>`:'');
   document.getElementById('client-header').innerHTML=`
     <div class="client-avatar-lg" style="background:${bg};color:${text}">${initials(c)}</div>
     <div class="client-fullname">${c.prenom} ${c.nom}</div>
     ${c.objectif?`<div class="client-objectif">${c.objectif}</div>`:''}
+    ${goalsHtml}
   `;
   const lastCheckin=S.checkIns.filter(ci=>ci.client_id===c.id).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
   const checkinCount=S.checkIns.filter(ci=>ci.client_id===c.id).length;
@@ -5519,6 +5534,50 @@ async function syncClientData(clientId){
 }
 
 // Save functions to Supabase
+function showEditGoalsModal(clientId){
+  const c=S.clients.find(x=>x.id===clientId);if(!c)return;
+  const g=c.goals||{};
+  openModal(`
+    <div class="modal-title">Objectifs — ${c.prenom}</div>
+    <div class="form-group">
+      <label class="form-label">👟 Pas / jour</label>
+      <input class="form-inp" id="g-pas" type="number" placeholder="ex : 10000" value="${g.pas||''}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">💧 Hydratation journalière (litres)</label>
+      <input class="form-inp" id="g-hydra-jour" type="number" step="0.1" placeholder="ex : 2" value="${g.hydra_jour||''}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">🏋️ Hydratation en séance (litres)</label>
+      <input class="form-inp" id="g-hydra-seance" type="number" step="0.1" placeholder="ex : 1" value="${g.hydra_seance||''}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">🗓️ Séances / semaine</label>
+      <input class="form-inp" id="g-seances" type="number" placeholder="ex : 4" value="${g.seances||''}" />
+    </div>
+    <button class="btn btn-primary" onclick="saveGoals('${clientId}')">💾 Enregistrer</button>
+  `);
+}
+
+async function saveGoals(clientId){
+  const c=S.clients.find(x=>x.id===clientId);if(!c)return;
+  const pas=parseInt(document.getElementById('g-pas').value)||null;
+  const hydra_jour=parseFloat(document.getElementById('g-hydra-jour').value)||null;
+  const hydra_seance=parseFloat(document.getElementById('g-hydra-seance').value)||null;
+  const seances=parseInt(document.getElementById('g-seances').value)||null;
+  const goals={};
+  if(pas) goals.pas=pas;
+  if(hydra_jour) goals.hydra_jour=hydra_jour;
+  if(hydra_seance) goals.hydra_seance=hydra_seance;
+  if(seances) goals.seances=seances;
+  c.goals=goals;
+  persist();
+  await supa('PATCH','clients',{goals},`?id=eq.${clientId}`);
+  closeModal();
+  render.menu();
+  toast('✅ Objectifs mis à jour');
+}
+
 async function saveClientToSupa(client){
   if(!client.id) return;
   const payload={
@@ -5528,7 +5587,8 @@ async function saveClientToSupa(client){
     user_id:client.user_id||null,
     objectif:client.objectif||null,
     favori:client.favori||false,
-    archive:client.archive||false
+    archive:client.archive||false,
+    goals:client.goals||null
   };
   const existing=await supa('GET','clients','',`?id=eq.${client.id}`);
   if(existing&&existing.length){
