@@ -128,6 +128,10 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .goal-chip{display:flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:13px;font-weight:500}
 .goal-chip span{color:var(--text)}
 .goal-edit-btn{background:none;border:1px solid var(--border);border-radius:20px;padding:6px 10px;font-size:13px;cursor:pointer;color:var(--text2)}
+.reorder-btn{background:none;border:1px solid var(--border);border-radius:6px;width:26px;height:26px;font-size:13px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.reorder-btn:disabled{opacity:0.25;cursor:default}
+.swap-exo-row{padding:10px 12px;border-radius:8px;font-size:14px;cursor:pointer;transition:background .15s}
+.swap-exo-row:hover,.swap-exo-row:active{background:var(--bg2)}
 
 .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}
 .menu-card{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:all .15s;text-align:center}
@@ -1809,9 +1813,10 @@ function clientRowHTML(c,i){
 
 function filterClients(q){render.clients(q);}
 
-function toggleFavori(id){
+async function toggleFavori(id){
   const c=S.clients.find(x=>x.id===id);if(!c)return;
   c.favori=!c.favori;persist();render.clients();toast(c.favori?'⭐ Ajouté aux favoris':'Retiré des favoris');
+  await supa('PATCH','clients',{favori:c.favori},`?id=eq.${id}`);
 }
 
 async function openClient(id){
@@ -2349,6 +2354,15 @@ render.menu=function(){
       <div class="menu-card-label">Récap semaine</div>
       <div class="menu-card-sub">PRs · Commentaires · Séances</div>
     </div>`:''}
+    ${currentIsCoach?`<div class="menu-card" onclick="showCoachNotesModal('${c.id}')" style="grid-column:span 2;border-color:var(--amber)">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div class="menu-card-icon" style="font-size:20px;flex-shrink:0">📝</div>
+        <div style="flex:1;min-width:0;text-align:left">
+          <div class="menu-card-label">Notes coach</div>
+          <div class="menu-card-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.notes_coach?c.notes_coach.slice(0,60)+(c.notes_coach.length>60?'…':''):'Ajouter une note privée…'}</div>
+        </div>
+      </div>
+    </div>`:''}
     </div>
   `;
 };
@@ -2382,8 +2396,12 @@ render.training=function(){
           <div class="seance-row" onclick="openSeanceType('${s.id}')">
             <div class="seance-num">${i+1}</div>
             <div class="seance-name">${s.nom}</div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div style="display:flex;align-items:center;gap:4px">
               ${(()=>{const al=lsGet('c_activeLog');return al&&al.seance_type_id===s.id?'<span style="font-size:10px;font-weight:700;color:var(--amber);background:var(--amber-light);padding:2px 7px;border-radius:10px">en cours</span>':''})()}
+              ${currentIsCoach&&seances.length>1?`
+                <button class="reorder-btn" onclick="event.stopPropagation();moveSeance('${s.id}','${prog.id}',-1)" ${i===0?'disabled':''}>↑</button>
+                <button class="reorder-btn" onclick="event.stopPropagation();moveSeance('${s.id}','${prog.id}',1)" ${i===seances.length-1?'disabled':''}>↓</button>
+              `:''}
               <div class="seance-exo-count">${(s.exercices||[]).length} exo${(s.exercices||[]).length>1?'s':''} ›</div>
             </div>
           </div>`).join('')}
@@ -2403,6 +2421,24 @@ render.training=function(){
 function toggleProg(id){
   const prog=S.programmes.find(p=>p.id===id);if(!prog)return;
   prog._open=!prog._open;render.training();
+}
+
+async function moveSeance(seanceId, progId, dir){
+  const seances=S.seancesType.filter(s=>s.programme_id===progId).sort((a,b)=>a.ordre-b.ordre);
+  const idx=seances.findIndex(s=>s.id===seanceId);
+  const swapIdx=idx+dir;
+  if(swapIdx<0||swapIdx>=seances.length)return;
+  // Échanger les ordres
+  const tmpOrdre=seances[idx].ordre;
+  seances[idx].ordre=seances[swapIdx].ordre;
+  seances[swapIdx].ordre=tmpOrdre;
+  persist();
+  render.training();
+  // Sauvegarder les deux en Supabase
+  await Promise.all([
+    supa('PATCH','seances_type',{ordre:seances[idx].ordre},`?id=eq.${seances[idx].id}`),
+    supa('PATCH','seances_type',{ordre:seances[swapIdx].ordre},`?id=eq.${seances[swapIdx].id}`)
+  ]);
 }
 
 function deleteProg(id){
@@ -2674,12 +2710,14 @@ render.log=function(){
             <div class="exo-card-header">
               <div class="exo-num-badge" style="${badgeStyle}">${i+1}</div>
               <div class="exo-card-info">
-                <div class="exo-card-name">${e.nom}</div>
+                <div class="exo-card-name">${e.nom}${e._replacedFrom?`<span style="font-size:10px;color:var(--amber);background:var(--amber-light);border-radius:6px;padding:2px 6px;margin-left:6px;font-weight:600">🔄 remplacé</span>`:''}</div>
+                ${e._replacedFrom?`<div style="font-size:10px;color:var(--text3);margin-bottom:1px">Remplace : ${e._replacedFrom}</div>`:''}
                 <div class="exo-card-cat" style="${isCardio?'color:var(--amber)':''}">${isCardio?(e.cat+' · '+(e.duree_min||'?')+' min'):(e.cat?e.cat+' · ':'')+e.nb_series+' séries · '+e.reps_min+'-'+e.reps_max+' reps'}</div>
               </div>
               ${videoUrl?`<a class="exo-mini-btn" href="${videoUrl}" target="_blank" rel="noopener noreferrer" title="Vidéo" style="text-decoration:none;width:auto;padding:0 8px;border-radius:999px">▶️ Vidéo</a>`:''}
               <button class="exo-mini-btn" onclick="openHistorique('${e.exo_id}')" title="Historique">📈</button>
               ${!isCardio&&e.repos?`<button class="exo-mini-btn" onclick="startRestTimer(${e.repos})" title="Lancer le chrono (${e.repos}s)" style="font-size:15px">⏱</button>`:''}
+              <button class="exo-mini-btn" onclick="showSwapExoModal(${i})" title="Remplacer pour cette séance" style="${e._replacedFrom?'color:var(--amber)':''}">🔄</button>
               <button class="intens-picker-btn" onclick="showIntensificationPicker(${i},'log')" title="Méthode d'intensification">···</button>
             </div>
             <div class="exo-card-body">
@@ -3081,7 +3119,10 @@ function showWeeklyRecap(clientId, periodOffset){
 
       html+=`<div style="background:var(--bg2);border-radius:8px;padding:8px 10px;margin-bottom:5px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;font-weight:600">${exo.nom}</span>
+          <div>
+            <span style="font-size:13px;font-weight:600">${exo.nom}</span>
+            ${exo._replacedFrom?`<span style="font-size:10px;color:var(--amber);margin-left:5px">🔄 remplace ${exo._replacedFrom}</span>`:''}
+          </div>
           <div style="display:flex;align-items:center;gap:5px">${prevDateStr}${badge?`<span style="font-size:14px">${badge}</span>`:''}</div>
         </div>
         <div style="font-size:12px;margin-top:3px">${perfLine}</div>
@@ -3093,6 +3134,55 @@ function showWeeklyRecap(clientId, periodOffset){
   });
 
   openModal(html);
+}
+
+function showSwapExoModal(ei){
+  const exo=S.logSeance?.exercices[ei];if(!exo)return;
+  const cats=[...new Set(S.exercices.map(e=>e.cat))].sort();
+  const listHtml=cats.map(cat=>{
+    const exos=S.exercices.filter(e=>e.cat===cat&&e.id!==exo.exo_id);
+    if(!exos.length)return'';
+    return`<div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${cat}</div>
+      ${exos.map(e=>`<div class="swap-exo-row" onclick="swapLogExo(${ei},'${e.id}','${e.nom.replace(/'/g,"\\'")}','${e.cat}'${e.video?`,'${e.video}'`:''})">${e.nom}</div>`).join('')}
+    </div>`;
+  }).join('');
+  openModal(`
+    <div class="modal-title">🔄 Remplacer : ${exo.nom}</div>
+    <input class="form-inp" id="swap-search" placeholder="Rechercher un exercice…" oninput="filterSwapList(this.value)" style="margin-bottom:12px"/>
+    <div id="swap-list" style="max-height:55vh;overflow-y:auto">${listHtml}</div>
+  `);
+  setTimeout(()=>document.getElementById('swap-search')?.focus(),300);
+  window._swapListHtml=listHtml;
+  window._swapEi=ei;
+}
+
+function filterSwapList(q){
+  const list=document.getElementById('swap-list');if(!list)return;
+  if(!q.trim()){list.innerHTML=window._swapListHtml;return;}
+  const lq=q.toLowerCase();
+  const matches=S.exercices.filter(e=>e.nom.toLowerCase().includes(lq));
+  list.innerHTML=matches.length
+    ?matches.map(e=>`<div class="swap-exo-row" onclick="swapLogExo(${window._swapEi},'${e.id}','${e.nom.replace(/'/g,"\\'")}','${e.cat}'${e.video?`,'${e.video}'`:''})">${e.nom} <span style="font-size:11px;color:var(--text3)">${e.cat}</span></div>`).join('')
+    :'<div style="color:var(--text3);font-size:13px;padding:8px">Aucun résultat</div>';
+}
+
+function swapLogExo(ei, newExoId, newNom, newCat, newVideo){
+  const logExos=S.logSeance?.exercices;if(!logExos||!logExos[ei])return;
+  const original=logExos[ei];
+  // Garder la structure (séries, méthode, etc.) — changer seulement l'identité
+  logExos[ei]={
+    ...original,
+    exo_id:newExoId,
+    nom:newNom,
+    cat:newCat,
+    video:newVideo||'',
+    _replacedFrom:original._replacedFrom||original.nom // conserver l'original de base
+  };
+  lsSet('c_activeLog',S.logSeance);
+  closeModal();
+  render.log();
+  toast(`🔄 ${original.nom} → ${newNom}`);
 }
 
 function updateLogComment(ei, val){
@@ -5559,6 +5649,28 @@ function showEditGoalsModal(clientId){
   `);
 }
 
+function showCoachNotesModal(clientId){
+  const c=S.clients.find(x=>x.id===clientId);if(!c)return;
+  openModal(`
+    <div class="modal-title">📝 Notes — ${c.prenom} ${c.nom}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Visible uniquement par toi (coach)</div>
+    <textarea class="form-inp" id="coach-notes-inp" rows="7" placeholder="Pathologies, contre-indications, choses importantes à retenir…" style="resize:vertical;min-height:120px">${c.notes_coach||''}</textarea>
+    <button class="btn btn-primary" style="margin-top:10px" onclick="saveCoachNotes('${clientId}')">💾 Enregistrer</button>
+  `);
+  setTimeout(()=>document.getElementById('coach-notes-inp')?.focus(),300);
+}
+
+async function saveCoachNotes(clientId){
+  const c=S.clients.find(x=>x.id===clientId);if(!c)return;
+  const notes=(document.getElementById('coach-notes-inp')?.value||'').trim();
+  c.notes_coach=notes||null;
+  persist();
+  await supa('PATCH','clients',{notes_coach:notes||null},`?id=eq.${clientId}`);
+  closeModal();
+  render.menu();
+  toast('📝 Notes enregistrées');
+}
+
 async function saveGoals(clientId){
   const c=S.clients.find(x=>x.id===clientId);if(!c)return;
   const pas=parseInt(document.getElementById('g-pas').value)||null;
@@ -5588,7 +5700,8 @@ async function saveClientToSupa(client){
     objectif:client.objectif||null,
     favori:client.favori||false,
     archive:client.archive||false,
-    goals:client.goals||null
+    goals:client.goals||null,
+    notes_coach:client.notes_coach||null
   };
   const existing=await supa('GET','clients','',`?id=eq.${client.id}`);
   if(existing&&existing.length){
