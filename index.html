@@ -9,6 +9,25 @@
 <meta name="theme-color" content="#ede8de">
 <title>Coaching App</title>
 <script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/Coaching-App/sw.js').then(reg=>{
+    // Vérifier les mises à jour à chaque reprise de l'app
+    document.addEventListener('visibilitychange',()=>{
+      if(document.visibilityState==='visible') reg.update();
+    });
+    // Si une nouvelle version est installée, recharger automatiquement
+    reg.addEventListener('updatefound',()=>{
+      const nw=reg.installing;
+      nw.addEventListener('statechange',()=>{
+        if(nw.state==='installed'&&navigator.serviceWorker.controller){
+          window.location.reload();
+        }
+      });
+    });
+  }).catch(e=>console.warn('SW:',e));
+}
+</script>
+<script>
   // Appliquer le thème avant le rendu pour éviter le flash
   (function(){
     var t=localStorage.getItem('c_theme')||'day';
