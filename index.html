@@ -4592,9 +4592,16 @@ function saveCibles(){
 // ─────────────────────────────────────────
 // IA NUTRITION ASSISTANT
 // ─────────────────────────────────────────
-const IA_KEY = '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';
+S.iaApiKey = ''; // Chargé depuis Supabase app_config au démarrage
 S.iaChat = [];
 S.iaLoading = false;
+
+async function loadIaApiKey(){
+  try{
+    const rows=await supa('GET','app_config','',`?key=eq.ia_anthropic_key&select=value&limit=1`);
+    if(rows&&rows.length&&rows[0].value) S.iaApiKey=rows[0].value;
+  }catch(e){console.warn('[IA] Clé introuvable:',e);}
+}
 
 function buildIASystemPrompt(){
   const c = S.client;
@@ -4652,7 +4659,7 @@ function buildFoodListForPrompt(){
 }
 
 async function callAnthropicAPI(messages, systemPrompt){
-  const key = lsGet('ia_api_key')||IA_KEY;
+  const key = S.iaApiKey;
   if(!key) throw new Error('NO_KEY');
   const res = await fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
@@ -4681,7 +4688,7 @@ async function callAnthropicAPI(messages, systemPrompt){
 // SCAN PHOTO (Vision API)
 // ─────────────────────────────────────────
 async function callAnthropicVision(base64, mediaType, userText, systemPrompt){
-  const key=lsGet('ia_api_key')||IA_KEY;
+  const key=S.iaApiKey;
   if(!key) throw new Error('NO_KEY');
   const res=await fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
@@ -4896,8 +4903,38 @@ function dismissIaModifiedBadge(){
 
 render.ia=function(){
   const c=S.client;
-  setTopbar('🤖 Assistant Nutrition', c.prenom+' '+c.nom, '');
+  const keyBtn=currentIsCoach?`<button class="icon-btn" onclick="resetIaKey()" title="Changer la clé API">🔑</button>`:'';
+  setTopbar('🤖 Assistant Nutrition', c.prenom+' '+c.nom, keyBtn);
   const el=document.getElementById('ia-content');
+
+  // Si pas de clé configurée
+  if(!S.iaApiKey){
+    if(currentIsCoach){
+      el.innerHTML=`<div style="padding:24px;display:flex;flex-direction:column;gap:16px;max-width:420px;margin:0 auto">
+        <div style="text-align:center;font-size:32px">🔑</div>
+        <div style="font-weight:700;font-size:17px;text-align:center">Clé API Anthropic</div>
+        <div style="font-size:13px;color:var(--text-secondary);text-align:center;line-height:1.5">
+          Entre ta clé API pour activer l'assistant IA.<br>
+          Elle sera enregistrée dans Supabase et active automatiquement sur tous les appareils.
+        </div>
+        <input id="ia-key-input" type="password" class="form-inp"
+          placeholder="sk-ant-api03-..."
+          style="font-family:monospace;font-size:13px"
+          autocomplete="off" autocorrect="off" spellcheck="false"/>
+        <button class="btn-primary" onclick="saveIaKey()" style="padding:13px">
+          ✅ Enregistrer la clé
+        </button>
+      </div>`;
+    } else {
+      el.innerHTML=`<div style="padding:40px 24px;text-align:center;color:var(--text-secondary)">
+        <div style="font-size:36px;margin-bottom:12px">🤖</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px;color:var(--text)">Assistant IA indisponible</div>
+        <div style="font-size:13px;line-height:1.5">Cette fonctionnalité sera bientôt disponible.<br>Contacte ton coach si tu as des questions.</div>
+      </div>`;
+    }
+    return;
+  }
+
   // Reset chat if client changed
   if(S._iaChatClientId!==c.id){S.iaChat=[];S._iaChatClientId=c.id;}
 
@@ -5028,8 +5065,7 @@ async function sendIaMessage(){
     S.iaChat.push({role:'assistant',content:cleanIaText(reply)});
   } catch(err){
     if(err.message==='NO_KEY'){
-      lsSet('ia_api_key','');
-      S.iaChat.push({role:'assistant',content:'⚠️ Clé API manquante. Recharge l\'écran pour la configurer.'});
+      S.iaChat.push({role:'assistant',content:'⚠️ Clé API non configurée. Contacte ton coach.'});
     } else {
       S.iaChat.push({role:'assistant',content:'⚠️ Erreur : '+err.message});
     }
@@ -5038,10 +5074,26 @@ async function sendIaMessage(){
   render.ia();
 }
 
-function saveIaKey(){
+async function saveIaKey(){
   const k=(document.getElementById('ia-key-input')?.value||'').trim();
   if(!k){toast('Entre une clé API valide');return;}
-  lsSet('ia_api_key',k);
+  // UPSERT dans Supabase app_config
+  const url=`${SUPA_URL}/rest/v1/app_config`;
+  await fetch(url,{
+    method:'POST',
+    headers:{...getHeaders(),'Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify({key:'ia_anthropic_key',value:k,updated_at:new Date().toISOString()})
+  });
+  S.iaApiKey=k;
+  S.iaChat=[];
+  toast('✅ Clé API enregistrée — active sur tous les appareils');
+  render.ia();
+}
+
+async function resetIaKey(){
+  if(!confirm('Supprimer la clé API ? L\'IA sera désactivée sur tous les appareils.'))return;
+  await supa('DELETE','app_config','','?key=eq.ia_anthropic_key');
+  S.iaApiKey='';
   S.iaChat=[];
   render.ia();
 }
@@ -5831,6 +5883,7 @@ async function startApp(){
 
 async function initApp(){
   initTheme();
+  await loadIaApiKey();
   const isCoach=currentUserEmail && currentUserEmail.toLowerCase()===COACH_EMAIL.toLowerCase();
   currentIsCoach=!!isCoach;
 
