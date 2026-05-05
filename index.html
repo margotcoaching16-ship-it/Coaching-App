@@ -3706,7 +3706,7 @@ function renderBhPhotos(bilan, allWeeks){
     const overlay=img?'<div class="photo-overlay"><span style="color:#fff;font-size:11px;font-weight:600">'+s.label+'</span><button onclick="event.stopPropagation();_deletePhoto(\''+bilan.id+'\',\''+s.key+'\') " style="background:rgba(0,0,0,.5);border:none;border-radius:50%;width:24px;height:24px;color:#fff;cursor:pointer;font-size:12px">✕</button></div>':'';
     const imgTag=img?'<img src="'+img+'" alt="'+s.label+'" />':'';
     const icon=img?'':'<div class="photo-slot-icon">'+s.icon+'</div><div class="photo-slot-label">'+s.label+'</div>';
-    html+='<div class="photo-slot'+(img?' filled':'')+'" onclick="triggerPhotoUpload(\''+bilan.id+'\',\''+s.key+'\')">'+imgTag+icon+overlay+'<input type="file" id="photo-input-'+bilan.id+'-'+s.key+'" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoUpload(\''+bilan.id+'\',\''+s.key+'\',this)" /></div>';
+    html+='<div class="photo-slot'+(img?' filled':'')+'" onclick="triggerPhotoUpload(\''+bilan.id+'\',\''+s.key+'\')">'+imgTag+icon+overlay+'<input type="file" id="photo-input-'+bilan.id+'-'+s.key+'-cam" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoUpload(\''+bilan.id+'\',\''+s.key+'\',this)" /><input type="file" id="photo-input-'+bilan.id+'-'+s.key+'-gal" accept="image/*" style="display:none" onchange="handlePhotoUpload(\''+bilan.id+'\',\''+s.key+'\',this)" /></div>';
   });
   html+='</div>';
   // ── Mensurations ──
@@ -3961,15 +3961,26 @@ function confirmAddBilanWeek(){
 }
 
 function triggerPhotoUpload(bilanId, slot){
-  document.getElementById(`photo-input-${bilanId}-${slot}`)?.click();
+  openModal(`<div class="modal-title">Ajouter une photo</div><div style="display:flex;flex-direction:column;gap:12px;padding:8px 0"><button class="btn-primary" onclick="closeModal();document.getElementById('photo-input-${bilanId}-${slot}-cam')?.click()">📷 Prendre une photo</button><button class="btn-secondary" onclick="closeModal();document.getElementById('photo-input-${bilanId}-${slot}-gal')?.click()">🖼️ Choisir depuis la galerie</button></div>`);
 }
 
 function handlePhotoUpload(bilanId, slot, input){
   const file=input.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
-    const b=S.bilansHebdo.find(x=>x.id===bilanId);
-    if(b){b.photos[slot]=e.target.result;persist();render.bilanHebdo();toast('📸 Photo ajoutée');}
+    const tmpImg=new Image();
+    tmpImg.onload=()=>{
+      const MAX=1200;
+      const scale=Math.min(1,MAX/Math.max(tmpImg.width,tmpImg.height));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.round(tmpImg.width*scale);
+      canvas.height=Math.round(tmpImg.height*scale);
+      canvas.getContext('2d').drawImage(tmpImg,0,0,canvas.width,canvas.height);
+      const compressed=canvas.toDataURL('image/jpeg',0.75);
+      const b=S.bilansHebdo.find(x=>x.id===bilanId);
+      if(b){b.photos[slot]=compressed;persist();saveBilanHebdoToSupa(b);render.bilanHebdo();toast('📸 Photo ajoutée');}
+    };
+    tmpImg.src=e.target.result;
   };
   reader.readAsDataURL(file);
 }
@@ -4374,6 +4385,26 @@ async function saveClientDiete(){
   render.diete();
 }
 
+async function copyDieteToOtherDay(){
+  const fromDay=S.dieteState.day;
+  const toDay=fromDay==='on'?'off':'on';
+  const fromLabel=fromDay==='on'?'Day ON':'Day OFF';
+  const toLabel=toDay==='on'?'Day ON':'Day OFF';
+  if(!confirm(`Copier la diète ${fromLabel} vers ${toLabel} ?\nLes repas de ${toLabel} seront remplacés par ceux de ${fromLabel}.\n(Les cibles caloriques restent inchangées.)`))return;
+  const clientId=S.client.id;
+  const src=getClientDiete(clientId,fromDay);
+  const dst=getClientDiete(clientId,toDay);
+  // Copier uniquement les repas, conserver les cibles et l'id Supabase de la destination
+  dst.meals=JSON.parse(JSON.stringify(src.meals));
+  persist();
+  toast(`📋 Copie en cours…`);
+  await saveDieteToSupa(clientId,toDay);
+  toast(`✅ Diète ${fromLabel} copiée vers ${toLabel} !`);
+  // Basculer sur le jour destination pour voir le résultat
+  S.dieteState.day=toDay;
+  render.diete();
+}
+
 function resetClientDiete(){
   const base=lsGet('c_baseDiete_'+S.client.id+'_'+S.dieteState.day);
   if(!base){toast('⚠ Aucune base sauvegardée');return;}
@@ -4413,7 +4444,10 @@ render.diete=function(){
         <button class="day-tab${ds.day==='on'?' active':''}" onclick="dSetDay('on')">Day ON</button>
         <button class="day-tab${ds.day==='off'?' active':''}" onclick="dSetDay('off')">Day OFF</button>
       </div>
-      <button class="cible-btn" onclick="showCiblesModal()">⚙️ Cibles</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        ${currentIsCoach?`<button class="cible-btn" onclick="copyDieteToOtherDay()" title="Copier vers l'autre jour">📋</button>`:''}
+        <button class="cible-btn" onclick="showCiblesModal()">⚙️ Cibles</button>
+      </div>
     </div>`;
 
   // Macros bar
