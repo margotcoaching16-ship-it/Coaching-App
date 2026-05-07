@@ -394,6 +394,9 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .food-nm{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .food-ct{font-size:10px;color:var(--green);margin-top:1px}
 .food-kcal-d{font-size:12px;font-weight:600;color:var(--text2);flex-shrink:0;padding-top:2px}
+.food-macros-d{display:flex;gap:8px;padding:0 12px 6px 40px}
+.food-macros-d span{font-size:10px;font-weight:500;color:var(--text3)}
+.food-macros-d span.over{color:#E24B4A}
 .food-row2{display:flex;align-items:center;justify-content:flex-end;gap:5px;padding:2px 12px 8px 40px}
 .qbtn{width:26px;height:26px;border-radius:50%;border:.5px solid var(--border2);background:transparent;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--text);font-family:inherit}
 .qbtn:active{transform:scale(.88)}
@@ -4331,15 +4334,16 @@ function getDieteDB(){
 
 // lookupFoodBase avoids circular reference (used inside getDieteDB)
 function lookupFoodBase(name){
-  const allSources=[DB_BASE,...[S.customAliments.map(a=>({[a.categorie]:[{n:a.nom,k:a.kcal,p:a.proteines,g:a.glucides,l:a.lipides}]}))]];
-  for(const c in DB_BASE){const f=DB_BASE[c].find(x=>x.n.trim()===name.trim());if(f)return f;}
-  for(const a of S.customAliments){if(a.nom.trim()===name.trim())return{k:a.kcal,p:a.proteines,g:a.glucides,l:a.lipides};}
+  const key=name.trim().toLowerCase();
+  for(const c in DB_BASE){const f=DB_BASE[c].find(x=>x.n.trim().toLowerCase()===key);if(f)return f;}
+  for(const a of S.customAliments){if(a.nom.trim().toLowerCase()===key)return{k:a.kcal,p:a.proteines,g:a.glucides,l:a.lipides};}
   return null;
 }
 
 function lookupFood(name){
   const db=getDieteDB();
-  for(const c in db){const f=db[c].find(x=>x.n.trim()===name.trim());if(f)return{f,cat:c};}
+  const key=name.trim().toLowerCase();
+  for(const c in db){const f=db[c].find(x=>x.n.trim().toLowerCase()===key);if(f)return{f,cat:c};}
   return null;
 }
 
@@ -4433,6 +4437,7 @@ render.diete=function(){
   const meals=diete.meals;
   const tot=getDieteTotals(meals);
   const tgt=diete.targets;
+  const over={prot:tot.prot>tgt.prot*1.05,gluc:tot.gluc>tgt.gluc*1.05,lip:tot.lip>tgt.lip*1.05};
   const pct=Math.min(1,tot.kcal/tgt.kcal);
   const cc=tot.kcal>tgt.kcal*1.05?'#E24B4A':(tot.kcal>tgt.kcal*0.9?'#1D9E75':'#888780');
   const r2=18,cx=22,cy=22,circ=2*Math.PI*r2;
@@ -4494,6 +4499,11 @@ render.diete=function(){
               <div class="food-kcal-d">${item.enabled?cv.kcal+' kcal':'—'}</div>
               <button onclick="dRemoveItem(${mi},${ii})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0">✕</button>
             </div>
+            ${item.enabled?`<div class="food-macros-d">
+              <span class="${over.prot?'over':''}">P ${cv.prot}g</span>
+              <span class="${over.gluc?'over':''}">G ${cv.gluc}g</span>
+              <span class="${over.lip?'over':''}">L ${cv.lip}g</span>
+            </div>`:''}
             <div class="food-row2">
               <button class="qbtn" onclick="dAdjQty(${mi},${ii},${-step})">−</button>
               <input class="qinp" type="number" min="0" step="${step}" value="${item.qty}" oninput="dSetQtyLive(${mi},${ii},this.value)" onblur="dSetQty(${mi},${ii},this.value)" />
@@ -4804,12 +4814,15 @@ RÈGLES ABSOLUES :
 7. Pour les suggestions de repas : "🍽️ [Nom]\n- Aliment : Xg\n→ Total : Nkcal | PXg | GXg | LXg"
 8. Pose une question seulement si une info essentielle manque pour répondre. Une seule question à la fois.
 9. Quand tu proposes une modification complète du plan journalier (toute la journée), termine TOUJOURS ton message avec un bloc JSON structuré comme ceci (invisible dans la conversation) :
-[MODIF_PLAN]{"meals":[{"name":"Petit-déjeuner","items":[{"food":"Flocons d'avoine","cat":"Céréales","qty":80}]},{"name":"Déjeuner","items":[{"food":"Salade Sodebo","cat":"Plats préparés","qty":1,"type":"Unité"}]}],"new_foods":[{"nom":"Salade Sodebo","cat":"Plats préparés","kcal":145,"proteines":6.5,"glucides":16,"lipides":6,"poids_unite":320}]}[/MODIF_PLAN]
+[MODIF_PLAN]{"meals":[{"name":"Petit-déjeuner","items":[{"food":"Flocons d'avoine","cat":"Céréales","qty":80}]},{"name":"Déjeuner","items":[{"food":"Burger restaurant","cat":"Plats préparés","qty":250}]}],"new_foods":[{"nom":"Burger restaurant","cat":"Plats préparés","kcal_total":850,"poids_g":250,"proteines_total":35,"glucides_total":45,"lipides_total":30}]}[/MODIF_PLAN]
 RÈGLES pour le bloc JSON :
-- Dans "meals" : utilise en priorité les noms EXACTS de la base. Pour les aliments absents, invente un nom clair.
-- Dans "new_foods" : liste UNIQUEMENT les aliments utilisés dans "meals" qui sont ABSENTS de la base. Donne les valeurs nutritionnelles pour 100g. Ces aliments seront créés automatiquement.
-- RÈGLE IMPORTANTE pour les plats complets (burger, pizza, plat préparé, sandwich…) : utilise TOUJOURS qty:1 + type:"Unité" dans "meals", et ajoute poids_unite (poids réel en grammes) dans "new_foods". Exemple : Big Mac (215g) → meals: {"food":"Big Mac","qty":1,"type":"Unité"}, new_foods: {"nom":"Big Mac","kcal":237,"proteines":13,"glucides":26,"lipides":9,"poids_unite":215}. Ne mets JAMAIS le poids en grammes directement dans qty pour un plat complet.
-- AFFICHAGE des calories pour les plats complets : quand tu parles d'un plat complet dans ta réponse, affiche toujours les calories TOTALES pour 1 unité (= kcal_pour_100g × poids_en_grammes / 100). Ex : Big Mac = 237 × 215 / 100 = 510 kcal pour 1 unité. Ne dis jamais "X kcal pour 1 unité" en utilisant la valeur pour 100g.`;
+- Dans "meals" : utilise les noms EXACTS de la base pour les aliments existants. Pour les absents, invente un nom clair. "qty" = poids en grammes dans l'assiette. N'utilise type:"Unité" que pour des aliments de la base avec gpu défini (œuf, tranche de jambon…).
+- Dans "new_foods" : UNIQUEMENT les aliments de "meals" ABSENTS de la base. Pour chaque nouveau :
+  • "kcal_total" = calories TOTALES de la portion
+  • "poids_g" = poids réaliste de la portion selon tes connaissances culinaires. Estime toujours intelligemment selon le plat — exemples : burger≈250g, sandwich≈180g, pizza part≈150g, salade repas≈300g, gâteau part≈100g, moules marinières≈400g (avec coquilles), filet de poisson≈150g, bol de soupe≈300g, risotto≈350g, steak≈180g, wraps≈200g. Adapte selon le contexte (entrée vs plat, taille mentionnée…).
+  • "proteines_total", "glucides_total", "lipides_total" = grammes TOTAUX pour cette portion
+  Tu donnes uniquement les TOTAUX — le système convertit en kcal/100g automatiquement, tu n'as PAS à faire ce calcul.
+- Exemple salade de poulet 350kcal : new_foods → {"nom":"Salade poulet","cat":"Plats préparés","kcal_total":350,"poids_g":300,"proteines_total":28,"glucides_total":20,"lipides_total":14}`;
 }
 
 function buildFoodListForPrompt(){
@@ -4993,10 +5006,15 @@ function applyIaDietModification(modIdx){
     const data=JSON.parse(jsonStr);
     if(!data.meals||!Array.isArray(data.meals)) throw new Error('Format invalide');
 
-    // Compter les nouveaux aliments à créer
+    // Nouveaux aliments déclarés par l'IA
     const newFoods=data.new_foods||[];
+
+    // Construire un map nom→newFood (insensible à la casse) pour usage dans newMeals
+    const newFoodMap={};
+    newFoods.forEach(f=>{newFoodMap[f.nom.trim().toLowerCase()]=f;});
+
     const newFoodNames=newFoods.map(f=>f.nom);
-    const suffix=newFoods.length>0?`\n\n${newFoods.length} nouvel(s) aliment(s) sera(ont) créé(s) : ${newFoodNames.join(', ')}.`:'';
+    const suffix=newFoodNames.length>0?`\n\n${newFoodNames.length} nouvel(s) aliment(s) sera(ont) créé(s) : ${newFoodNames.join(', ')}.`:'';
 
     const db=getDieteDB();
     const allFoods={};
@@ -5006,7 +5024,11 @@ function applyIaDietModification(modIdx){
       name:m.name||'Repas',
       items:(m.items||[]).map(it=>{
         const found=allFoods[it.food];
-        return {food:it.food,cat:found?found.cat:(it.cat||''),type:it.type||null,qty:it.qty||100,enabled:true};
+        const nf=newFoodMap[(it.food||'').trim().toLowerCase()];
+        // Pour les nouveaux aliments : qty = poids_g de la portion ; type toujours null
+        const qty=nf?(nf.poids_g||it.qty||100):(it.qty||100);
+        const type=nf?null:(it.type||null);
+        return {food:it.food,cat:found?found.cat:(it.cat||''),type,qty,enabled:true};
       })
     }));
 
@@ -5015,19 +5037,22 @@ function applyIaDietModification(modIdx){
       `Ce plan contient ${newMeals.length} repas. Le plan actuel sera remplacé.`+suffix,
       'Appliquer',
       ()=>{
-        // Créer les nouveaux aliments s'ils n'existent pas déjà
+        // Créer les nouveaux aliments — conversion totaux → kcal/100g faite ici
         newFoods.forEach(f=>{
           const exists=S.customAliments.find(a=>a.nom.trim().toLowerCase()===f.nom.trim().toLowerCase());
           if(!exists){
+            const w=f.poids_g||250; // poids de la portion (défaut 250g)
+            // Nouveau format : kcal_total + totaux macros → on convertit en /100g
+            // Ancien format (kcal directement en /100g) : fallback si kcal_total absent
+            const kcal   = f.kcal_total!=null ? Math.round(f.kcal_total/w*100)           : (f.kcal||0);
+            const prot   = f.proteines_total!=null ? Math.round(f.proteines_total/w*100*10)/10 : (f.proteines||0);
+            const gluc   = f.glucides_total!=null  ? Math.round(f.glucides_total/w*100*10)/10  : (f.glucides||0);
+            const lip    = f.lipides_total!=null    ? Math.round(f.lipides_total/w*100*10)/10   : (f.lipides||0);
             const entry={
               id:uid(),
               nom:f.nom,
               categorie:f.cat||'Divers',
-              kcal:f.kcal||0,
-              proteines:f.proteines||0,
-              glucides:f.glucides||0,
-              lipides:f.lipides||0,
-              poids_unite:f.poids_unite||undefined,
+              kcal,proteines:prot,glucides:gluc,lipides:lip,
               client_id:S.client.id
             };
             S.customAliments.push(entry);
