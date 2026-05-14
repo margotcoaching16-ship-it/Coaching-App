@@ -1163,6 +1163,11 @@ html.theme-night .btn-primary{
     <div id="ia-content"></div>
   </div>
 
+  <!-- SCREEN: VIDÉOS CLIENT (archive coach) -->
+  <div class="screen" id="screen-videos">
+    <div id="videos-content" style="padding:12px 16px 60px"></div>
+  </div>
+
 </div>
 
 <!-- CONFIRM MODAL -->
@@ -1220,6 +1225,8 @@ function toggleTheme(){
 const SUPA_URL='https://ioxtfdzemplzusvenezd.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlveHRmZHplbXBsenVzdmVuZXpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MDA4MzksImV4cCI6MjA5MTI3NjgzOX0.hwDemqnOVzS4ph-vANNSNsAHZXdC52-4G-8bcgcahw8';
 const COACH_EMAIL='margotcoaching16@gmail.com';
+const VIDEOS_BUCKET='Videos';
+const VIDEO_MAX_BYTES=50*1024*1024; // 50 MB
 
 let authToken=null;
 let authUserId=null;
@@ -1416,6 +1423,32 @@ async function supa(method,table,body,query=''){
   }catch(e){console.error('Supabase fetch error:',e);return null;}
 }
 
+// ─────────────────────────────────────────
+// SUPABASE STORAGE (videos)
+// ─────────────────────────────────────────
+function safePathSeg(s){return String(s||'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,60);}
+function videoPublicUrl(path){return `${SUPA_URL}/storage/v1/object/public/${VIDEOS_BUCKET}/${path}`;}
+async function supaUploadVideo(file,path){
+  try{
+    const r=await fetch(`${SUPA_URL}/storage/v1/object/${VIDEOS_BUCKET}/${path}`,{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+(authToken||SUPA_KEY),'Content-Type':file.type||'video/mp4','x-upsert':'true'},
+      body:file
+    });
+    if(!r.ok){const e=await r.text();console.error('Video upload error:',e);return null;}
+    return await r.json();
+  }catch(e){console.error('Video upload exception:',e);return null;}
+}
+async function supaDeleteVideo(path){
+  try{
+    const r=await fetch(`${SUPA_URL}/storage/v1/object/${VIDEOS_BUCKET}/${path}`,{
+      method:'DELETE',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+(authToken||SUPA_KEY)}
+    });
+    return r.ok;
+  }catch(e){console.error('Video delete error:',e);return false;}
+}
+
 // localStorage comme cache offline
 function lsGet(k){try{const r=localStorage.getItem(k);return r?JSON.parse(r):null;}catch{return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
@@ -1433,6 +1466,8 @@ function persist(){
   lsSet('c_customAliments',S.customAliments||[]);
   lsSet('c_recettes',S.recettes||[]);
   lsSet('c_customCats',S.customCategories||[]);
+  lsSet('c_videos',S.videos||[]);
+  lsSet('c_correctionPresets',S.correctionPresets||[]);
 }
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
@@ -1466,7 +1501,10 @@ const S={
   bhCompareView:'face',
   bhCompareA:null,
   bhCompareB:null,
-  exercices: loadExercices()
+  exercices: loadExercices(),
+  videos: loadLocal('c_videos',[]),
+  correctionPresets: loadLocal('c_correctionPresets',[]),
+  videosFilter:''
 };
 
 
@@ -2357,6 +2395,11 @@ render.menu=function(){
       <div class="menu-card-label">Récap semaine</div>
       <div class="menu-card-sub">PRs · Commentaires · Séances</div>
     </div>`:''}
+    ${currentIsCoach?`<div class="menu-card" onclick="navigate('videos')" style="grid-column:span 2;border-color:#9a75e8">
+      <div class="menu-card-icon">📹</div>
+      <div class="menu-card-label">Vidéos clients</div>
+      <div class="menu-card-sub">${(S.videos||[]).filter(v=>v.client_id===c.id).length} vidéo(s)${(S.videos||[]).filter(v=>v.client_id===c.id&&!v.correction).length>0?' · '+(S.videos||[]).filter(v=>v.client_id===c.id&&!v.correction).length+' à corriger':''}</div>
+    </div>`:''}
     ${currentIsCoach?`<div class="menu-card" onclick="showCoachNotesModal('${c.id}')" style="grid-column:span 2;border-color:var(--amber)">
       <div style="display:flex;align-items:flex-start;gap:10px">
         <div class="menu-card-icon" style="font-size:20px;flex-shrink:0">📝</div>
@@ -2508,6 +2551,12 @@ render.seance=function(){
       </div>
       ${exo.notes?`<div style="padding:0 12px 8px;font-size:12px;color:var(--text2)">📝 ${exo.notes}</div>`:''}
       ${renderIntensBadge(exo.methode,'seance',ei)}
+      <div style="padding:6px 12px 10px">
+        <button onclick="toggleVideoDemandee(${ei})" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid ${exo.videoDemandee?'var(--green)':'var(--border)'};background:${exo.videoDemandee?'rgba(29,158,117,.12)':'transparent'};color:${exo.videoDemandee?'var(--green)':'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer">
+          <span style="font-size:13px">${exo.videoDemandee?'✓':'📹'}</span>
+          ${exo.videoDemandee?'Vidéo demandée':'Demander une vidéo'}
+        </button>
+      </div>
     </div>`;
   }
 
@@ -2743,6 +2792,7 @@ render.log=function(){
                 ${extraSeries}
               </div>
               <textarea class="form-inp form-inp-sm" rows="2" placeholder="💬 Commentaire (ressenti, douleur, question…)" style="margin-top:8px;font-size:13px;resize:none" oninput="updateLogComment(${i},this.value)">${e.commentaire||''}</textarea>
+              ${renderExoVideoSection(e,i,log.id)}
             </div>
           </div>`;
         };
@@ -2767,6 +2817,263 @@ render.log=function(){
       <button class="btn btn-secondary" onclick="confirmCancelLog()">Annuler la séance</button>
     </div>`;
 };
+
+// ─────────────────────────────────────────
+// RENDER: VIDÉOS CLIENT (archive)
+// ─────────────────────────────────────────
+render.videos=function(){
+  const c=S.client;
+  if(!c){showScreen('clients');return;}
+  setTopbar('📹 Vidéos',c.prenom+' '+c.nom);
+  const el=document.getElementById('videos-content');
+  const clientVideos=(S.videos||[]).filter(v=>v.client_id===c.id);
+  // Filter input
+  const filter=(S.videosFilter||'').toLowerCase();
+  const filtered=filter
+    ? clientVideos.filter(v=>(v.exo_nom||'').toLowerCase().includes(filter))
+    : clientVideos;
+  // Group by exo_nom
+  const byExo={};
+  filtered.forEach(v=>{
+    const key=v.exo_nom||'(sans nom)';
+    if(!byExo[key]) byExo[key]=[];
+    byExo[key].push(v);
+  });
+  const exoNames=Object.keys(byExo).sort();
+  const stats=`<div style="display:flex;gap:8px;margin-bottom:12px;font-size:12px;color:var(--text3)">
+    <span><strong style="color:var(--text)">${clientVideos.length}</strong> vidéo(s)</span>
+    <span>·</span>
+    <span><strong style="color:var(--amber)">${clientVideos.filter(v=>!v.correction).length}</strong> à corriger</span>
+    <span>·</span>
+    <span><strong style="color:var(--green)">${clientVideos.filter(v=>v.correction).length}</strong> corrigée(s)</span>
+  </div>`;
+  const searchHtml=`<div style="margin-bottom:12px">
+    <input type="text" class="form-inp" placeholder="🔎 Filtrer par mouvement…" value="${escapeHtml(S.videosFilter||'')}" oninput="S.videosFilter=this.value;render.videos()" />
+  </div>`;
+  if(!exoNames.length){
+    el.innerHTML=stats+searchHtml+'<div class="empty" style="padding:60px 24px"><div class="empty-icon">📹</div><div class="empty-title">Aucune vidéo</div><div class="empty-sub">'+(filter?'Aucun résultat pour ce filtre':'Les vidéos uploadées par tes clients apparaîtront ici')+'</div></div>';
+    return;
+  }
+  const groupsHtml=exoNames.map(exoName=>{
+    const vids=byExo[exoName].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+    const cards=vids.map(v=>{
+      const date=v.created_at?new Date(v.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+      const correctionHtml=v.correction
+        ? `<div style="margin-top:6px;padding:6px 8px;background:rgba(255,140,0,.1);border-left:3px solid var(--amber);border-radius:6px;font-size:12px"><strong style="color:var(--amber)">✏️</strong> ${escapeHtml(v.correction)}</div>`
+        : `<div style="margin-top:6px;padding:6px 8px;background:rgba(0,0,0,.05);border-radius:6px;font-size:11px;color:var(--text3);font-style:italic">Pas encore corrigée</div>`;
+      return `<div style="padding:8px;border-radius:10px;border:1px solid var(--border);background:var(--bg);margin-bottom:8px">
+        <video controls preload="metadata" src="${v.video_url}" style="width:100%;border-radius:8px;background:#000;max-height:260px;display:block"></video>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">${date}${v.seance_nom?' · '+escapeHtml(v.seance_nom):''}</div>
+        ${correctionHtml}
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button onclick="openCorrectionModal('${v.id}')" style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--amber);background:rgba(255,140,0,.08);color:var(--amber);font-weight:600;font-size:12px;cursor:pointer">${v.correction?'✏️ Modifier':'✏️ Corriger'}</button>
+          <button onclick="confirmDeleteVideo('${v.id}')" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11px;cursor:pointer">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:18px">
+      <div style="font-size:14px;font-weight:700;color:var(--text);padding:6px 0 8px;display:flex;align-items:center;gap:8px">
+        <span>${escapeHtml(exoName)}</span>
+        <span style="font-size:11px;color:var(--text3);font-weight:500">${vids.length} vidéo${vids.length>1?'s':''}</span>
+      </div>
+      ${cards}
+    </div>`;
+  }).join('');
+  el.innerHTML=stats+searchHtml+groupsHtml;
+};
+
+// ─────────────────────────────────────────
+// VIDÉOS — Upload, affichage, correction
+// ─────────────────────────────────────────
+function renderExoVideoSection(e,ei,logId){
+  const exoVideos=(S.videos||[]).filter(v=>v.exo_id===e.exo_id && v.log_seance_id===logId);
+  const inputId=`vid-inp-${ei}`;
+  const demanded=e.videoDemandee;
+  const accent=demanded?'var(--green)':'var(--text3)';
+  const bg=demanded?'rgba(29,158,117,.08)':'transparent';
+  const label=demanded?'📹 Vidéo demandée — Uploader':'📹 Ajouter une vidéo';
+  const uploadHtml=`
+    <div style="padding:8px;border-radius:10px;border:1px dashed ${accent};background:${bg};margin-top:10px">
+      <input type="file" id="${inputId}" accept="video/*" capture="environment" style="display:none" onchange="handleVideoUpload(${ei},this)" />
+      <button onclick="document.getElementById('${inputId}').click()" style="width:100%;padding:8px;border:none;background:transparent;color:${accent};font-weight:600;font-size:13px;cursor:pointer">${label}</button>
+      <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:2px">Max 50 MB · 2 min recommandé</div>
+    </div>`;
+  const videosHtml=exoVideos.map(v=>{
+    const correctionHtml=v.correction
+      ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(255,140,0,.1);border-left:3px solid var(--amber);border-radius:6px;font-size:13px;color:var(--text)"><strong style="color:var(--amber)">✏️ Correction :</strong> ${escapeHtml(v.correction)}</div>`
+      : '';
+    const coachBtn=currentIsCoach
+      ? `<button onclick="openCorrectionModal('${v.id}')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--amber);background:rgba(255,140,0,.08);color:var(--amber);font-weight:600;font-size:12px;cursor:pointer">${v.correction?'✏️ Modifier correction':'✏️ Ajouter correction'}</button>`
+      : '';
+    const date=v.created_at?new Date(v.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    return `<div style="margin-top:10px;padding:8px;border-radius:10px;border:1px solid var(--border);background:var(--bg2)">
+      <video controls preload="metadata" src="${v.video_url}" style="width:100%;border-radius:8px;background:#000;max-height:320px;display:block"></video>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">${date}</div>
+      ${correctionHtml}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+        ${coachBtn}
+        <button onclick="confirmDeleteVideo('${v.id}')" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11px;cursor:pointer">🗑️ Supprimer</button>
+      </div>
+    </div>`;
+  }).join('');
+  return uploadHtml+videosHtml;
+}
+
+async function handleVideoUpload(ei,inputEl){
+  const file=inputEl.files&&inputEl.files[0];
+  if(!file) return;
+  if(file.size>VIDEO_MAX_BYTES){
+    toast('❌ Vidéo trop lourde (max 50 MB)');
+    inputEl.value='';
+    return;
+  }
+  const log=S.logSeance;
+  const exo=log&&log.exercices[ei];
+  if(!exo){toast('❌ Erreur exo');return;}
+  toast('📤 Upload en cours…');
+  const ts=Date.now();
+  const ext=(file.name.split('.').pop()||'mp4').toLowerCase();
+  const path=`${safePathSeg(log.client_id)}/${safePathSeg(exo.exo_id)}/${ts}.${ext}`;
+  const res=await supaUploadVideo(file,path);
+  if(!res){toast('❌ Échec upload');inputEl.value='';return;}
+  const url=videoPublicUrl(path);
+  const row={
+    client_id:log.client_id,
+    exo_id:exo.exo_id,
+    exo_nom:exo.nom,
+    seance_nom:log.seance_nom||'',
+    log_seance_id:log.id,
+    storage_path:path,
+    video_url:url,
+    correction:null
+  };
+  const inserted=await supa('POST','videos',row);
+  if(inserted&&inserted[0]){
+    S.videos.unshift(inserted[0]);
+    lsSet('c_videos',S.videos);
+    toast('✅ Vidéo uploadée');
+    if(S.screen==='log') render.log();
+    else if(S.screen==='videos') render.videos();
+  } else {
+    toast('❌ Vidéo uploadée mais non enregistrée');
+  }
+  inputEl.value='';
+}
+
+function confirmDeleteVideo(videoId){
+  confirmDialog('Supprimer cette vidéo ?','Cette action est définitive.','Supprimer',async ()=>{
+    const v=S.videos.find(x=>x.id===videoId);
+    if(!v)return;
+    await supaDeleteVideo(v.storage_path);
+    await supa('DELETE','videos','',`?id=eq.${videoId}`);
+    S.videos=S.videos.filter(x=>x.id!==videoId);
+    lsSet('c_videos',S.videos);
+    toast('🗑️ Vidéo supprimée');
+    if(S.screen==='log') render.log();
+    else if(S.screen==='videos') render.videos();
+  });
+}
+
+function openCorrectionModal(videoId){
+  const v=S.videos.find(x=>x.id===videoId);
+  if(!v)return;
+  const presetsHtml=(S.correctionPresets||[]).map(p=>
+    `<button onclick="addPresetToCorrection('${p.id}')" style="padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;cursor:pointer;margin:3px">${escapeHtml(p.label)}</button>`
+  ).join('');
+  openModal(`
+    <div class="modal-title">✏️ Correction</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">${escapeHtml(v.exo_nom)}${v.seance_nom?' · '+escapeHtml(v.seance_nom):''}</div>
+    <video controls preload="metadata" src="${v.video_url}" style="width:100%;border-radius:8px;background:#000;max-height:280px;margin-bottom:12px"></video>
+    <div class="form-label" style="margin-bottom:6px">Présets de correction (clic = ajoute au commentaire)</div>
+    <div style="display:flex;flex-wrap:wrap;margin-bottom:6px;max-height:120px;overflow:auto">${presetsHtml||'<span style="font-size:11px;color:var(--text3)">Aucun préset</span>'}</div>
+    <div style="margin-bottom:10px">
+      <button onclick="showAddPresetPrompt()" style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer">+ Ajouter un préset</button>
+      <button onclick="showManagePresets()" style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px dashed var(--border);background:transparent;color:var(--text3);cursor:pointer;margin-left:4px">⚙️ Gérer les présets</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Correction (texte libre)</label>
+      <textarea class="form-inp" id="correction-inp" rows="5" placeholder="Ex : Descendre plus bas, garder le dos plat…">${escapeHtml(v.correction||'')}</textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveCorrection('${videoId}')">💾 Enregistrer</button>
+    </div>
+  `);
+}
+
+function addPresetToCorrection(presetId){
+  const p=(S.correctionPresets||[]).find(x=>x.id===presetId);
+  const ta=document.getElementById('correction-inp');
+  if(!p||!ta)return;
+  const cur=ta.value.trim();
+  ta.value=cur?(cur+' · '+p.label):p.label;
+  ta.focus();
+}
+
+async function saveCorrection(videoId){
+  const ta=document.getElementById('correction-inp');
+  const correction=(ta?.value||'').trim()||null;
+  await supa('PATCH','videos',{correction},`?id=eq.${videoId}`);
+  const v=S.videos.find(x=>x.id===videoId);
+  if(v) v.correction=correction;
+  lsSet('c_videos',S.videos);
+  closeModal();
+  toast('✅ Correction enregistrée');
+  if(S.screen==='log') render.log();
+  else if(S.screen==='videos') render.videos();
+}
+
+function showAddPresetPrompt(){
+  const label=prompt('Nouveau préset de correction :');
+  if(!label||!label.trim())return;
+  addPreset(label.trim());
+}
+
+async function addPreset(label){
+  const maxOrdre=(S.correctionPresets||[]).reduce((m,p)=>Math.max(m,p.ordre||0),0);
+  const res=await supa('POST','correction_presets',{label,ordre:maxOrdre+1});
+  if(res&&res[0]){
+    S.correctionPresets.push(res[0]);
+    S.correctionPresets.sort((a,b)=>(a.ordre||0)-(b.ordre||0));
+    lsSet('c_correctionPresets',S.correctionPresets);
+    toast('✅ Préset ajouté');
+    // Re-render modal if open
+    const cur=document.getElementById('correction-inp');
+    if(cur){
+      const m=cur.closest('.modal-box');
+      // simplest: close & reopen
+      // find the videoId in the title context — not available; user can just close/reopen
+    }
+  }
+}
+
+function showManagePresets(){
+  const list=(S.correctionPresets||[]).map(p=>
+    `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px">${escapeHtml(p.label)}</span>
+      <button onclick="deletePreset('${p.id}')" style="background:transparent;border:none;color:var(--red);font-size:14px;cursor:pointer">🗑️</button>
+    </div>`
+  ).join('');
+  openModal(`
+    <div class="modal-title">⚙️ Gérer les présets</div>
+    <div style="max-height:300px;overflow:auto;margin-bottom:12px">${list||'<div style="font-size:12px;color:var(--text3)">Aucun préset</div>'}</div>
+    <button class="btn btn-secondary" onclick="showAddPresetPromptInline()" style="width:100%;margin-bottom:8px">+ Ajouter un préset</button>
+    <button class="btn btn-primary" onclick="closeModal()" style="width:100%">Fermer</button>
+  `);
+}
+
+function showAddPresetPromptInline(){
+  const label=prompt('Nouveau préset de correction :');
+  if(!label||!label.trim())return;
+  addPreset(label.trim()).then(()=>showManagePresets());
+}
+
+async function deletePreset(presetId){
+  await supa('DELETE','correction_presets','',`?id=eq.${presetId}`);
+  S.correctionPresets=S.correctionPresets.filter(p=>p.id!==presetId);
+  lsSet('c_correctionPresets',S.correctionPresets);
+  showManagePresets();
+}
 
 // ─────────────────────────────────────────
 // MÉTHODES D'INTENSIFICATION
@@ -3486,6 +3793,60 @@ function showLogModal(progId){
   );
 }
 
+async function restoreActiveSession(){
+  const activeLog = lsGet('c_activeLog');
+  if(!activeLog || !activeLog.seance_type_id || !activeLog.client_id) return false;
+
+  // Mode client : un seul client, doit matcher
+  // Mode coach : chercher le client dans la liste
+  let client = null;
+  if(!currentIsCoach){
+    if(S.client && S.client.id === activeLog.client_id) client = S.client;
+  } else {
+    client = (S.clients||[]).find(c=>c.id===activeLog.client_id);
+  }
+  if(!client) return false;
+
+  // En mode coach, charger les données du client si nécessaire
+  let seanceType = S.seancesType.find(s=>s.id===activeLog.seance_type_id);
+  if(!seanceType && currentIsCoach){
+    try { await syncClientData(client.id); } catch(e){}
+    seanceType = S.seancesType.find(s=>s.id===activeLog.seance_type_id);
+  }
+  if(!seanceType) return false;
+
+  const programme = S.programmes.find(p=>p.id===seanceType.programme_id);
+  if(!programme) return false;
+
+  // Set state
+  S.client = client;
+  S.programme = programme;
+  S.seanceType = seanceType;
+  S.logSeance = activeLog;
+
+  // Construit une history cohérente pour que le bouton retour marche
+  if(currentIsCoach){
+    S.history = [
+      {screen:'clients', client:null, programme:null, seanceType:null},
+      {screen:'suivi', client:client, programme:null, seanceType:null},
+      {screen:'training', client:client, programme:null, seanceType:null},
+      {screen:'programme', client:client, programme:programme, seanceType:null},
+      {screen:'seance', client:client, programme:programme, seanceType:seanceType}
+    ];
+  } else {
+    S.history = [
+      {screen:'menu', client:client, programme:null, seanceType:null},
+      {screen:'training', client:client, programme:null, seanceType:null},
+      {screen:'programme', client:client, programme:programme, seanceType:null},
+      {screen:'seance', client:client, programme:programme, seanceType:seanceType}
+    ];
+  }
+
+  showScreen('log');
+  toast('▶ Séance reprise');
+  return true;
+}
+
 function startLog(seanceTypeId){
   const st=S.seancesType.find(s=>s.id===seanceTypeId);if(!st)return;
   S.logSeance={
@@ -3498,11 +3859,21 @@ function startLog(seanceTypeId){
       exo_id:exo.exo_id,nom:exo.nom,cat:exo.cat,video:exo.video||'',desc:exo.desc||'',notes:exo.notes||'',duree_min:exo.duree_min||0,
       nb_series:exo.nb_series,reps_min:exo.reps_min,reps_max:exo.reps_max,repos:exo.repos||90,
       methode:exo.methode||null,supersetWith:exo.supersetWith||null,
+      videoDemandee:exo.videoDemandee||false,
       series:Array.from({length:exo.cat==='Cardio'?1:exo.nb_series},()=>exo.cat==='Cardio'?{duree:'',done:false}:{poids:'',reps:'',done:false})
     }))
   };
   lsSet('c_activeLog',S.logSeance);
   closeModal();navigate('log');
+}
+
+function toggleVideoDemandee(ei){
+  if(!S.seanceType||!S.seanceType.exercices[ei])return;
+  const exo=S.seanceType.exercices[ei];
+  exo.videoDemandee=!exo.videoDemandee;
+  persist();
+  saveSeanceTypeToSupa(S.seanceType);
+  render.seance();
 }
 
 
@@ -3684,6 +4055,7 @@ render.bilanHebdo=function(){
     <button class="bh-tab${S.bhTab==='photos'?' active':''}" onclick="setBhTab('photos')">📸 Photos/Mensurations</button>
     <button class="bh-tab${S.bhTab==='comparaison'?' active':''}" onclick="setBhTab('comparaison')">🔄 Comparaison</button>
     <button class="bh-tab${S.bhTab==='resultats'?' active':''}" onclick="setBhTab('resultats')">📊 Résultats</button>
+    <button class="bh-tab${S.bhTab==='modifs'?' active':''}" onclick="setBhTab('modifs')">📝 Modifications</button>
   </div>`;
 
   const bilan=getOrCreateBilanHebdo(c.id,S.bhCurrentDate);
@@ -3692,9 +4064,44 @@ render.bilanHebdo=function(){
   if(S.bhTab==='photos') tabContent=renderBhPhotos(bilan,allWeeks);
   else if(S.bhTab==='comparaison') tabContent=renderBhComparaison(c.id,allWeeks);
   else if(S.bhTab==='resultats') tabContent=renderBhResultats(c.id);
+  else if(S.bhTab==='modifs') tabContent=renderBhModifications(bilan);
 
   el.innerHTML=weekSelector+tabs+tabContent;
 };
+
+function renderBhModifications(bilan){
+  const dieteVal = (bilan.modifDiete||'').replace(/"/g,'&quot;');
+  const trainingVal = (bilan.modifTraining||'').replace(/"/g,'&quot;');
+  return `
+    <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
+      <div class="form-group" style="margin:0">
+        <label class="form-label" style="display:flex;align-items:center;gap:6px;font-size:13px">🍽️ Modification diète</label>
+        <textarea class="form-inp" id="bh-modif-diete" rows="5"
+          placeholder="ex : +30g glucides Day ON, baisse 10g lipides Day OFF…"
+          style="resize:vertical;min-height:90px;width:100%"
+          onblur="saveBhModif('diete',this.value)">${escapeHtml(bilan.modifDiete||'')}</textarea>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label" style="display:flex;align-items:center;gap:6px;font-size:13px">🏋️ Modification training</label>
+        <textarea class="form-inp" id="bh-modif-training" rows="5"
+          placeholder="ex : +1 set sur squat, ajouté hip thrust, baissé cardio à 2x/sem…"
+          style="resize:vertical;min-height:90px;width:100%"
+          onblur="saveBhModif('training',this.value)">${escapeHtml(bilan.modifTraining||'')}</textarea>
+      </div>
+      <div style="font-size:11px;color:var(--text3);text-align:center;padding-top:4px">
+        💾 Sauvegarde automatique quand tu cliques en-dehors du champ
+      </div>
+    </div>`;
+}
+
+function saveBhModif(field,value){
+  const bilan=getOrCreateBilanHebdo(S.client.id,S.bhCurrentDate);
+  if(field==='diete') bilan.modifDiete=(value||'').trim();
+  else if(field==='training') bilan.modifTraining=(value||'').trim();
+  persist();
+  saveBilanHebdoToSupa(bilan);
+  toast('✓ Modification enregistrée');
+}
 
 function renderBhPhotos(bilan, allWeeks){
   const slots=[
@@ -4046,12 +4453,16 @@ function getOrCreateBilanHebdo(clientId,date){
       date:monday,
       photos:{face:null,gauche:null,droit:null,dos:null},
       mensurations:{poitrine:'',taille:'',fessiers:'',cuisses:'',bras:''},
-      notes:''
+      notes:'',
+      modifDiete:'',
+      modifTraining:''
     };
     S.bilansHebdo.push(bilan);
   }
   if(!bilan.photos) bilan.photos={face:null,gauche:null,droit:null,dos:null};
   if(!bilan.mensurations) bilan.mensurations={poitrine:'',taille:'',fessiers:'',cuisses:'',bras:''};
+  if(bilan.modifDiete===undefined) bilan.modifDiete='';
+  if(bilan.modifTraining===undefined) bilan.modifTraining='';
   return bilan;
 }
 
@@ -4206,12 +4617,16 @@ render.suivi=function(){
     const avgPas=avg(daysData.map(x=>x.ci?.pas));
 
     const blockMeta=getBlockMetaForDate(c,monday);
+    const blockBadge = blockMeta
+      ? '<span style="display:inline-block;margin-left:10px;padding:4px 12px;background:'+blockMeta.color+';color:#fff;font-weight:700;font-size:12px;border-radius:999px;letter-spacing:.02em;vertical-align:middle;box-shadow:0 1px 3px rgba(0,0,0,.15);text-transform:uppercase">'
+        + blockMeta.objective + ' · S' + blockMeta.week + ' · Phase ' + blockMeta.phaseIndex
+      + '</span>'
+      : '';
     return {
       monday,
       mondayDate,
-      title: 'Semaine du '+mondayDate.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}) +
-        (blockMeta ? ' <span style="margin-left:8px;font-weight:700;color:'+blockMeta.color+'">'+blockMeta.objective+' semaine '+blockMeta.week+'</span>' : ''),
-      subLabel: blockMeta ? 'Phase '+blockMeta.phaseIndex : '',
+      title: 'Semaine du '+mondayDate.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'}) + blockBadge,
+      subLabel: '',
       daysData,
       avgPoids,
       avgStress,
@@ -4783,12 +5198,13 @@ function buildIASystemPrompt(){
     cat + ': ' + items.map(f => `${f.n} (${f.k}kcal, P${f.p}g, G${f.g}g, L${f.l}g/100g${f.gpu&&f.gpu!==1?' — '+f.gpu+'g/unité':''})`).join(' | ')
   ).join('\n');
 
-  // Current plan summary
+  // Current plan summary — inclut les kcal calculés depuis la DB locale
   const planSummary = diete.meals.map(m =>
     m.name + ': ' + m.items.filter(i=>i.food&&i.enabled!==false).map(i=>{
       const r=lookupFood(i.food);
+      const cv=calcFoodItem(i);
       const isUnit=i.type==='Unité'||(r&&r.f&&r.f.gpu&&r.f.gpu>1);
-      return i.food+' '+i.qty+(isUnit?' unité'+(i.qty>1?'s':''):'g');
+      return i.food+' '+i.qty+(isUnit?' u':'g')+' ('+cv.kcal+'kcal, P'+cv.prot+'g G'+cv.gluc+'g L'+cv.lip+'g)';
     }).join(', ')
   ).filter(s=>!s.endsWith(': ')).join(' | ');
 
@@ -4808,7 +5224,7 @@ RÈGLES ABSOLUES :
 1. Tu réponds UNIQUEMENT à ce que le client demande. Zéro conseil non sollicité, zéro remarque sur ses choix, zéro suggestion d'amélioration s'il n'en demande pas. Si quelqu'un veut manger une pizza, tu l'aides à composer sa pizza — tu ne lui proposes pas une salade à la place.
 2. Tu n'es PAS un coach nutritionnel. Tu es un outil de calcul et de réponse. Le coaching appartient à Margot, pas à toi.
 3. Sois TRÈS concis : uniquement ce qui est demandé, sans introduction ni conclusion. Pas de Markdown (*, **, #, tirets en début de ligne). Retours à la ligne et emojis uniquement si nécessaire.
-4. PRIORITÉ des sources nutritionnelles : 1) Base de données locale (noms exacts), 2) Données Open Food Facts si fournies ci-dessous (valeurs réelles, utilise-les sans dire "(estimation)"), 3) Tes connaissances en dernier recours (précise alors "(estimation)"). Ne dis JAMAIS que tu n'as pas accès à internet si des données OFFF sont fournies dans ce prompt.
+4. PRIORITÉ des sources nutritionnelles : 1) Base de données locale (noms exacts), 2) Données Open Food Facts si fournies ci-dessous (valeurs réelles, utilise-les sans dire "(estimation)"), 3) Tes connaissances en dernier recours (précise alors "(estimation)"). Ne dis JAMAIS que tu n'as pas accès à internet si des données OFFF sont fournies dans ce prompt. IMPORTANT : quand tu calcules des totaux kcal/macros pour des aliments déjà dans la base, utilise TOUJOURS les valeurs indiquées dans la base (le plan actuel les affiche déjà calculées) — ne recalcule pas depuis tes propres connaissances.
 5. Donne des quantités précises en grammes. Pour les plats de resto, estime en portions réalistes.
 6. Quand tu mentionnes des macros, affiche-les ainsi : Nkcal | PXg | GXg | LXg
 7. Pour les suggestions de repas : "🍽️ [Nom]\n- Aliment : Xg\n→ Total : Nkcal | PXg | GXg | LXg"
@@ -5574,13 +5990,32 @@ function confirmCancel(){
 // SUPABASE SYNC FUNCTIONS
 // ─────────────────────────────────────────
 
+async function syncPresets(){
+  const res=await supa('GET','correction_presets','','?order=ordre.asc,created_at.asc');
+  if(res){S.correctionPresets=res;lsSet('c_correctionPresets',res);}
+}
+
+async function syncVideos(clientId){
+  const res=await supa('GET','videos','',`?client_id=eq.${clientId}&order=created_at.desc`);
+  if(res){
+    S.videos=S.videos.filter(v=>v.client_id!==clientId);
+    S.videos.push(...res);
+    lsSet('c_videos',S.videos);
+  }
+}
+
 async function syncClients(){
   const [actifs,archives]=await Promise.all([
     supa('GET','clients','','?order=nom.asc&archive=eq.false'),
     supa('GET','clients','','?order=nom.asc&archive=eq.true')
   ]);
-  if(actifs){S.clients=actifs;lsSet('c_clients',actifs);}
-  if(archives){S.archivedClients=archives;lsSet('c_archivedClients',archives);}
+  const normalize=row=>{
+    if(!row) return row;
+    if(row.block_plan!==undefined){ row.blockPlan=row.block_plan; delete row.block_plan; }
+    return row;
+  };
+  if(actifs){const a=actifs.map(normalize);S.clients=a;lsSet('c_clients',a);}
+  if(archives){const a=archives.map(normalize);S.archivedClients=a;lsSet('c_archivedClients',a);}
 }
 
 async function syncExercices(){
@@ -5676,9 +6111,13 @@ async function syncClientData(clientId){
       photos:b.photos||{face:null,gauche:null,droit:null,dos:null},
       mensurations:{poitrine:b.poitrine||'',taille:b.taille||'',fessiers:b.fessiers||'',cuisses:b.cuisses||'',bras:b.bras||''},
       notes:b.notes||'',
-      completed:b.completed||false
+      completed:b.completed||false,
+      modifDiete:b.modif_diete||'',
+      modifTraining:b.modif_training||''
     })));
   }
+  // Vidéos du client
+  syncVideos(clientId);
   persist();
 }
 
@@ -5760,7 +6199,8 @@ async function saveClientToSupa(client){
     favori:client.favori||false,
     archive:client.archive||false,
     goals:client.goals||null,
-    notes_coach:client.notes_coach||null
+    notes_coach:client.notes_coach||null,
+    block_plan:client.blockPlan||null
   };
   const existing=await supa('GET','clients','',`?id=eq.${client.id}`);
   if(existing&&existing.length){
@@ -5848,7 +6288,9 @@ async function saveBilanHebdoToSupa(bilan){
     cuisses:parseFloat(bilan.mensurations?.cuisses)||null,
     bras:parseFloat(bilan.mensurations?.bras)||null,
     notes:bilan.notes||null,
-    completed:bilan.completed||false
+    completed:bilan.completed||false,
+    modif_diete:bilan.modifDiete||null,
+    modif_training:bilan.modifTraining||null
   };
   if(bilan._supaId){
     await supa('PATCH','bilans_hebdo',payload,`?id=eq.${bilan._supaId}`);
@@ -6143,9 +6585,10 @@ async function initApp(){
     if(bn) bn.style.display='';
     showScreen('clients');
     document.getElementById('clients-list').innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:60px 0;gap:12px"><div style="width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite"></div><div style="font-size:13px;color:var(--text3)">Synchronisation…</div></div>`;
-    await Promise.all([syncClients(),syncCustomAliments(),syncRecettes()]);
+    await Promise.all([syncClients(),syncCustomAliments(),syncRecettes(),syncPresets()]);
     render.clients();
     syncExercices();
+    restoreActiveSession();
     return;
   }
 
@@ -6169,6 +6612,10 @@ async function initApp(){
       }
     }
   }
+  if(clientRecord && clientRecord.block_plan!==undefined){
+    clientRecord.blockPlan=clientRecord.block_plan;
+    delete clientRecord.block_plan;
+  }
 
   if(!clientRecord){
     document.getElementById('menu-grid').innerHTML=`<div class="empty"><div class="empty-icon">❌</div><div class="empty-title">Profil introuvable</div><div class="empty-sub">Ton profil n'a pas encore été créé. Contacte ton coach.</div></div>`;
@@ -6182,12 +6629,14 @@ async function initApp(){
   S.clients=[S.client];
   await syncCustomAliments();
   await syncRecettes();
+  await syncPresets();
   await syncClientData(clientRecord.id);
 
   document.getElementById('back-btn').style.display='none';
   setTopbar(S.client.prenom+' '+S.client.nom,'');
   document.getElementById('topbar-action').innerHTML=`<div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>`;
   render.menu();
+  await restoreActiveSession();
 }
 bootstrapAuth();
 
@@ -6215,6 +6664,7 @@ function startBlockPlan(){
   bp.active = true;
   S.client.blockPlan = bp;
   persist();
+  saveClientToSupa(S.client);
 
   if(typeof refreshBlockPlannerInPlace === 'function'){
     refreshBlockPlannerInPlace();
