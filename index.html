@@ -165,7 +165,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .exo-card-header{display:flex;align-items:center;gap:10px;padding:12px 12px 10px}
 .exo-num-badge{width:30px;height:30px;border-radius:50%;background:var(--green-light);color:var(--green-dark);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .exo-card-info{flex:1;min-width:0}
-.exo-card-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exo-card-name{font-size:14px;font-weight:600;line-height:1.3;padding:10px 12px 0;color:var(--text)}
 .exo-card-cat{font-size:11px;color:var(--text3);margin-top:1px}
 .exo-card-actions{display:flex;gap:6px;flex-shrink:0}
 .exo-order-actions{display:flex;flex-direction:column;gap:4px;flex-shrink:0;margin-right:2px}
@@ -1504,7 +1504,9 @@ const S={
   exercices: loadExercices(),
   videos: loadLocal('c_videos',[]),
   correctionPresets: loadLocal('c_correctionPresets',[]),
-  videosFilter:''
+  videosFilter:'',
+  clientsSort: lsGet('c_clientsSort') || 'alpha',
+  suiviWeekMode: lsGet('c_suiviWeekMode') || 'standard'
 };
 
 
@@ -1705,27 +1707,78 @@ async function logout(){
   location.href=window.location.pathname;
 }
 
-function openModal(html){
+function openModal(html,opts){
   document.getElementById('modal-body').innerHTML=html;
+  const modal=document.querySelector('.modal');
+  if(modal){
+    if(opts&&opts.wide){
+      modal.style.maxWidth='min(94vw,720px)';
+    } else {
+      modal.style.maxWidth='';
+    }
+  }
   document.getElementById('overlay').classList.add('open');
 }
-function closeModal(){document.getElementById('overlay').classList.remove('open');}
+function closeModal(){
+  document.getElementById('overlay').classList.remove('open');
+  const modal=document.querySelector('.modal');
+  if(modal) modal.style.maxWidth='';
+}
 
 // ─────────────────────────────────────────
 // RENDER: CLIENTS
 // ─────────────────────────────────────────
 const render={};
 
+let _lastBilanSync=0;
 render.clients=function(filter=''){
-  setTopbar('Mes clients','',`<div style="display:flex;gap:6px;align-items:center"><div class="icon-btn" onclick="showCalendrierBilanModal()" title="Calendrier bilans">📅</div><div class="icon-btn" onclick="navigate('archives')" title="Archives">🗂️</div><div class="icon-btn" onclick="showNewClientModal()">＋</div><div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div></div>`);
-  const list=S.clients.filter(c=>`${c.prenom} ${c.nom}`.toLowerCase().includes(filter.toLowerCase()));
-  const favs=list.filter(c=>c.favori);
-  const others=list.filter(c=>!c.favori);
+  // Re-sync silencieux des bilans de la semaine (max toutes les 10s)
+  if(currentIsCoach && Date.now()-_lastBilanSync>10000){
+    _lastBilanSync=Date.now();
+    syncBilansThisWeek().then(()=>{
+      if(S.screen==='clients') render.clients(filter);
+    });
+  }
+  const sortMode=S.clientsSort||'alpha';
+  const sortBtn=`<div style="display:flex;gap:4px;background:var(--bg2);border-radius:999px;padding:2px;margin-left:8px">
+    <button onclick="setClientsSort('alpha')" style="padding:4px 10px;border-radius:999px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:${sortMode==='alpha'?'var(--bg)':'transparent'};color:${sortMode==='alpha'?'var(--text)':'var(--text3)'};box-shadow:${sortMode==='alpha'?'0 1px 2px rgba(0,0,0,.08)':'none'}">A→Z</button>
+    <button onclick="setClientsSort('jour')" style="padding:4px 10px;border-radius:999px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:${sortMode==='jour'?'var(--bg)':'transparent'};color:${sortMode==='jour'?'var(--text)':'var(--text3)'};box-shadow:${sortMode==='jour'?'0 1px 2px rgba(0,0,0,.08)':'none'}">📅 Jour</button>
+  </div>`;
+  setTopbar('Mes clients','',`<div style="display:flex;gap:6px;align-items:center">${sortBtn}<div class="icon-btn" onclick="showCalendrierBilanModal()" title="Calendrier bilans">📅</div><div class="icon-btn" onclick="navigate('archives')" title="Archives">🗂️</div><div class="icon-btn" onclick="showNewClientModal()">＋</div><div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div></div>`);
+  const baseList=S.clients.filter(c=>`${c.prenom} ${c.nom}`.toLowerCase().includes(filter.toLowerCase()));
+  const list=sortMode==='jour'
+    ? sortClientsByJour(baseList)
+    : [...baseList].sort((a,b)=>(a.prenom+' '+a.nom).localeCompare(b.prenom+' '+b.nom));
   const el=document.getElementById('clients-list');
   if(!list.length){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">Aucun client</div><div class="empty-sub">Appuie sur + pour ajouter ton premier client</div></div>`;return;}
   let html='';
-  if(favs.length){html+=`<div class="section-label">⭐ Favoris</div>${favs.map((c,i)=>clientRowHTML(c,i)).join('')}`;}
-  if(others.length){html+=`<div class="section-label">${favs.length?'Tous les clients':'Clients'}</div>${others.map((c,i)=>clientRowHTML(c,favs.length+i)).join('')}`;}
+  if(sortMode==='jour'){
+    // Regroupement par jour de bilan : aujourd'hui d'abord, puis demain, etc.
+    const daysOrder=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+    const dowNames=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+    const todayName=dowNames[new Date().getDay()];
+    const todayIdx=daysOrder.indexOf(todayName);
+    const orderedDays=[...daysOrder.slice(todayIdx),...daysOrder.slice(0,todayIdx)];
+    let idx=0;
+    orderedDays.forEach(day=>{
+      const inDay=list.filter(c=>c.jourBilan===day);
+      if(!inDay.length) return;
+      const isToday=day===todayName;
+      const todayChip=isToday?'<span style="font-size:10px;font-weight:700;background:var(--green-light);color:var(--green-dark);padding:2px 8px;border-radius:10px;margin-left:8px">AUJOURD\'HUI</span>':'';
+      html+=`<div class="section-label" style="display:flex;align-items:center;${isToday?'color:var(--green-dark)':''}">📅 ${day}${todayChip}</div>`;
+      inDay.forEach(c=>{html+=clientRowHTML(c,idx++);});
+    });
+    const sansJour=list.filter(c=>!c.jourBilan);
+    if(sansJour.length){
+      html+=`<div class="section-label" style="color:var(--text3)">— Sans jour assigné</div>`;
+      sansJour.forEach(c=>{html+=clientRowHTML(c,idx++);});
+    }
+  } else {
+    const favs=list.filter(c=>c.favori);
+    const others=list.filter(c=>!c.favori);
+    if(favs.length){html+=`<div class="section-label">⭐ Favoris</div>${favs.map((c,i)=>clientRowHTML(c,i)).join('')}`;}
+    if(others.length){html+=`<div class="section-label">${favs.length?'Tous les clients':'Clients'}</div>${others.map((c,i)=>clientRowHTML(c,favs.length+i)).join('')}`;}
+  }
   el.innerHTML=html;
 };
 
@@ -1764,6 +1817,7 @@ function setJourBilan(clientId,jour){
   const c=S.clients.find(x=>x.id===clientId);if(!c)return;
   c.jourBilan=jour;
   persist();
+  saveClientToSupa(c);
   closeModal();
   render.clients();
   toast(jour?`📅 Bilan le ${jour} pour ${c.prenom}`:`Jour de bilan retiré`);
@@ -1782,11 +1836,11 @@ function buildCalendrierHtml(){
 
     const cards=clientsJour.map(c=>{
       const fait=isBilanFaitThisWeek(c.id);
-      return `<div style="background:${fait?'var(--green-light)':'var(--bg)'};border:1px solid ${fait?'var(--green)':'var(--border)'};border-radius:8px;padding:5px 6px 4px;margin-bottom:4px;position:relative">
-        <div style="font-size:11px;font-weight:700;color:var(--text1);padding-right:12px;line-height:1.3">${c.prenom}</div>
-        <div style="font-size:10px;color:var(--text3);line-height:1.2">${c.nom}</div>
-        ${fait?'<div style="font-size:9px;font-weight:700;color:var(--green-dark);margin-top:3px">Bilan ✓</div>':''}
-        <button onclick="removeClientJour(\'${c.id}\')" style="position:absolute;top:3px;right:4px;background:none;border:none;font-size:9px;color:var(--text3);cursor:pointer;padding:0;line-height:1;opacity:.5">✕</button>
+      return `<div style="background:${fait?'var(--green-light)':'var(--bg)'};border:1px solid ${fait?'var(--green)':'var(--border)'};border-radius:8px;padding:7px 8px 6px;margin-bottom:6px;position:relative">
+        <div style="font-size:13px;font-weight:700;color:var(--text1);padding-right:16px;line-height:1.3">${c.prenom}</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.2">${c.nom}</div>
+        ${fait?'<div style="font-size:10px;font-weight:700;color:var(--green-dark);margin-top:4px">Bilan ✓</div>':''}
+        <button onclick="removeClientJour(\'${c.id}\')" style="position:absolute;top:4px;right:5px;background:none;border:none;font-size:11px;color:var(--text3);cursor:pointer;padding:0;line-height:1;opacity:.5">✕</button>
       </div>`;
     }).join('');
 
@@ -1794,10 +1848,10 @@ function buildCalendrierHtml(){
       `<option value="${c.id}">${c.prenom} ${c.nom}${c.jourBilan?' ('+c.jourBilan.slice(0,3)+')':''}</option>`
     ).join('');
 
-    cols+=`<div style="background:${isToday?'var(--green-light)':'var(--bg2)'};border:1px solid ${isToday?'var(--green)':'var(--border)'};border-radius:10px;padding:7px 5px 6px;min-width:80px;display:flex;flex-direction:column">
-      <div style="font-size:10px;font-weight:800;text-align:center;letter-spacing:.5px;color:${isToday?'var(--green-dark)':'var(--text3)'};text-transform:uppercase;margin-bottom:7px">${jour.slice(0,3)}</div>
-      <div style="flex:1">${cards||'<div style="font-size:10px;color:var(--border);text-align:center;padding:4px 0">—</div>'}</div>
-      ${available.length?`<select style="width:100%;font-size:10px;border:1px dashed var(--border);border-radius:6px;padding:3px 2px;background:var(--bg);color:var(--text3);cursor:pointer;margin-top:6px" onchange="assignClientJour('${jour}',this.value);this.value=''">
+    cols+=`<div style="background:${isToday?'var(--green-light)':'var(--bg2)'};border:1px solid ${isToday?'var(--green)':'var(--border)'};border-radius:10px;padding:9px 7px 8px;min-width:100px;display:flex;flex-direction:column">
+      <div style="font-size:12px;font-weight:800;text-align:center;letter-spacing:.5px;color:${isToday?'var(--green-dark)':'var(--text3)'};text-transform:uppercase;margin-bottom:9px">${jour.slice(0,3)}</div>
+      <div style="flex:1">${cards||'<div style="font-size:11px;color:var(--border);text-align:center;padding:6px 0">—</div>'}</div>
+      ${available.length?`<select style="width:100%;font-size:11px;border:1px dashed var(--border);border-radius:6px;padding:5px 3px;background:var(--bg);color:var(--text3);cursor:pointer;margin-top:8px" onchange="assignClientJour('${jour}',this.value);this.value=''">
         <option value="">＋ Ajouter</option>${opts}
       </select>`:''}
     </div>`;
@@ -1805,20 +1859,21 @@ function buildCalendrierHtml(){
 
   return `<div class="modal-title">📅 Calendrier des bilans</div>
     <div style="overflow-x:auto;margin:0 -16px;padding:0 16px 4px">
-      <div style="display:grid;grid-template-columns:repeat(7,minmax(82px,1fr));gap:6px;min-width:590px;padding-bottom:4px">${cols}</div>
+      <div style="display:grid;grid-template-columns:repeat(7,minmax(100px,1fr));gap:8px;min-width:720px;padding-bottom:4px">${cols}</div>
     </div>
-    <div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">Se réinitialise le lundi suivant</div>
+    <div style="font-size:12px;color:var(--text3);margin-top:12px;text-align:center">Se réinitialise le lundi suivant</div>
     <button class="btn btn-secondary" style="margin-top:12px" onclick="closeModal()">Fermer</button>`;
 }
 
 function showCalendrierBilanModal(){
-  openModal(buildCalendrierHtml());
+  openModal(buildCalendrierHtml(),{wide:true});
 }
 
 function assignClientJour(jour,clientId){
   if(!clientId)return;
   const c=S.clients.find(x=>x.id===clientId);if(!c)return;
   c.jourBilan=jour;persist();
+  saveClientToSupa(c);
   document.getElementById('modal-body').innerHTML=buildCalendrierHtml();
   render.clients();
 }
@@ -1826,6 +1881,7 @@ function assignClientJour(jour,clientId){
 function removeClientJour(clientId){
   const c=S.clients.find(x=>x.id===clientId);if(!c)return;
   c.jourBilan='';persist();
+  saveClientToSupa(c);
   document.getElementById('modal-body').innerHTML=buildCalendrierHtml();
   render.clients();
 }
@@ -1868,6 +1924,8 @@ async function openClient(id){
   syncClientData(id).then(()=>{
     if(S.screen==='menu')render.menu();
     else if(S.screen==='training')render.training();
+    else if(S.screen==='seance')render.seance();
+    else if(S.screen==='videos')render.videos();
   });
 }
 
@@ -2364,13 +2422,14 @@ render.menu=function(){
   const lastCheckin=S.checkIns.filter(ci=>ci.client_id===c.id).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
   const checkinCount=S.checkIns.filter(ci=>ci.client_id===c.id).length;
   document.getElementById('topbar-action').innerHTML=`<div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>`;
+  const isPack=c.formule==='pack';
   document.getElementById('menu-grid').innerHTML=`
-    <div class="menu-card" onclick="goTraining()">
+    <div class="menu-card" onclick="goTraining()"${isPack?' style="grid-column:span 2"':''}>
       <div class="menu-card-icon">💪</div>
       <div class="menu-card-label">Entraînement</div>
       <div class="menu-card-sub">${countProgs(c.id)} programme(s)</div>
     </div>
-    <div class="menu-card" onclick="navigate('diete')">
+    ${isPack?'':`<div class="menu-card" onclick="navigate('diete')">
       <div class="menu-card-icon">🥗</div>
       <div class="menu-card-label">Diète</div>
       <div class="menu-card-sub">Day ON / Day OFF</div>
@@ -2389,7 +2448,7 @@ render.menu=function(){
       <div class="menu-card-icon">📈</div>
       <div class="menu-card-label">Bilan hebdomadaire</div>
       <div class="menu-card-sub">Photos · Mensurations · Comparaison</div>
-    </div>
+    </div>`}
     ${currentIsCoach?`<div class="menu-card" onclick="showWeeklyRecap('${c.id}')" style="grid-column:span 2;border-color:var(--green)">
       <div class="menu-card-icon">📊</div>
       <div class="menu-card-label">Récap semaine</div>
@@ -2534,11 +2593,11 @@ render.seance=function(){
     const upBtn=`<button class="exo-mini-btn" onclick="moveGroupInSeance(${gi},-1)" title="Monter" ${gi===0?' disabled style="opacity:.35;pointer-events:none"':''}>↑</button>`;
     const downBtn=`<button class="exo-mini-btn" onclick="moveGroupInSeance(${gi},1)" title="Descendre" ${gi===groups.length-1?' disabled style="opacity:.35;pointer-events:none"':''}>↓</button>`;
     return `<div class="exo-card" id="exo-card-${ei}">
-      <div class="exo-card-header">
+      <div class="exo-card-name">${exo.nom}</div>
+      <div class="exo-card-header" style="padding-top:4px">
         <div class="exo-order-actions">${isBottom?placeholder:upBtn}${isTop?placeholder:downBtn}</div>
         <div class="exo-num-badge" style="${badgeStyle}">${ei+1}</div>
         <div class="exo-card-info">
-          <div class="exo-card-name">${exo.nom}</div>
           <div class="exo-card-cat" style="${catStyle}">${isCardio?exo.cat+' · '+(exo.duree_min||'?')+' min':exo.cat+' · '+exo.nb_series+' séries · '+exo.reps_min+'-'+exo.reps_max+' reps'}</div>
         </div>
         <div class="exo-card-actions">
@@ -2557,6 +2616,7 @@ render.seance=function(){
           ${exo.videoDemandee?'Vidéo demandée':'Demander une vidéo'}
         </button>
       </div>
+      ${exo.videoDemandee?renderExoVideoSection(exo,ei,'config',null):''}
     </div>`;
   }
 
@@ -2759,10 +2819,10 @@ render.log=function(){
             </div>`;
           }
           return `<div class="exo-card" style="margin-bottom:0;border-radius:0;box-shadow:none;border:none">
-            <div class="exo-card-header">
+            <div class="exo-card-name">${e.nom}${e._replacedFrom?`<span style="font-size:10px;color:var(--amber);background:var(--amber-light);border-radius:6px;padding:2px 6px;margin-left:6px;font-weight:600">🔄 remplacé</span>`:''}</div>
+            <div class="exo-card-header" style="padding-top:4px">
               <div class="exo-num-badge" style="${badgeStyle}">${i+1}</div>
               <div class="exo-card-info">
-                <div class="exo-card-name">${e.nom}${e._replacedFrom?`<span style="font-size:10px;color:var(--amber);background:var(--amber-light);border-radius:6px;padding:2px 6px;margin-left:6px;font-weight:600">🔄 remplacé</span>`:''}</div>
                 ${e._replacedFrom?`<div style="font-size:10px;color:var(--text3);margin-bottom:1px">Remplace : ${e._replacedFrom}</div>`:''}
                 <div class="exo-card-cat" style="${isCardio?'color:var(--amber)':''}">${isCardio?(e.cat+' · '+(e.duree_min||'?')+' min'):(e.cat?e.cat+' · ':'')+e.nb_series+' séries · '+e.reps_min+'-'+e.reps_max+' reps'}</div>
               </div>
@@ -2792,7 +2852,7 @@ render.log=function(){
                 ${extraSeries}
               </div>
               <textarea class="form-inp form-inp-sm" rows="2" placeholder="💬 Commentaire (ressenti, douleur, question…)" style="margin-top:8px;font-size:13px;resize:none" oninput="updateLogComment(${i},this.value)">${e.commentaire||''}</textarea>
-              ${renderExoVideoSection(e,i,log.id)}
+              ${renderExoVideoSection(e,i,'log',log.id)}
             </div>
           </div>`;
         };
@@ -2885,30 +2945,39 @@ render.videos=function(){
 // ─────────────────────────────────────────
 // VIDÉOS — Upload, affichage, correction
 // ─────────────────────────────────────────
-function renderExoVideoSection(e,ei,logId){
-  const exoVideos=(S.videos||[]).filter(v=>v.exo_id===e.exo_id && v.log_seance_id===logId);
-  const inputId=`vid-inp-${ei}`;
+// context : 'log' (séance en cours, upload possible) ou 'config' (vue séance type, lecture)
+function renderExoVideoSection(e,ei,context,logId){
+  const isLog=context==='log';
+  let exoVideos;
+  if(isLog){
+    exoVideos=(S.videos||[]).filter(v=>v.exo_id===e.exo_id && v.log_seance_id===logId);
+  } else {
+    exoVideos=(S.videos||[]).filter(v=>v.exo_id===e.exo_id && v.client_id===(S.client&&S.client.id))
+      .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  }
+  const inputId=`vid-inp-${context}-${ei}`;
   const demanded=e.videoDemandee;
   const accent=demanded?'var(--green)':'var(--text3)';
   const bg=demanded?'rgba(29,158,117,.08)':'transparent';
   const label=demanded?'📹 Vidéo demandée — Uploader':'📹 Ajouter une vidéo';
-  const uploadHtml=`
+  const uploadHtml=isLog?`
     <div style="padding:8px;border-radius:10px;border:1px dashed ${accent};background:${bg};margin-top:10px">
       <input type="file" id="${inputId}" accept="video/*" capture="environment" style="display:none" onchange="handleVideoUpload(${ei},this)" />
       <button onclick="document.getElementById('${inputId}').click()" style="width:100%;padding:8px;border:none;background:transparent;color:${accent};font-weight:600;font-size:13px;cursor:pointer">${label}</button>
       <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:2px">Max 50 MB · 2 min recommandé</div>
-    </div>`;
+    </div>`:'';
   const videosHtml=exoVideos.map(v=>{
     const correctionHtml=v.correction
       ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(255,140,0,.1);border-left:3px solid var(--amber);border-radius:6px;font-size:13px;color:var(--text)"><strong style="color:var(--amber)">✏️ Correction :</strong> ${escapeHtml(v.correction)}</div>`
-      : '';
+      : (currentIsCoach?'<div style="margin-top:6px;padding:6px 8px;background:rgba(0,0,0,.04);border-radius:6px;font-size:11px;color:var(--text3);font-style:italic">Pas encore corrigée</div>':'');
     const coachBtn=currentIsCoach
       ? `<button onclick="openCorrectionModal('${v.id}')" style="padding:6px 12px;border-radius:8px;border:1px solid var(--amber);background:rgba(255,140,0,.08);color:var(--amber);font-weight:600;font-size:12px;cursor:pointer">${v.correction?'✏️ Modifier correction':'✏️ Ajouter correction'}</button>`
       : '';
     const date=v.created_at?new Date(v.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    const seanceLabel=!isLog && v.seance_nom ? ' · '+escapeHtml(v.seance_nom):'';
     return `<div style="margin-top:10px;padding:8px;border-radius:10px;border:1px solid var(--border);background:var(--bg2)">
       <video controls preload="metadata" src="${v.video_url}" style="width:100%;border-radius:8px;background:#000;max-height:320px;display:block"></video>
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">${date}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">${date}${seanceLabel}</div>
       ${correctionHtml}
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
         ${coachBtn}
@@ -2916,6 +2985,12 @@ function renderExoVideoSection(e,ei,logId){
       </div>
     </div>`;
   }).join('');
+  // En vue config : on encapsule dans un encadré "Vidéos reçues" pour bien la mettre en avant
+  if(!isLog){
+    const header=`<div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">📹 Vidéos reçues${exoVideos.length?' ('+exoVideos.length+')':''}</div>`;
+    const empty=exoVideos.length?'':'<div style="font-size:11px;color:var(--text3);font-style:italic;padding:4px 0">Aucune vidéo uploadée pour le moment</div>';
+    return `<div style="margin:6px 12px 10px;padding:10px;border-radius:10px;border:1px solid var(--green);background:rgba(29,158,117,.05)">${header}${empty}${videosHtml}</div>`;
+  }
   return uploadHtml+videosHtml;
 }
 
@@ -3228,52 +3303,156 @@ function isSerieDone(serie){
 }
 
 // ─────────────────────────────────────────
-// CHRONO DE REPOS
+// CHRONO DE REPOS (fiable avec écran verrouillé)
 // ─────────────────────────────────────────
-S.restTimer={active:false,remaining:0,total:0,_interval:null};
+S.restTimer={active:false,endTime:0,total:0,remaining:0,_interval:null,_alarmFired:false};
+let _silentAudioEl=null;
+let _silentAudioUrl=null;
+let _audioCtx=null;
+
+// Génère un WAV silencieux à la volée (0.5s, mono 8kHz). On le loop pendant le repos
+// pour empêcher iOS/Android de suspendre la page → le timer continue de tourner et
+// l'alarme audio se déclenche à l'heure même avec l'écran verrouillé.
+function _buildSilentWavUrl(){
+  if(_silentAudioUrl) return _silentAudioUrl;
+  const sr=8000, dur=0.5, n=Math.floor(sr*dur);
+  const buf=new ArrayBuffer(44+n);
+  const v=new DataView(buf);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,'RIFF'); v.setUint32(4,36+n,true); ws(8,'WAVE'); ws(12,'fmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,sr,true); v.setUint32(28,sr,true);
+  v.setUint16(32,1,true); v.setUint16(34,8,true);
+  ws(36,'data'); v.setUint32(40,n,true);
+  for(let i=0;i<n;i++) v.setUint8(44+i,128); // 128 = silence en 8-bit unsigned
+  const blob=new Blob([buf],{type:'audio/wav'});
+  _silentAudioUrl=URL.createObjectURL(blob);
+  return _silentAudioUrl;
+}
+
+function _startSilentLoop(){
+  try{
+    if(_silentAudioEl){_silentAudioEl.pause();_silentAudioEl=null;}
+    _silentAudioEl=new Audio(_buildSilentWavUrl());
+    _silentAudioEl.loop=true;
+    _silentAudioEl.volume=0.01;
+    const p=_silentAudioEl.play();
+    if(p&&p.catch) p.catch(e=>console.warn('Silent loop blocked:',e));
+  }catch(e){console.warn('Silent loop error:',e);}
+}
+
+function _stopSilentLoop(){
+  if(_silentAudioEl){try{_silentAudioEl.pause();_silentAudioEl.src='';}catch(e){}_silentAudioEl=null;}
+}
+
+function _playAlarmBeeps(){
+  try{
+    if(!_audioCtx) _audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(_audioCtx.state==='suspended') _audioCtx.resume();
+    const ctx=_audioCtx;
+    const beep=(when,freq)=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.frequency.value=freq;
+      osc.type='sine';
+      gain.gain.setValueAtTime(0.0001,ctx.currentTime+when);
+      gain.gain.exponentialRampToValueAtTime(0.4,ctx.currentTime+when+0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+when+0.25);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime+when);
+      osc.stop(ctx.currentTime+when+0.3);
+    };
+    beep(0,880); beep(0.3,880); beep(0.6,1100);
+  }catch(e){console.warn('Beep error:',e);}
+}
+
+function _fireAlarm(){
+  if(S.restTimer._alarmFired) return;
+  S.restTimer._alarmFired=true;
+  _playAlarmBeeps();
+  if(navigator.vibrate) navigator.vibrate([200,100,200,100,300]);
+  // Notification via Service Worker si dispo (plus fiable en arrière-plan)
+  if('serviceWorker' in navigator && navigator.serviceWorker.ready){
+    navigator.serviceWorker.ready.then(reg=>{
+      try{
+        reg.showNotification('💪 Repos terminé !',{
+          body:"C'est reparti !",
+          icon:'./icon-192.png',
+          badge:'./icon-192.png',
+          vibrate:[200,100,200],
+          tag:'rest-timer',
+          renotify:true
+        });
+      }catch(e){console.warn('SW notif failed:',e);}
+    }).catch(()=>{});
+  } else if('Notification' in window && Notification.permission==='granted'){
+    try{new Notification('💪 Repos terminé !',{body:"C'est reparti !"});}catch(e){}
+  }
+  toast('✅ Repos terminé !');
+}
 
 function startRestTimer(seconds){
   if(!seconds||seconds<=0)return;
   stopRestTimer();
-  // Demander la permission de notification si pas encore accordée
+  // Demander la permission de notification
   if('Notification' in window && Notification.permission==='default'){
     Notification.requestPermission();
   }
-  S.restTimer={active:true,remaining:seconds,total:seconds,_interval:null};
+  // Réveille l'AudioContext sur ce geste utilisateur (requis iOS)
+  try{
+    if(!_audioCtx) _audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(_audioCtx.state==='suspended') _audioCtx.resume();
+  }catch(e){}
+  const now=Date.now();
+  S.restTimer={
+    active:true,
+    endTime:now+seconds*1000,
+    total:seconds,
+    remaining:seconds,
+    _interval:null,
+    _alarmFired:false
+  };
+  _startSilentLoop();
   renderRestTimerOverlay();
-  S.restTimer._interval=setInterval(()=>{
-    S.restTimer.remaining--;
-    if(S.restTimer.remaining<=0){
-      stopRestTimer();
-      if(navigator.vibrate) navigator.vibrate([150,80,150,80,150]);
-      // Notification web
-      if('Notification' in window && Notification.permission==='granted'){
-        new Notification('💪 Repos terminé !',{
-          body:'C\'est reparti !',
-          icon:'https://margotcoaching16-ship-it.github.io/Coaching-App/favicon.ico',
-          silent:false
-        });
-      }
-      toast('✅ Repos terminé !');
-    } else {
-      updateRestTimerDisplay();
-    }
-  },1000);
+  S.restTimer._interval=setInterval(_restTick,250);
+}
+
+function _restTick(){
+  if(!S.restTimer.active) return;
+  const ms=S.restTimer.endTime-Date.now();
+  const rem=Math.max(0,Math.ceil(ms/1000));
+  S.restTimer.remaining=rem;
+  if(ms<=0){
+    _fireAlarm();
+    stopRestTimer();
+  } else {
+    updateRestTimerDisplay();
+  }
 }
 
 function stopRestTimer(){
   if(S.restTimer._interval) clearInterval(S.restTimer._interval);
-  S.restTimer={active:false,remaining:0,total:0,_interval:null};
+  _stopSilentLoop();
+  S.restTimer={active:false,endTime:0,total:0,remaining:0,_interval:null,_alarmFired:false};
   const el=document.getElementById('rest-timer-overlay');
   if(el){el.classList.remove('active');el.innerHTML='';}
 }
 
 function adjustRestTimer(delta){
   if(!S.restTimer.active)return;
-  S.restTimer.remaining=Math.max(1,S.restTimer.remaining+delta);
-  if(delta>0) S.restTimer.total=Math.max(S.restTimer.total,S.restTimer.remaining);
+  S.restTimer.endTime+=delta*1000;
+  const rem=Math.max(1,Math.ceil((S.restTimer.endTime-Date.now())/1000));
+  S.restTimer.remaining=rem;
+  if(delta>0) S.restTimer.total=Math.max(S.restTimer.total,rem);
   updateRestTimerDisplay();
 }
+
+// Au retour de l'app (déverrouillage écran), recalcule l'affichage immédiatement
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden && S.restTimer.active){
+    _restTick();
+  }
+});
 
 function updateRestTimerDisplay(){
   const countEl=document.getElementById('rtimer-count');
@@ -3559,6 +3738,7 @@ async function createClient(){
     objectif,
     favori:false,
     archive:false,
+    formule:'suivi',
     calculsPerte:defaultCalculsPerte()
   };
 
@@ -4431,6 +4611,31 @@ function getMondayStr(input){
   return base.toISOString().slice(0,10);
 }
 
+// Retourne le jour de la semaine (0=Dim..6=Sam) qui sert de début de semaine
+// selon le mode et le jour de bilan du client.
+function getStartDow(mode, jourBilan){
+  if(mode==='bilan' && jourBilan){
+    const map={Dimanche:0,Lundi:1,Mardi:2,Mercredi:3,Jeudi:4,Vendredi:5,Samedi:6};
+    if(map.hasOwnProperty(jourBilan)) return map[jourBilan];
+  }
+  return 0; // Dimanche par défaut (Dim → Sam)
+}
+
+// Date YYYY-MM-DD du début de la semaine contenant input, semaine commençant à startDow.
+function getWeekStartStr(input, startDow){
+  const base=input?new Date(input+'T12:00:00'):new Date();
+  const cur=base.getDay();
+  const back=(cur-startDow+7)%7;
+  base.setDate(base.getDate()-back);
+  return base.toISOString().slice(0,10);
+}
+
+function setSuiviWeekMode(mode){
+  S.suiviWeekMode=mode;
+  lsSet('c_suiviWeekMode',mode);
+  render.suivi();
+}
+
 function getClientBilanDates(clientId){
   return (S.bilansHebdo||[])
     .filter(b=>b.client_id===clientId && b.date)
@@ -4547,22 +4752,38 @@ render.suivi=function(){
   const c=S.client;
   if(!c) return;
   setTopbar('Suivi des check-ins', c.prenom+' '+c.nom, '');
+  const mode=S.suiviWeekMode||'standard';
+  const startDow=getStartDow(mode, c.jourBilan);
   const rows=(S.checkIns||[])
     .filter(ci=>ci.client_id===c.id)
     .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const el=document.getElementById('suivi-content');
+
+  // Bandeau toggle de mode (toujours visible, même si pas de check-in)
+  const bilanDisabled=!c.jourBilan;
+  const bilanLabel=c.jourBilan?`${c.jourBilan}→veille`:'(jour de bilan non défini)';
+  const tooltipText=bilanDisabled?'Définis un jour de bilan via le calendrier 📅':bilanLabel;
+  const toggleHtml=`<div style="display:flex;gap:6px;padding:10px 16px 6px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--text3);font-weight:600">Découpage :</span>
+    <div style="display:flex;gap:4px;background:var(--bg2);border-radius:999px;padding:2px">
+      <button onclick="setSuiviWeekMode('standard')" style="padding:5px 12px;border-radius:999px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:${mode==='standard'?'var(--bg)':'transparent'};color:${mode==='standard'?'var(--text)':'var(--text3)'};box-shadow:${mode==='standard'?'0 1px 2px rgba(0,0,0,.08)':'none'}">Dim → Sam</button>
+      <button ${bilanDisabled?'disabled':''} onclick="setSuiviWeekMode('bilan')" style="padding:5px 12px;border-radius:999px;border:none;font-size:11px;font-weight:600;cursor:${bilanDisabled?'not-allowed':'pointer'};background:${mode==='bilan'?'var(--bg)':'transparent'};color:${mode==='bilan'&&!bilanDisabled?'var(--text)':bilanDisabled?'var(--border)':'var(--text3)'};box-shadow:${mode==='bilan'?'0 1px 2px rgba(0,0,0,.08)':'none'};opacity:${bilanDisabled?.5:1}" title="${tooltipText}">📅 ${bilanLabel}</button>
+    </div>
+  </div>`;
+
   if(!rows.length){
-    el.innerHTML='<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Aucun check-in</div><div class="empty-sub">Commence par enregistrer un check-in quotidien</div></div>';
+    el.innerHTML=toggleHtml+'<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Aucun check-in</div><div class="empty-sub">Commence par enregistrer un check-in quotidien</div></div>';
     return;
   }
 
   const byDate={};
   rows.forEach(ci=>{ if(ci.date) byDate[ci.date]=ci; });
 
-  const mondays=[...new Set(rows.map(ci=>getMondayStr(ci.date)).filter(Boolean))]
+  const mondays=[...new Set(rows.map(ci=>getWeekStartStr(ci.date, startDow)).filter(Boolean))]
     .sort((a,b)=>b.localeCompare(a));
 
-  const dayNames=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const dayFullNames=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const dayNames=[0,1,2,3,4,5,6].map(i=>dayFullNames[(startDow+i)%7]);
 
   function toNum(v){
     if(v===null || v===undefined || v==='') return null;
@@ -4684,7 +4905,7 @@ render.suivi=function(){
       '</tr></thead><tbody>'+days+'</tbody></table></div></div>';
   }).join('');
 
-  el.innerHTML=weekHtml;
+  el.innerHTML=toggleHtml+weekHtml;
 };
 
 // ─────────────────────────────────────────
@@ -5990,6 +6211,46 @@ function confirmCancel(){
 // SUPABASE SYNC FUNCTIONS
 // ─────────────────────────────────────────
 
+async function syncBilansThisWeek(){
+  const monday=getMondayStr();
+  const res=await supa('GET','bilans_hebdo','',`?semaine_debut=eq.${monday}`);
+  if(!res) return;
+  // Retire les bilans de cette semaine en cache, remplace par les frais
+  S.bilansHebdo=(S.bilansHebdo||[]).filter(b=>b.date!==monday);
+  S.bilansHebdo.push(...res.map(b=>({
+    id:b.id,client_id:b.client_id,date:b.semaine_debut,
+    photos:b.photos||{face:null,gauche:null,droit:null,dos:null},
+    mensurations:{poitrine:b.poitrine||'',taille:b.taille||'',fessiers:b.fessiers||'',cuisses:b.cuisses||'',bras:b.bras||''},
+    notes:b.notes||'',
+    completed:b.completed||false,
+    modifDiete:b.modif_diete||'',
+    modifTraining:b.modif_training||''
+  })));
+  lsSet('c_bilansHebdo',S.bilansHebdo);
+}
+
+function sortClientsByJour(list){
+  const days=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const today=new Date().getDay();
+  function distance(c){
+    if(!c.jourBilan) return 999;
+    const idx=days.indexOf(c.jourBilan);
+    if(idx<0) return 999;
+    return (idx-today+7)%7;
+  }
+  return [...list].sort((a,b)=>{
+    const da=distance(a),db=distance(b);
+    if(da!==db) return da-db;
+    return (a.prenom+' '+a.nom).localeCompare(b.prenom+' '+b.nom);
+  });
+}
+
+function setClientsSort(mode){
+  S.clientsSort=mode;
+  lsSet('c_clientsSort',mode);
+  render.clients();
+}
+
 async function syncPresets(){
   const res=await supa('GET','correction_presets','','?order=ordre.asc,created_at.asc');
   if(res){S.correctionPresets=res;lsSet('c_correctionPresets',res);}
@@ -6012,6 +6273,7 @@ async function syncClients(){
   const normalize=row=>{
     if(!row) return row;
     if(row.block_plan!==undefined){ row.blockPlan=row.block_plan; delete row.block_plan; }
+    if(row.jour_bilan!==undefined){ row.jourBilan=row.jour_bilan; delete row.jour_bilan; }
     return row;
   };
   if(actifs){const a=actifs.map(normalize);S.clients=a;lsSet('c_clients',a);}
@@ -6200,7 +6462,9 @@ async function saveClientToSupa(client){
     archive:client.archive||false,
     goals:client.goals||null,
     notes_coach:client.notes_coach||null,
-    block_plan:client.blockPlan||null
+    block_plan:client.blockPlan||null,
+    jour_bilan:client.jourBilan||null,
+    formule:client.formule||'suivi'
   };
   const existing=await supa('GET','clients','',`?id=eq.${client.id}`);
   if(existing&&existing.length){
@@ -6359,15 +6623,37 @@ function showClientOptionsModal(clientId){
   const c=S.clients.find(x=>x.id===clientId)||S.archivedClients?.find(x=>x.id===clientId);
   if(!c)return;
   const isArchived=c.archive===true;
+  const formule=c.formule||'suivi';
   openModal(`
     <div class="modal-title">${c.prenom} ${c.nom}</div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+      <div style="display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Formule</div>
+        <div style="display:flex;gap:4px;background:var(--bg);border-radius:999px;padding:3px">
+          <button onclick="setClientFormule('${clientId}','suivi')" style="flex:1;padding:8px 10px;border-radius:999px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:${formule==='suivi'?'var(--green)':'transparent'};color:${formule==='suivi'?'#fff':'var(--text3)'};box-shadow:${formule==='suivi'?'0 1px 3px rgba(0,0,0,.15)':'none'}">✓ Suivi complet</button>
+          <button onclick="setClientFormule('${clientId}','pack')" style="flex:1;padding:8px 10px;border-radius:999px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:${formule==='pack'?'#9a75e8':'transparent'};color:${formule==='pack'?'#fff':'var(--text3)'};box-shadow:${formule==='pack'?'0 1px 3px rgba(0,0,0,.15)':'none'}">🏋️ Pack séances</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.35">${formule==='pack'?'Accès limité à Entraînement uniquement':'Accès à tous les onglets'}</div>
+      </div>
       ${!isArchived?`<button class="btn btn-secondary" onclick="archiveClient('${clientId}')">📦 Archiver ce client</button>`:''}
       ${isArchived?`<button class="btn btn-secondary" onclick="restoreClient('${clientId}')">♻️ Restaurer ce client</button>`:''}
       <button class="btn" style="background:rgba(220,50,50,0.12);color:#e05555;border:1px solid rgba(220,50,50,0.25)" onclick="confirmDeleteClient('${clientId}')">🗑️ Supprimer définitivement</button>
-      <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Fermer</button>
     </div>
   `);
+}
+
+function setClientFormule(clientId,formule){
+  const c=S.clients.find(x=>x.id===clientId)||S.archivedClients?.find(x=>x.id===clientId);
+  if(!c)return;
+  c.formule=formule;
+  persist();
+  saveClientToSupa(c);
+  // Re-render le modal pour montrer le nouvel état
+  showClientOptionsModal(clientId);
+  // Si on est en train de regarder le menu de ce client, le rafraîchir
+  if(S.client && S.client.id===clientId && S.screen==='menu') render.menu();
+  toast(formule==='pack'?'🏋️ Pack séances activé':'✓ Suivi complet activé');
 }
 
 async function archiveClient(id){
@@ -6586,9 +6872,16 @@ async function initApp(){
     showScreen('clients');
     document.getElementById('clients-list').innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;padding:60px 0;gap:12px"><div style="width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite"></div><div style="font-size:13px;color:var(--text3)">Synchronisation…</div></div>`;
     await Promise.all([syncClients(),syncCustomAliments(),syncRecettes(),syncPresets()]);
+    await syncBilansThisWeek();
     render.clients();
     syncExercices();
     restoreActiveSession();
+    // À chaque retour d'arrière-plan, re-sync les bilans de la semaine
+    document.addEventListener('visibilitychange',()=>{
+      if(!document.hidden && currentIsCoach && S.screen==='clients'){
+        syncBilansThisWeek().then(()=>render.clients());
+      }
+    });
     return;
   }
 
@@ -6615,6 +6908,10 @@ async function initApp(){
   if(clientRecord && clientRecord.block_plan!==undefined){
     clientRecord.blockPlan=clientRecord.block_plan;
     delete clientRecord.block_plan;
+  }
+  if(clientRecord && clientRecord.jour_bilan!==undefined){
+    clientRecord.jourBilan=clientRecord.jour_bilan;
+    delete clientRecord.jour_bilan;
   }
 
   if(!clientRecord){
