@@ -765,13 +765,48 @@ button:active, .menu-card:active, .prog-card:active, .exo-card:active{
   inset:0;
   pointer-events:none;
   z-index:998;
-  background:radial-gradient(circle at center, rgba(29,158,117,.22), rgba(29,158,117,0) 58%);
-  animation:flashSuccess .55s ease-out forwards;
+  animation:flashSuccess 1.2s ease-out forwards;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
+
+.checkin-success-flash::before{
+  content:'✓';
+  position:absolute;
+  font-size:120px;
+  font-weight:900;
+  color:var(--green);
+  opacity:0;
+  animation:popCheck .6s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+
+.checkin-success-flash::after{
+  content:'';
+  position:absolute;
+  width:200px;
+  height:200px;
+  border:3px solid var(--green);
+  border-radius:50%;
+  opacity:0;
+  animation:pulseRing 1.2s ease-out forwards;
+}
+
 @keyframes flashSuccess{
-  0%{opacity:0; transform:scale(.94)}
-  30%{opacity:1}
-  100%{opacity:0; transform:scale(1.08)}
+  0%{background:rgba(0,0,0,0)}
+  30%{background:radial-gradient(circle at center, rgba(46,204,113,.35), rgba(46,204,113,0) 60%)}
+  100%{background:rgba(0,0,0,0)}
+}
+
+@keyframes popCheck{
+  0%{opacity:0; transform:scale(0) translateY(-40px)}
+  60%{opacity:1; transform:scale(1.1)}
+  100%{opacity:0; transform:scale(1) translateY(80px)}
+}
+
+@keyframes pulseRing{
+  0%{opacity:0.8; transform:scale(0.8)}
+  100%{opacity:0; transform:scale(2)}
 }
 
 /* ══════════════════════════════════════
@@ -1029,6 +1064,126 @@ html.theme-night .btn-primary{
   border-top:1px solid var(--glass-border) !important;
 }
 
+/* ── THÈMES D'ONGLETS ── */
+/* ENTRAÎNEMENT - Bleu actif (training + seance + log + historique + exercices) */
+.screen#screen-training, .screen#screen-seance, .screen#screen-log, .screen#screen-historique, .screen#screen-exercices{--tab-accent:#4A90E2;--green:#4A90E2;--green-light:#d4e7f7;--green-dark:#2d5aa8;--glass-green:rgba(74,144,226,0.16);--glass-green-border:rgba(74,144,226,0.32)}
+html.theme-day .screen#screen-training, html.theme-day .screen#screen-seance, html.theme-day .screen#screen-log, html.theme-day .screen#screen-historique, html.theme-day .screen#screen-exercices{background:linear-gradient(135deg, #ede8de 0%, #e0ebf7 50%, #d9d2c4 100%)}
+html.theme-night .screen#screen-training, html.theme-night .screen#screen-seance, html.theme-night .screen#screen-log, html.theme-night .screen#screen-historique, html.theme-night .screen#screen-exercices{background:linear-gradient(135deg, #161e1a 0%, rgba(74,144,226,.12) 50%, #253028 100%)}
+.screen#screen-training .topbar, .screen#screen-seance .topbar, .screen#screen-log .topbar, .screen#screen-historique .topbar, .screen#screen-exercices .topbar{background:linear-gradient(to right, var(--bg) 0%, rgba(74,144,226,.08) 100%);border-bottom:2px solid #4A90E2}
+
+/* DIÈTE - Orange riche (diete + recettes + aliments) */
+.screen#screen-diete, .screen#screen-recettes, .screen#screen-aliments{--tab-accent:#E07C39;--green:#E07C39;--green-light:#f5e3d0;--green-dark:#a85820;--glass-green:rgba(224,124,57,0.16);--glass-green-border:rgba(224,124,57,0.32)}
+html.theme-day .screen#screen-diete, html.theme-day .screen#screen-recettes, html.theme-day .screen#screen-aliments{background:linear-gradient(135deg, #ede8de 0%, #fbe8d3 50%, #d9d2c4 100%)}
+html.theme-night .screen#screen-diete, html.theme-night .screen#screen-recettes, html.theme-night .screen#screen-aliments{background:linear-gradient(135deg, #161e1a 0%, rgba(224,124,57,.12) 50%, #253028 100%)}
+.screen#screen-diete .topbar, .screen#screen-recettes .topbar, .screen#screen-aliments .topbar{background:linear-gradient(to right, var(--bg) 0%, rgba(224,124,57,.08) 100%);border-bottom:2px solid #E07C39}
+
+/* CHECK-IN QUOTIDIEN - Vert frais */
+.screen#screen-checkin{--tab-accent:#2ecc71;--green:#2ecc71;--green-light:#d4f0e3;--green-dark:#1a8055;--glass-green:rgba(46,204,113,0.16);--glass-green-border:rgba(46,204,113,0.32)}
+html.theme-day .screen#screen-checkin{background:linear-gradient(135deg, #ede8de 0%, #d9f0e3 50%, #d9d2c4 100%)}
+html.theme-night .screen#screen-checkin{background:linear-gradient(135deg, #161e1a 0%, rgba(46,204,113,.12) 50%, #253028 100%)}
+.screen#screen-checkin .topbar{background:linear-gradient(to right, var(--bg) 0%, rgba(46,204,113,.08) 100%);border-bottom:2px solid #2ecc71}
+
+/* SUIVI CHECKINS - Violet élégant */
+.screen#screen-suivi{--tab-accent:#9b59b6;--green:#9b59b6;--green-light:#e6d9f0;--green-dark:#6b3d85;--glass-green:rgba(155,89,182,0.16);--glass-green-border:rgba(155,89,182,0.32)}
+html.theme-day .screen#screen-suivi{background:linear-gradient(135deg, #ede8de 0%, #ede3f5 50%, #d9d2c4 100%)}
+html.theme-night .screen#screen-suivi{background:linear-gradient(135deg, #161e1a 0%, rgba(155,89,182,.12) 50%, #253028 100%)}
+.screen#screen-suivi .topbar{background:linear-gradient(to right, var(--bg) 0%, rgba(155,89,182,.08) 100%);border-bottom:2px solid #9b59b6}
+
+/* BILAN HEBDO - Rose dynamique */
+.screen#screen-bilanHebdo{--tab-accent:#e94b3c;--green:#e94b3c;--green-light:#f5d9d5;--green-dark:#a82d22;--glass-green:rgba(233,75,60,0.16);--glass-green-border:rgba(233,75,60,0.32)}
+html.theme-day .screen#screen-bilanHebdo{background:linear-gradient(135deg, #ede8de 0%, #f5d9d5 50%, #d9d2c4 100%)}
+html.theme-night .screen#screen-bilanHebdo{background:linear-gradient(135deg, #161e1a 0%, rgba(233,75,60,.12) 50%, #253028 100%)}
+.screen#screen-bilanHebdo .topbar{background:linear-gradient(to right, var(--bg) 0%, rgba(233,75,60,.08) 100%);border-bottom:2px solid #e94b3c}
+
+/* ── BARRE DE RACCOURCIS EN BAS (pour menus internes) ── */
+#shortcut-bar{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  background:var(--glass-bg);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border-top:1px solid var(--glass-border);
+  display:none;
+  padding:6px 12px 8px;
+  gap:6px;
+  max-width:430px;
+  margin:0 auto;
+  z-index:40;
+  justify-content:center;
+  width:100%;
+}
+
+#shortcut-bar.visible{
+  display:flex;
+}
+
+.shortcut-btn{
+  width:40px;
+  height:40px;
+  padding:0;
+  background:var(--bg2);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  color:var(--text);
+  font-size:20px;
+  cursor:pointer;
+  transition:all .2s ease;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.shortcut-btn:active{
+  transform:scale(.85);
+}
+
+.shortcut-btn.training{
+  border-color:#4A90E2;
+  background:linear-gradient(135deg, rgba(74,144,226,.15), rgba(74,144,226,.05));
+}
+
+.shortcut-btn.training:active{
+  background:linear-gradient(135deg, rgba(74,144,226,.25), rgba(74,144,226,.1));
+}
+
+.shortcut-btn.diete{
+  border-color:#E07C39;
+  background:linear-gradient(135deg, rgba(224,124,57,.15), rgba(224,124,57,.05));
+}
+
+.shortcut-btn.diete:active{
+  background:linear-gradient(135deg, rgba(224,124,57,.25), rgba(224,124,57,.1));
+}
+
+.shortcut-btn.checkin{
+  border-color:#2ecc71;
+  background:linear-gradient(135deg, rgba(46,204,113,.15), rgba(46,204,113,.05));
+}
+
+.shortcut-btn.checkin:active{
+  background:linear-gradient(135deg, rgba(46,204,113,.25), rgba(46,204,113,.1));
+}
+
+.shortcut-btn.suivi{
+  border-color:#9b59b6;
+  background:linear-gradient(135deg, rgba(155,89,182,.15), rgba(155,89,182,.05));
+}
+
+.shortcut-btn.suivi:active{
+  background:linear-gradient(135deg, rgba(155,89,182,.25), rgba(155,89,182,.1));
+}
+
+.shortcut-btn.bilanHebdo{
+  border-color:#e94b3c;
+  background:linear-gradient(135deg, rgba(233,75,60,.15), rgba(233,75,60,.05));
+}
+
+.shortcut-btn.bilanHebdo:active{
+  background:linear-gradient(135deg, rgba(233,75,60,.25), rgba(233,75,60,.1));
+}
+
 </style>
 </head>
 <body>
@@ -1166,6 +1321,15 @@ html.theme-night .btn-primary{
   <!-- SCREEN: VIDÉOS CLIENT (archive coach) -->
   <div class="screen" id="screen-videos">
     <div id="videos-content" style="padding:12px 16px 60px"></div>
+  </div>
+
+  <!-- BARRE DE RACCOURCIS EN BAS -->
+  <div id="shortcut-bar">
+    <button class="shortcut-btn training" onclick="showScreen('training')" title="Entraînement">💪</button>
+    <button class="shortcut-btn diete" onclick="showScreen('diete')" title="Diète">🍽️</button>
+    <button class="shortcut-btn checkin" onclick="showScreen('checkin')" title="Check-in">✅</button>
+    <button class="shortcut-btn suivi" onclick="showScreen('suivi')" title="Suivi">📊</button>
+    <button class="shortcut-btn bilanHebdo" onclick="showScreen('bilanHebdo')" title="Bilan">📈</button>
   </div>
 
 </div>
@@ -1676,6 +1840,16 @@ function showScreen(screen,opts={}){
   S.screen=screen;
   const backBtn=document.getElementById('back-btn');
   backBtn.style.display=S.history.length?'block':'none';
+
+  // Afficher/masquer la barre de raccourcis
+  const shortcutBar=document.getElementById('shortcut-bar');
+  const screensAvecRaccourcis=['training','seance','log','historique','exercices','diete','recettes','aliments','checkin','suivi','bilanHebdo','ia'];
+  if(screensAvecRaccourcis.includes(screen)){
+    shortcutBar.classList.add('visible');
+  } else {
+    shortcutBar.classList.remove('visible');
+  }
+
   try{ if(render[screen]) render[screen](); }catch(err){ console.error(err); const target=document.getElementById(screen+'-content')||el; if(target) target.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Oups</div><div class="empty-sub">'+String(err.message||err)+'</div><button class="btn btn-secondary" style="margin-top:16px" onclick="logout()">Se déconnecter</button></div>'; }
 }
 
@@ -1920,13 +2094,8 @@ async function openClient(id){
   S.client=S.clients.find(c=>c.id===id);
   if(!S.client)return;
   navigate('menu');
-  // Sync client data in background
-  syncClientData(id).then(()=>{
-    if(S.screen==='menu')render.menu();
-    else if(S.screen==='training')render.training();
-    else if(S.screen==='seance')render.seance();
-    else if(S.screen==='videos')render.videos();
-  });
+  // Sync client data in background (sans re-render si on est encore sur le même écran)
+  syncClientData(id).catch(e=>console.warn('Sync error:',e));
 }
 
 function openClientById(id){
@@ -2956,14 +3125,17 @@ function renderExoVideoSection(e,ei,context,logId){
       .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
   }
   const inputId=`vid-inp-${context}-${ei}`;
+  const inputIdCamera=`vid-inp-camera-${context}-${ei}`;
+  const inputIdGallery=`vid-inp-gallery-${context}-${ei}`;
   const demanded=e.videoDemandee;
   const accent=demanded?'var(--green)':'var(--text3)';
   const bg=demanded?'rgba(29,158,117,.08)':'transparent';
   const label=demanded?'📹 Vidéo demandée — Uploader':'📹 Ajouter une vidéo';
   const uploadHtml=isLog?`
     <div style="padding:8px;border-radius:10px;border:1px dashed ${accent};background:${bg};margin-top:10px">
-      <input type="file" id="${inputId}" accept="video/*" capture="environment" style="display:none" onchange="handleVideoUpload(${ei},this)" />
-      <button onclick="document.getElementById('${inputId}').click()" style="width:100%;padding:8px;border:none;background:transparent;color:${accent};font-weight:600;font-size:13px;cursor:pointer">${label}</button>
+      <input type="file" id="${inputIdCamera}" accept="video/*" capture="environment" style="display:none" onchange="handleVideoUpload(${ei},this)" />
+      <input type="file" id="${inputIdGallery}" accept="video/*" style="display:none" onchange="handleVideoUpload(${ei},this)" />
+      <button onclick="showVideoSourcePicker('${inputIdCamera}','${inputIdGallery}')" style="width:100%;padding:8px;border:none;background:transparent;color:${accent};font-weight:600;font-size:13px;cursor:pointer">${label}</button>
       <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:2px">Max 50 MB · 2 min recommandé</div>
     </div>`:'';
   const videosHtml=exoVideos.map(v=>{
@@ -4743,9 +4915,20 @@ async function saveCheckin(){
   const fx=document.createElement('div');
   fx.className='checkin-success-flash';
   document.body.appendChild(fx);
-  setTimeout(()=>fx.remove(), 600);
-  toast('Check-in enregistré');
-  setTimeout(()=>navigate('menu'), 380);
+  setTimeout(()=>fx.remove(), 1200);
+  toast('✨ Check-in enregistré !');
+  setTimeout(()=>navigate('menu'), 800);
+}
+
+function deleteCheckin(clientId, date){
+  if(!confirm('Supprimer le check-in du '+date+' ?')) return;
+  const idx=S.checkIns.findIndex(x=>x.client_id===clientId && x.date===date);
+  if(idx<0) return;
+  const deleted=S.checkIns.splice(idx,1)[0];
+  persist();
+  deleteCheckinFromSupa(deleted);
+  render.suivi();
+  toast('✓ Check-in supprimé');
 }
 
 render.suivi=function(){
@@ -4877,6 +5060,7 @@ render.suivi=function(){
       '</div>';
 
     const days=week.daysData.map(({offset,date,ci})=>{
+      const deleteBtn=ci?`<button onclick="deleteCheckin('${ci.client_id}','${ci.date}')" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 8px;color:var(--text3);transition:color .15s" title="Supprimer ce check-in">🗑️</button>`:'';
       return '<tr>'+
         '<td>'+dayNames[offset]+' '+date.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+'</td>'+
         '<td>'+(ci&&ci.poids?String(ci.poids).replace('.',',')+' kg':'—')+'</td>'+
@@ -4894,6 +5078,7 @@ render.suivi=function(){
         '<td>'+yesNoTag(ci&&ci.regles)+'</td>'+
         '<td>'+textOrDash(ci&&ci.spm)+'</td>'+
         '<td>'+textOrDash(ci&&ci.autres)+'</td>'+
+        '<td style="text-align:center">'+deleteBtn+'</td>'+
       '</tr>';
     }).join('');
 
@@ -4901,7 +5086,7 @@ render.suivi=function(){
       '<div class="suivi-week-title">'+week.title+'</div>'+(week.subLabel?'<div class="suivi-week-sub">'+week.subLabel+'</div>':'')+
       summaryHtml+
       '<div class="suivi-table-wrap"><table class="suivi-table"><thead><tr>'+
-      '<th>Jour</th><th>Poids</th><th>Écarts</th><th>Si oui, quoi ?</th><th>Digestion</th><th>Appétit</th><th>Entraînée</th><th>Charges/répétitions + ressenti</th><th>Cardio</th><th>Sommeil</th><th>Stress</th><th>Pas</th><th>Eau</th><th>Règles</th><th>SPM</th><th>Autres précisions</th>'+
+      '<th>Jour</th><th>Poids</th><th>Écarts</th><th>Si oui, quoi ?</th><th>Digestion</th><th>Appétit</th><th>Entraînée</th><th>Charges/répétitions + ressenti</th><th>Cardio</th><th>Sommeil</th><th>Stress</th><th>Pas</th><th>Eau</th><th>Règles</th><th>SPM</th><th>Autres précisions</th><th style="width:40px"></th>'+
       '</tr></thead><tbody>'+days+'</tbody></table></div></div>';
   }).join('');
 
@@ -6525,6 +6710,29 @@ async function saveCheckinToSupa(ci){
   } else {
     await supa('POST','checkins',payload);
   }
+}
+
+async function deleteCheckinFromSupa(ci){
+  await supa('DELETE','checkins','',`?client_id=eq.${ci.client_id}&date=eq.${ci.date}`).catch(e=>console.warn('Delete error:',e));
+}
+
+function showVideoSourcePicker(cameraInputId, galleryInputId){
+  const html=`
+    <div style="text-align:center;padding:16px">
+      <div style="font-size:18px;margin-bottom:20px;font-weight:700">Choisir une vidéo</div>
+      <div style="display:flex;gap:12px;flex-direction:column">
+        <button onclick="document.getElementById('${cameraInputId}').click();closeModal()" style="padding:12px 16px;border:none;border-radius:12px;background:var(--green);color:#fff;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          <span style="font-size:20px">📷</span>
+          Prendre une vidéo
+        </button>
+        <button onclick="document.getElementById('${galleryInputId}').click();closeModal()" style="padding:12px 16px;border:none;border-radius:12px;background:var(--bg2);color:var(--text);border:1px solid var(--border);font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          <span style="font-size:20px">🎬</span>
+          Choisir depuis la galerie
+        </button>
+      </div>
+    </div>
+  `;
+  openModal(html);
 }
 
 async function saveDieteToSupa(clientId,day){
