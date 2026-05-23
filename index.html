@@ -1844,7 +1844,8 @@ function showScreen(screen,opts={}){
   // Afficher/masquer la barre de raccourcis
   const shortcutBar=document.getElementById('shortcut-bar');
   const screensAvecRaccourcis=['training','seance','log','historique','exercices','diete','recettes','aliments','checkin','suivi','bilanHebdo','ia'];
-  if(screensAvecRaccourcis.includes(screen)){
+  const isPack=S.client && S.client.formule==='pack';
+  if(screensAvecRaccourcis.includes(screen) && !isPack){
     shortcutBar.classList.add('visible');
   } else {
     shortcutBar.classList.remove('visible');
@@ -2652,6 +2653,8 @@ render.training=function(){
   const recapBtn=currentIsCoach?`<div class="icon-btn" onclick="showWeeklyRecap()" title="Récap semaine">📊</div>`:'';
   setTopbar('Entraînement',S.client.prenom+' '+S.client.nom,`<div style="display:flex;gap:6px">${recapBtn}<div class="icon-btn" onclick="navigate('exercices')" title="Base exercices">📋</div><div class="icon-btn" onclick="showNewProgModal()">＋</div></div>`);
   const progs=S.programmes.filter(p=>p.client_id===S.client.id);
+  // Ouvrir tous les programmes par défaut
+  progs.forEach(p=>{if(p._open===undefined) p._open=true;});
   const el=document.getElementById('training-content');
   if(!progs.length){el.innerHTML=`<div class="empty"><div class="empty-icon">💪</div><div class="empty-title">Pas encore de programme</div><div class="empty-sub">Crée un programme d'entraînement pour ${S.client.prenom}</div><div style="padding:0 32px;margin-top:8px"><button class="btn btn-primary" onclick="showNewProgModal()">+ Créer un programme</button></div></div>`;return;}
   el.innerHTML=progs.map(prog=>{
@@ -2754,6 +2757,15 @@ render.seance=function(){
     else{groups.push([k]);k++;}
   }
 
+  // Fonction pour obtenir les reps d'une série
+  function getSeriesReps(exo, serieIdx){
+    if(exo.repsPerSeries && exo.repsPerSeries[serieIdx]){
+      const rps=exo.repsPerSeries[serieIdx];
+      return rps.min+'-'+rps.max;
+    }
+    return exo.reps_min+'-'+exo.reps_max;
+  }
+
   function cardHTML(exo,ei,gi,isTop,isBottom){
     const isCardio=exo.cat==='Cardio';
     const badgeStyle=isCardio?'background:var(--amber-light);color:var(--amber)':'';
@@ -2761,23 +2773,36 @@ render.seance=function(){
     const placeholder=`<div style="width:24px;height:24px"></div>`;
     const upBtn=`<button class="exo-mini-btn" onclick="moveGroupInSeance(${gi},-1)" title="Monter" ${gi===0?' disabled style="opacity:.35;pointer-events:none"':''}>↑</button>`;
     const downBtn=`<button class="exo-mini-btn" onclick="moveGroupInSeance(${gi},1)" title="Descendre" ${gi===groups.length-1?' disabled style="opacity:.35;pointer-events:none"':''}>↓</button>`;
+
+    // Générer le détail des reps par série si personnalisés
+    let repsDetail = '';
+    if(!isCardio && exo.repsPerSeries && exo.repsPerSeries.length > 0){
+      const repsLines = [];
+      for(let i=0; i<exo.repsPerSeries.length; i++){
+        const rps = exo.repsPerSeries[i];
+        repsLines.push(`Série ${i+1} : ${rps.min} à ${rps.max} reps`);
+      }
+      repsDetail = `<div style="padding:0 12px 8px;font-size:12px;color:var(--text2);line-height:1.5">` + repsLines.join('<br/>') + `</div>`;
+    }
+
     return `<div class="exo-card" id="exo-card-${ei}">
       <div class="exo-card-name">${exo.nom}</div>
       <div class="exo-card-header" style="padding-top:4px">
         <div class="exo-order-actions">${isBottom?placeholder:upBtn}${isTop?placeholder:downBtn}</div>
         <div class="exo-num-badge" style="${badgeStyle}">${ei+1}</div>
         <div class="exo-card-info">
-          <div class="exo-card-cat" style="${catStyle}">${isCardio?exo.cat+' · '+(exo.duree_min||'?')+' min':exo.cat+' · '+exo.nb_series+' séries · '+exo.reps_min+'-'+exo.reps_max+' reps'}</div>
+          <div class="exo-card-cat" style="${catStyle}">${isCardio?exo.cat+' · '+(exo.duree_min||'?')+' min':(exo.repsPerSeries && exo.repsPerSeries.length > 0)?exo.cat+' · '+exo.nb_series+' séries':exo.cat+' · '+exo.nb_series+' séries · '+exo.reps_min+'-'+exo.reps_max+' reps'}</div>
         </div>
         <div class="exo-card-actions">
           ${exo.video?`<a class="exo-mini-btn" href="${exo.video}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">▶️</a>`:''}
           <button class="exo-mini-btn" onclick="openHistorique('${exo.exo_id}')">📈</button>
           <button class="exo-mini-btn" onclick="editExoConfig(${ei})">✏️</button>
-          <button class="intens-picker-btn" onclick="showIntensificationPicker(${ei},'seance')">···</button>
+          <button class="intens-picker-btn" onclick="showExoOptionsMenu(${ei},'seance')">⚙️</button>
           <button class="exo-mini-btn" onclick="removeExoFromSeance(${ei})">✕</button>
         </div>
       </div>
       ${exo.notes?`<div style="padding:0 12px 8px;font-size:12px;color:var(--text2)">📝 ${exo.notes}</div>`:''}
+      ${repsDetail}
       ${renderIntensBadge(exo.methode,'seance',ei)}
       <div style="padding:6px 12px 10px">
         <button onclick="toggleVideoDemandee(${ei})" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid ${exo.videoDemandee?'var(--green)':'var(--border)'};background:${exo.videoDemandee?'rgba(29,158,117,.12)':'transparent'};color:${exo.videoDemandee?'var(--green)':'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer">
@@ -2891,6 +2916,41 @@ function removeExoFromSeance(ei){
   const idx=S.seancesType.findIndex(s=>s.id===S.seanceType.id);
   if(idx>=0)S.seancesType[idx]=S.seanceType;
   persist();render.seance();toast('Exercice supprimé');
+}
+
+function showRepsPerSeriesModal(ei){
+  const exo=S.seanceType.exercices[ei];
+  if(exo.cat==='Cardio')return;
+  const rpsData=exo.repsPerSeries||[];
+  let html=`<div class="modal-title">Reps par série — ${exo.nom}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Personnalise les reps pour chaque série (optionnel)</div>`;
+  for(let i=0;i<exo.nb_series;i++){
+    const rps=rpsData[i]||{min:exo.reps_min,max:exo.reps_max};
+    html+=`<div class="form-grid-2" style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;grid-column:1/-1">Série ${i+1}</div>
+      <div class="form-group"><label class="form-label" style="font-size:11px">Min</label><input class="form-inp form-inp-sm" id="rps-min-${i}" type="number" min="1" value="${rps.min}" /></div>
+      <div class="form-group"><label class="form-label" style="font-size:11px">Max</label><input class="form-inp form-inp-sm" id="rps-max-${i}" type="number" min="1" value="${rps.max}" /></div>
+    </div>`;
+  }
+  html+=`<button class="btn btn-primary" onclick="saveRepsPerSeries(${ei})">Enregistrer</button>`;
+  openModal(html);
+}
+
+function saveRepsPerSeries(ei){
+  const exo=S.seanceType.exercices[ei];
+  const rpsData=[];
+  for(let i=0;i<exo.nb_series;i++){
+    const min=parseInt(document.getElementById('rps-min-'+i).value)||exo.reps_min;
+    const max=parseInt(document.getElementById('rps-max-'+i).value)||exo.reps_max;
+    rpsData.push({min,max});
+  }
+  exo.repsPerSeries=rpsData;
+  closeModal();
+  persist();
+  const idx=S.seancesType.findIndex(s=>s.id===S.seanceType.id);
+  if(idx>=0)S.seancesType[idx]=S.seanceType;
+  render.seance();
+  toast('✓ Reps personnalisés');
 }
 
 function editExoConfig(ei){
@@ -3343,13 +3403,20 @@ const INTENS_METHODS={
   }
 };
 
-function showIntensificationPicker(ei, context='seance'){
+function showExoOptionsMenu(ei, context='seance'){
   const exos=context==='log'?S.logSeance.exercices:S.seanceType.exercices;
   const exo=exos[ei];
   const current=exo.methode||null;
+  const isCardio=exo.cat==='Cardio';
   openModal(`
-    <div class="modal-title">Méthode d'intensification</div>
+    <div class="modal-title">Options</div>
+    ${!isCardio ?
+      `<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:.5px solid var(--border)">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Reps par série</div>
+        <button class="btn btn-secondary btn-sm" style="width:100%" onclick="closeModal();setTimeout(()=>showRepsPerSeriesModal(${ei}),50)">Personnaliser reps par série</button>
+      </div>` : ''}
     <div style="margin-bottom:4px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Méthode d'intensification</div>
       ${Object.entries(INTENS_METHODS).map(([key,m])=>`
         <div class="intens-option" onclick="${key==='superset'?`showSupersetPicker(${ei},'${context}')`:(`setIntensMethod(${ei},'${key}','${context}')`)}">
           <div>
@@ -3365,6 +3432,11 @@ function showIntensificationPicker(ei, context='seance'){
       </div>
     </div>
   `);
+}
+
+function showIntensificationPicker(ei, context='seance'){
+  // Garder cette fonction pour compatibilité
+  showExoOptionsMenu(ei, context);
 }
 
 function showSupersetPicker(ei, context){
@@ -3704,12 +3776,12 @@ function showWeeklyRecap(clientId, periodOffset){
 
   // Navigation prev/next
   const navHtml=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px">
-    <button onclick="closeModal();showWeeklyRecap(${cidStr},${offset-1})" style="background:var(--bg2);border:none;border-radius:8px;padding:6px 12px;font-size:16px;cursor:pointer;color:var(--text)">◀</button>
+    <button onclick="showWeeklyRecap('${cid}',${offset-1})" style="background:var(--bg2);border:none;border-radius:8px;padding:6px 12px;font-size:16px;cursor:pointer;color:var(--text)">◀</button>
     <div style="text-align:center;flex:1">
       <div style="font-size:13px;font-weight:700;color:var(--text)">${client.prenom} ${client.nom}</div>
       <div style="font-size:11px;color:var(--text3);margin-top:1px">${dateRange}</div>
     </div>
-    <button onclick="closeModal();showWeeklyRecap(${cidStr},${offset+1})" style="background:var(--bg2);border:none;border-radius:8px;padding:6px 12px;font-size:16px;cursor:pointer;color:${offset<0?'var(--text)':'var(--text3)'};pointer-events:${offset<0?'auto':'none'}">▶</button>
+    <button onclick="showWeeklyRecap('${cid}',${offset+1})" style="background:var(--bg2);border:none;border-radius:8px;padding:6px 12px;font-size:16px;cursor:pointer;color:${offset<0?'var(--text)':'var(--text3)'};pointer-events:${offset<0?'auto':'none'}">▶</button>
   </div>`;
 
   let html=`<div class="modal-title">📊 Récap perfs</div>${navHtml}`;
@@ -3748,6 +3820,7 @@ function showWeeklyRecap(clientId, periodOffset){
           else { perfLine=`<strong>${dur} min</strong> <span style="color:var(--text3)">= même</span>`; }
         }
       } else {
+        const series=(exo.series||[]).filter(s=>(parseFloat(s.poids)||0)>0||(parseInt(s.reps)||0)>0);
         const maxPoids=Math.max(...(exo.series||[]).map(s=>parseFloat(s.poids)||0).filter(v=>v>0),0);
         const maxReps=Math.max(...(exo.series||[]).map(s=>parseInt(s.reps)||0).filter(v=>v>0),0);
         const prevMaxPoids=prevExo?Math.max(...(prevExo.series||[]).map(s=>parseFloat(s.poids)||0).filter(v=>v>0),0):0;
@@ -3755,22 +3828,36 @@ function showWeeklyRecap(clientId, periodOffset){
 
         if(!maxPoids&&!maxReps){ perfLine='<span style="color:var(--text3)">— pas de données</span>'; }
         else if(!prevExo){
-          perfLine=`<strong>${maxPoids?maxPoids+'kg ':''}</strong><strong>${maxReps?'× '+maxReps+' reps':''}</strong> <span style="color:var(--text3);font-size:11px">1ère fois</span>`;
+          const seriesLines=series.map((s,i)=>`<div style="font-size:11px;padding:4px 0">S${i+1}: ${s.poids?s.poids+'kg':''}${s.poids&&s.reps?' × ':''}${s.reps?s.reps:''}</div>`).join('');
+          perfLine=`<div>${seriesLines}</div><span style="color:var(--text3);font-size:11px">1ère fois</span>`;
           badge='🆕';
         } else {
           const diffP=maxPoids-prevMaxPoids; const diffR=maxReps-prevMaxReps;
-          let parts=[];
-          if(maxPoids||prevMaxPoids){
-            if(diffP>0) parts.push(`<strong>${maxPoids}kg</strong> <span style="color:var(--green)">▲ +${diffP}kg</span>`);
-            else if(diffP<0) parts.push(`<strong>${maxPoids}kg</strong> <span style="color:var(--red)">▼ ${diffP}kg</span>`);
-            else parts.push(`<strong>${maxPoids}kg</strong> <span style="color:var(--text3)">=</span>`);
-          }
-          if(maxReps||prevMaxReps){
-            if(diffR>0) parts.push(`<strong>× ${maxReps}</strong> <span style="color:var(--green)">▲ +${diffR}</span>`);
-            else if(diffR<0) parts.push(`<strong>× ${maxReps}</strong> <span style="color:var(--red)">▼ ${diffR}</span>`);
-            else parts.push(`<strong>× ${maxReps}</strong> <span style="color:var(--text3)">=</span>`);
-          }
-          perfLine=parts.join(' · ');
+          const seriesLines=series.map((s,i)=>{
+            const prevSerie=prevExo?.series?.[i];
+            const pDiff=prevSerie?(parseFloat(s.poids)||0)-(parseFloat(prevSerie.poids)||0):0;
+            const rDiff=prevSerie?(parseInt(s.reps)||0)-(parseInt(prevSerie.reps)||0):0;
+            let pDisplay='', rDisplay='';
+
+            if(s.poids){
+              let pArrow='';
+              if(pDiff>0) pArrow=` <span style="color:var(--green)">▲ +${pDiff.toFixed(1)}kg</span>`;
+              else if(pDiff<0) pArrow=` <span style="color:var(--red)">▼ ${pDiff.toFixed(1)}kg</span>`;
+              else pArrow=` <span style="color:var(--text3)">=</span>`;
+              pDisplay=`${s.poids}kg${pArrow}`;
+            }
+
+            if(s.reps){
+              let rArrow='';
+              if(rDiff>0) rArrow=` <span style="color:var(--green)">▲ +${rDiff}</span>`;
+              else if(rDiff<0) rArrow=` <span style="color:var(--red)">▼ ${rDiff}</span>`;
+              else rArrow=` <span style="color:var(--text3)">=</span>`;
+              rDisplay=`${s.reps}${rArrow}`;
+            }
+
+            return `<div style="font-size:11px;padding:4px 0">S${i+1}: ${pDisplay}${pDisplay&&rDisplay?' × ':''}${rDisplay}</div>`;
+          }).join('');
+          perfLine=`<div>${seriesLines}</div>`;
           if(diffP>0||diffR>0) badge='🏆';
           else if(diffP<0||diffR<0) badge='📉';
         }
@@ -4108,7 +4195,7 @@ function confirmAddExo(exoId){
     reps_min=parseInt(document.getElementById('nc-rmin').value)||8;
     reps_max=parseInt(document.getElementById('nc-rmax').value)||12;
   }
-  const newExoEntry={exo_id:exoId,nom:exo.nom,cat:exo.cat,desc:exo.desc||'',video:exo.video||'',nb_series,reps_min,reps_max,repos,notes,...(isCardio?{duree_min}:{})};
+  const newExoEntry={exo_id:exoId,nom:exo.nom,cat:exo.cat,desc:exo.desc||'',video:exo.video||'',nb_series,reps_min,reps_max,repos,notes,repsPerSeries:null,...(isCardio?{duree_min}:{})};
   S.seanceType.exercices.push(newExoEntry);
   const idx=S.seancesType.findIndex(s=>s.id===S.seanceType.id);
   if(idx>=0)S.seancesType[idx]=S.seanceType;
@@ -5196,8 +5283,24 @@ const DEFAULT_DIETE_OFF={targets:{kcal:1600,prot:120,gluc:180,lip:45},meals:[
 
 function getClientDiete(clientId, day){
   if(!S.dietes[clientId]) S.dietes[clientId]={};
-  if(!S.dietes[clientId][day]) S.dietes[clientId][day]=JSON.parse(JSON.stringify(day==='on'?DEFAULT_DIETE_ON:DEFAULT_DIETE_OFF));
+  return S.dietes[clientId][day]||null;
+}
+function ensureClientDiete(clientId, day){
+  if(!S.dietes[clientId]) S.dietes[clientId]={};
+  if(!S.dietes[clientId][day]){
+    S.dietes[clientId][day]=JSON.parse(JSON.stringify(day==='on'?DEFAULT_DIETE_ON:DEFAULT_DIETE_OFF));
+  }
   return S.dietes[clientId][day];
+}
+function createNewDiete(){
+  const clientId=S.client.id;
+  if(!S.dietes[clientId]) S.dietes[clientId]={};
+  if(!S.dietes[clientId][S.dieteState.day]){
+    S.dietes[clientId][S.dieteState.day]=JSON.parse(JSON.stringify(S.dieteState.day==='on'?DEFAULT_DIETE_ON:DEFAULT_DIETE_OFF));
+    persist();
+    render.diete();
+    toast('✓ Diète créée');
+  }
 }
 async function saveClientDiete(){
   persist();
@@ -5215,10 +5318,11 @@ async function copyDieteToOtherDay(){
   const toDay=fromDay==='on'?'off':'on';
   const fromLabel=fromDay==='on'?'Day ON':'Day OFF';
   const toLabel=toDay==='on'?'Day ON':'Day OFF';
-  if(!confirm(`Copier la diète ${fromLabel} vers ${toLabel} ?\nLes repas de ${toLabel} seront remplacés par ceux de ${fromLabel}.\n(Les cibles caloriques restent inchangées.)`))return;
   const clientId=S.client.id;
   const src=getClientDiete(clientId,fromDay);
-  const dst=getClientDiete(clientId,toDay);
+  if(!src){toast('⚠ Aucune diète à copier');return;}
+  if(!confirm(`Copier la diète ${fromLabel} vers ${toLabel} ?\nLes repas de ${toLabel} seront remplacés par ceux de ${fromLabel}.\n(Les cibles caloriques restent inchangées.)`))return;
+  const dst=ensureClientDiete(clientId,toDay);
   // Copier uniquement les repas, conserver les cibles et l'id Supabase de la destination
   dst.meals=JSON.parse(JSON.stringify(src.meals));
   persist();
@@ -5255,6 +5359,15 @@ render.diete=function(){
     </div>`
   );
   const diete=getClientDiete(c.id,ds.day);
+
+  // Si aucune diète n'existe, afficher un message vide
+  if(!diete){
+    document.getElementById('diete-topbar').innerHTML='';
+    document.getElementById('diete-macros').innerHTML='';
+    document.getElementById('diete-content').innerHTML=`<div class="empty"><div class="empty-icon">🍽️</div><div class="empty-title">Aucune diète</div><div class="empty-sub">Crée une diète pour ${c.prenom}</div><div style="padding:0 32px;margin-top:8px"><button class="btn btn-primary" onclick="createNewDiete()">+ Créer une diète</button></div></div>`;
+    return;
+  }
+
   const meals=diete.meals;
   const tot=getDieteTotals(meals);
   const tgt=diete.targets;
@@ -5345,23 +5458,132 @@ render.diete=function(){
 
 function dSelHTML(mi,ii){
   const ds=S.dieteState;const isCat=ds.sel.tab==='cat';const db=getDieteDB();
+  const searchText=(ds.sel?.search||'').toLowerCase().trim();
+
+  // Construire la barre de recherche
+  const searchBar=`<div style="padding:8px 0">
+    <input type="text" id="dSearch-${mi}-${ii}" class="form-inp" placeholder="🔍 Chercher un aliment..." style="width:100%;margin-bottom:8px" value="${searchText}" oninput="dUpdateSearch(${mi},${ii},this.value)"/>
+  </div>`;
+
+  // Afficher les catégories normalement
   const catGrid=Object.keys(db).map(cat=>`<button class="cat-chip-d${ds.sel.cat===cat?' sel':''}${S.customAliments.find(a=>a.categorie===cat)&&!DB_BASE[cat]?' custom':''}" onclick="dSelCat(${mi},${ii},'${cat.replace(/'/g,"\\'")}')">
     ${cat}</button>`).join('');
-  let fc=!ds.sel.cat?`<div class="no-cat">← Choisir une catégorie</div>`:`<div class="food-list-d">${(db[ds.sel.cat]||[]).map(f=>`
-    <div class="food-row-d" onclick="dPickFood(${mi},${ii},'${f.n.replace(/'/g,"\\'")}','${ds.sel.cat.replace(/'/g,"\\'")}')">
-      <span>${f.n}${f.custom?'<span class="custom-badge">perso</span>':''}</span>
-      <span class="fr-k">${f.isRecette?f.k+' kcal/part':f.k+' kcal/100g'}</span>
-    </div>`).join('')}</div>`;
+
+  // Chercher parmi tous les aliments
+  let foodList=[];
+  if(searchText){
+    Object.keys(db).forEach(cat=>{
+      (db[cat]||[]).forEach(f=>{
+        if(matchesSearch(f.n,searchText)){
+          foodList.push({...f,cat:cat});
+        }
+      });
+    });
+  }else if(ds.sel.cat){
+    foodList=(db[ds.sel.cat]||[]).map(f=>({...f,cat:ds.sel.cat}));
+  }
+
+  let fc=searchBar;
+  if(searchText||ds.sel.cat){
+    if(foodList.length===0){
+      fc+=`<div class="no-cat">Aucun aliment trouvé</div>`;
+    }else{
+      fc+=`<div class="food-list-d">${foodList.map(f=>`
+        <div class="food-row-d" onclick="dPickFoodData(${mi},${ii},this)" data-food="${f.n.replace(/"/g,'&quot;')}" data-cat="${f.cat.replace(/"/g,'&quot;')}">
+          <span>${f.n}${f.custom?'<span class="custom-badge">perso</span>':''}</span>
+          <span class="fr-k">${f.isRecette?f.k+' kcal/part':f.k+' kcal/100g'}</span>
+        </div>`).join('')}</div>`;
+    }
+  }else{
+    fc+=`<div class="no-cat">← Choisir une catégorie ou rechercher</div>`;
+  }
+
   return `<div class="sel-panel"><div class="sel-tabs-d">
     <button class="sel-tab-d${isCat?' active':''}" onclick="dSelTab(${mi},${ii},'cat')">Catégorie</button>
     <button class="sel-tab-d${!isCat?' active':''}" onclick="dSelTab(${mi},${ii},'food')">Aliment${ds.sel.cat?' — '+ds.sel.cat:''}</button>
-  </div><div class="sel-body">${isCat?catGrid:fc}</div></div>`;
+  </div><div class="sel-body">${isCat?searchBar+catGrid:fc}</div></div>`;
 }
 
+function dUpdateSearch(mi,ii,value){
+  if(S.dieteState.sel){
+    S.dieteState.sel.search=value;
+    dUpdateFoodList(mi,ii,value);
+  }
+}
+
+function normalizeSearch(str){
+  // Supprime les accents et caractères spéciaux
+  let result = str.toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[''´`\-–—\s]/g,'')
+    .trim();
+  return result;
+}
+
+function matchesSearch(foodName, searchText){
+  const normalized={
+    name: normalizeSearch(foodName),
+    search: normalizeSearch(searchText)
+  };
+  return normalized.name.includes(normalized.search);
+}
+
+function dUpdateFoodList(mi,ii,searchText){
+  const db=getDieteDB();
+
+  let foodList=[];
+  if(searchText){
+    Object.keys(db).forEach(cat=>{
+      (db[cat]||[]).forEach(f=>{
+        if(matchesSearch(f.n,searchText)){
+          foodList.push({...f,cat:cat});
+        }
+      });
+    });
+  }else if(S.dieteState.sel.cat){
+    foodList=(db[S.dieteState.sel.cat]||[]).map(f=>({...f,cat:S.dieteState.sel.cat}));
+  }
+
+  let listHtml='';
+  if(searchText||S.dieteState.sel.cat){
+    if(foodList.length===0){
+      listHtml=`<div class="no-cat">Aucun aliment trouvé</div>`;
+    }else{
+      listHtml=`<div class="food-list-d">${foodList.map(f=>`
+        <div class="food-row-d" onclick="dPickFoodData(${mi},${ii},this)" data-food="${f.n.replace(/"/g,'&quot;')}" data-cat="${f.cat.replace(/"/g,'&quot;')}">
+          <span>${f.n}${f.custom?'<span class="custom-badge">perso</span>':''}</span>
+          <span class="fr-k">${f.isRecette?f.k+' kcal/part':f.k+' kcal/100g'}</span>
+        </div>`).join('')}</div>`;
+    }
+  }else{
+    listHtml=`<div class="no-cat">← Choisir une catégorie ou rechercher</div>`;
+  }
+
+  // Mettre à jour la liste seulement (après l'input de recherche)
+  const input=document.getElementById(`dSearch-${mi}-${ii}`);
+  if(input){
+    const container=input.closest('.sel-body');
+    if(container){
+      // Garder le div de la barre de recherche, remplacer le reste
+      const searchBarDiv=input.parentElement;
+      container.innerHTML='';
+      container.appendChild(searchBarDiv);
+      container.insertAdjacentHTML('beforeend',listHtml);
+      input.focus();
+    }
+  }
+}
+
+function dPickFoodData(mi,ii,element){
+  const food=element.dataset.food;
+  const cat=element.dataset.cat;
+  dPickFood(mi,ii,food,cat);
+}
 
 function dAddItemToMeal(mi){
   // Add a blank item and open the selector on it
-  const meals=getClientDiete(S.client.id,S.dieteState.day).meals;
+  const meals=ensureClientDiete(S.client.id,S.dieteState.day).meals;
   const ii=meals[mi].items.length;
   meals[mi].items.push({food:'',cat:'',type:null,qty:100,enabled:true});
   S.dieteState.sel={mi,ii,tab:'cat',cat:null};
@@ -5373,7 +5595,7 @@ function dAddItemToMeal(mi){
 }
 
 function dScanAddToMeal(mi){
-  // Créer un input caméra temporaire
+  // Créer un input caméra temporaire pour scanner le code-barres
   let inp=document.getElementById('meal-scan-input');
   if(!inp){
     inp=document.createElement('input');
@@ -5382,29 +5604,61 @@ function dScanAddToMeal(mi){
     document.body.appendChild(inp);
   }
   inp.value='';
-  inp.onchange=()=>_processMealScan(inp,mi);
+  inp.onchange=()=>_processMealBarcodeScan(inp,mi);
   inp.click();
 }
 
-async function _processMealScan(input,mi){
+async function _processMealBarcodeScan(input,mi){
   const file=input.files[0];if(!file)return;
   input.value='';
-  toast('⏳ Analyse en cours…');
+  const {base64,mediaType}=await fileToBase64(file);
+  let vals=null;
+
   try{
-    const {base64,mediaType}=await fileToBase64(file);
-    const reply=await callAnthropicVision(base64,mediaType,
-      `Analyse cette étiquette nutritionnelle. Extrait les valeurs pour 100g et réponds UNIQUEMENT avec ce JSON :
+    // Essayer d'abord le code-barres
+    toast('⏳ Scan du code-barres…');
+    try{
+      const reply=await callAnthropicVision(base64,mediaType,
+        `Extrais le code-barres de cette image. Réponds UNIQUEMENT avec le numéro du code-barres, sans texte supplémentaire. Format: "123456789012"`,
+        'Tu es expert en lecture de codes-barres. Tu extrais juste le numéro, rien d\'autre.'
+      );
+      const barcode=reply.trim().replace(/[^0-9]/g,'');
+      if(!barcode||barcode.length<8) throw new Error('Code-barres non trouvé');
+
+      toast('⏳ Recherche sur Open Food Facts…');
+      const offResponse=await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      if(!offResponse.ok) throw new Error('Non trouvé');
+      const offData=await offResponse.json();
+      if(!offData.product) throw new Error('Non trouvé');
+
+      const p=offData.product;
+      vals={
+        nom:p.product_name||'Produit',
+        kcal:Math.round((p.nutriments?.['energy-kcal']||0)),
+        proteines:Math.round((p.nutriments?.proteins||0)*10)/10,
+        glucides:Math.round((p.nutriments?.carbohydrates||0)*10)/10,
+        lipides:Math.round((p.nutriments?.fat||0)*10)/10,
+        poids_unite:p.serving_quantity||null,
+        source:'barcode'
+      };
+    }catch(e1){
+      // Fallback sur le tableau nutritionnel
+      toast('⏳ Scan du tableau nutritionnel…');
+      const reply=await callAnthropicVision(base64,mediaType,
+        `Analyse cette étiquette nutritionnelle. Extrait les valeurs pour 100g et réponds UNIQUEMENT avec ce JSON :
 {"nom":"[nom du produit]","kcal":[nombre],"proteines":[nombre],"glucides":[nombre],"lipides":[nombre],"poids_unite":[poids total en g si c'est un produit entier, sinon null]}`,
-      'Tu es un expert en nutrition. Tu lis les étiquettes et retournes uniquement le JSON demandé, sans texte supplémentaire.'
-    );
-    const match=reply.match(/\{[\s\S]*\}/);
-    if(!match) throw new Error('Format inattendu');
-    const vals=JSON.parse(match[0]);
+        'Tu es un expert en nutrition. Tu lis les étiquettes et retournes uniquement le JSON demandé, sans texte supplémentaire.'
+      );
+      const match=reply.match(/\{[\s\S]*\}/);
+      if(!match) throw new Error('Format inattendu');
+      vals=JSON.parse(match[0]);
+      vals.source='tableau';
+    }
 
     // Afficher modal de confirmation
     const isUnit=vals.poids_unite&&vals.poids_unite>0;
     openModal(`
-      <div class="modal-title">📷 Aliment scanné</div>
+      <div class="modal-title">📷 Aliment scanné ${vals.source==='barcode'?'(Code-barres)':'(Tableau)'}</div>
       <div class="form-group">
         <label class="form-label">Nom</label>
         <input class="form-inp" id="ms-nom" value="${vals.nom||''}" placeholder="Nom de l'aliment"/>
@@ -5416,11 +5670,14 @@ async function _processMealScan(input,mi){
         <div><label class="form-label">Lipides</label><input class="form-inp form-inp-sm" id="ms-lip" type="number" value="${vals.lipides||0}"/></div>
       </div>
       <div class="form-group" style="margin-top:8px">
-        <label class="form-label">Quantité à ajouter</label>
+        <label class="form-label">Mode de saisie</label>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button class="sel-tab-d active" id="ms-mode-gram" onclick="dSetMealScanMode('gram')" style="flex:1">Grammes</button>
+          ${vals.poids_unite?`<button class="sel-tab-d" id="ms-mode-unit" onclick="dSetMealScanMode('unit')" style="flex:1">Unité (${vals.poids_unite}g)</button>`:''}
+        </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <input class="form-inp form-inp-sm" id="ms-qty" type="number" value="${isUnit?1:100}" style="width:80px"/>
-          <span style="font-size:13px;color:var(--text2)">${isUnit?'unité(s)':'grammes'}</span>
-          ${isUnit?`<span style="font-size:11px;color:var(--text3)">(1 unité = ${vals.poids_unite}g)</span>`:''}
+          <input class="form-inp form-inp-sm" id="ms-qty" type="number" value="100" style="width:80px"/>
+          <span style="font-size:13px;color:var(--text2)" id="ms-qty-label">grammes</span>
         </div>
       </div>
       <div class="form-group">
@@ -5431,14 +5688,31 @@ async function _processMealScan(input,mi){
         </select>
         <input class="form-inp form-inp-sm" id="ms-cat-new" placeholder="Nom de la nouvelle catégorie" style="display:none;margin-top:6px"/>
       </div>
-      <button class="btn btn-primary" onclick="_confirmMealScan(${mi},${isUnit},${vals.poids_unite||null})">✅ Ajouter au repas</button>
+      <button class="btn btn-primary" onclick="_confirmMealScan(${mi},${vals.poids_unite||null})">✅ Ajouter au repas</button>
     `);
+    document.getElementById('ms-mode-gram').mode='gram';
   } catch(e){
     toast('⚠ Erreur : '+e.message);
   }
 }
 
-function _confirmMealScan(mi,isUnit,poids_unite){
+function dSetMealScanMode(mode){
+  document.querySelectorAll('#ms-mode-gram, #ms-mode-unit').forEach(btn=>btn.classList.remove('active'));
+  document.getElementById(`ms-mode-${mode}`)?.classList.add('active');
+  const qtyInput=document.getElementById('ms-qty');
+  const qtyLabel=document.getElementById('ms-qty-label');
+  const poidsUnite=document.getElementById('ms-mode-unit')?.textContent.match(/\d+/)?.[0];
+  if(mode==='unit'){
+    qtyInput.value=1;
+    qtyLabel.textContent=`unité${poidsUnite?` (${poidsUnite}g)`:''}`;
+  }else{
+    qtyInput.value=100;
+    qtyLabel.textContent='grammes';
+  }
+  document.currentMealScanMode=mode;
+}
+
+function _confirmMealScan(mi,poids_unite){
   const nom=document.getElementById('ms-nom')?.value.trim();
   if(!nom){toast('⚠ Saisis un nom');return;}
   const kcal=parseFloat(document.getElementById('ms-kcal')?.value)||0;
@@ -5455,6 +5729,7 @@ function _confirmMealScan(mi,isUnit,poids_unite){
   }
 
   // Créer l'aliment custom
+  const isUnit=document.currentMealScanMode==='unit';
   const newAliment={
     id:uid(),nom,categorie:cat,kcal,proteines:prot,glucides:gluc,lipides:lip,
     poids_unite:isUnit?poids_unite:null,
@@ -5468,7 +5743,7 @@ function _confirmMealScan(mi,isUnit,poids_unite){
   }
 
   // Ajouter au repas
-  const meals=getClientDiete(S.client.id,S.dieteState.day).meals;
+  const meals=ensureClientDiete(S.client.id,S.dieteState.day).meals;
   meals[mi].items.push({
     food:nom,cat,
     type:isUnit?'Unité':null,
@@ -5481,19 +5756,19 @@ function _confirmMealScan(mi,isUnit,poids_unite){
 }
 
 function dRemoveItem(mi,ii){
-  const meals=getClientDiete(S.client.id,S.dieteState.day).meals;
+  const meals=ensureClientDiete(S.client.id,S.dieteState.day).meals;
   meals[mi].items.splice(ii,1);
   if(S.dieteState.sel&&S.dieteState.sel.mi===mi) S.dieteState.sel=null;
   render.diete();
 }
 
 function dAddMeal(){
-  const meals=getClientDiete(S.client.id,S.dieteState.day).meals;
+  const meals=ensureClientDiete(S.client.id,S.dieteState.day).meals;
   meals.push({name:'Repas '+(meals.length+1),items:[]});
   render.diete();
 }
 function dMoveMeal(mi,dir){
-  const meals=getClientDiete(S.client.id,S.dieteState.day).meals;
+  const meals=ensureClientDiete(S.client.id,S.dieteState.day).meals;
   const target=mi+dir;
   if(target<0||target>=meals.length)return;
   animateSwap('meal-card-'+mi,'meal-card-'+target,()=>{
@@ -5502,7 +5777,7 @@ function dMoveMeal(mi,dir){
   });
 }
 function dDeleteMeal(mi){
-  const meals=getClientDiete(S.client.id,S.dieteState.day).meals;
+  const meals=ensureClientDiete(S.client.id,S.dieteState.day).meals;
   if(meals.length<=1){toast('⚠ Impossible de supprimer le dernier repas');return;}
   confirmDialog(`Supprimer "${meals[mi].name}" ?`,'Les aliments de ce repas seront perdus.','Supprimer',()=>{
     meals.splice(mi,1);
@@ -5511,7 +5786,7 @@ function dDeleteMeal(mi){
   });
 }
 function dRenameMeal(mi){
-  const meals=getClientDiete(S.client.id,S.dieteState.day).meals;
+  const meals=ensureClientDiete(S.client.id,S.dieteState.day).meals;
   const name=prompt('Nom du repas',meals[mi].name);
   if(name&&name.trim()) meals[mi].name=name.trim();
   render.diete();
@@ -5526,7 +5801,7 @@ function dOpenSel(mi,ii){
 function dSelTab(mi,ii,tab){if(S.dieteState.sel){S.dieteState.sel.tab=tab;}render.diete();}
 function dSelCat(mi,ii,cat){if(S.dieteState.sel){S.dieteState.sel.cat=cat;S.dieteState.sel.tab='food';}render.diete();}
 function dPickFood(mi,ii,name,cat){
-  const item=getClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii];
+  const item=ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii];
   item.food=name;item.cat=cat;
   const r=lookupFood(name);
   item.type=(r&&r.f.gpu)?'Unité':null;
@@ -5534,30 +5809,30 @@ function dPickFood(mi,ii,name,cat){
   S.dieteState.sel=null;render.diete();
 }
 function dToggle(mi,ii){
-  getClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii].enabled^=true;
+  ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii].enabled^=true;
   render.diete();
 }
 function dAdjQty(mi,ii,d){
-  const item=getClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii];
+  const item=ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii];
   item.qty=Math.max(0,+(item.qty||0)+d);render.diete();
 }
 function dSetQtyLive(mi,ii,v){
   // Mise à jour silencieuse pendant la frappe (pas de re-rendu)
   const val=parseFloat(v);
   if(!isNaN(val)&&val>=0){
-    getClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii].qty=val;
+    ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii].qty=val;
   }
 }
 function dSetQty(mi,ii,v){
   // Re-rendu complet quand on quitte le champ
   const val=parseFloat(v);
   if(!isNaN(val)&&val>=0){
-    getClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii].qty=val;
+    ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii].qty=val;
   }
   render.diete();
 }
 function showCiblesModal(){
-  const tgt=getClientDiete(S.client.id,S.dieteState.day).targets;
+  const tgt=ensureClientDiete(S.client.id,S.dieteState.day).targets;
   openModal(`
     <div class="modal-title">Modifier les cibles — Day ${S.dieteState.day.toUpperCase()}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -5570,7 +5845,7 @@ function showCiblesModal(){
   `);
 }
 function saveCibles(){
-  const tgt=getClientDiete(S.client.id,S.dieteState.day).targets;
+  const tgt=ensureClientDiete(S.client.id,S.dieteState.day).targets;
   tgt.kcal=parseInt(document.getElementById('ct-kcal').value)||tgt.kcal;
   tgt.prot=parseInt(document.getElementById('ct-prot').value)||tgt.prot;
   tgt.gluc=parseInt(document.getElementById('ct-gluc').value)||tgt.gluc;
@@ -5596,6 +5871,7 @@ function buildIASystemPrompt(){
   const c = S.client;
   const day = S.dieteState ? S.dieteState.day : 'on';
   const diete = getClientDiete(c.id, day);
+  if(!diete) return 'Aucune diète créée pour ce client. Commencez par créer une diète de base.';
   const tgt = diete.targets;
   const db = getDieteDB();
 
