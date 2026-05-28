@@ -376,13 +376,13 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .day-tabs-wrap{display:flex;gap:6px;padding:8px 16px}
 .day-tab{flex:1;padding:7px;border:.5px solid var(--border2);border-radius:var(--radius);background:transparent;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);font-family:inherit;text-align:center}
 .day-tab.active{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
-.macro-bar-wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px 16px;border-bottom:.5px solid var(--border)}
-.mc{background:var(--bg2);border-radius:var(--radius);padding:7px 5px;text-align:center}
-.mc .lbl{font-size:10px;color:var(--text3);margin-bottom:1px}
-.mc .val{font-size:14px;font-weight:700}
-.mc .tgt{font-size:10px;color:var(--text3)}
-.pg{height:3px;background:var(--border);border-radius:2px;margin-top:3px;overflow:hidden}
-.pgf{height:100%;border-radius:2px;transition:width .4s}
+.macro-bar-wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 16px;border-bottom:.5px solid var(--border)}
+.mc{background:var(--bg2);border-radius:var(--radius);padding:10px 6px;text-align:center}
+.mc .lbl{font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:600}
+.mc .val{font-size:18px;font-weight:700;color:var(--text)}
+.mc .tgt{font-size:11px;color:var(--text3);margin-top:2px}
+.pg{height:6px;background:var(--border);border-radius:3px;margin-top:6px;overflow:hidden}
+.pgf{height:100%;border-radius:3px;transition:width .4s}
 .food-card-d{background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:7px;overflow:hidden}
 .food-card-d.disabled{opacity:.4}
 .food-card-d.open{border-color:var(--green)}
@@ -1101,13 +1101,13 @@ html.theme-night .screen#screen-bilanHebdo{background:linear-gradient(135deg, #1
   bottom:0;
   left:0;
   right:0;
-  background:var(--glass-bg);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  border-top:1px solid var(--glass-border);
+  background:linear-gradient(to top, rgba(0,0,0,.3), rgba(0,0,0,.15));
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border-top:1px solid rgba(255,255,255,.1);
   display:none;
-  padding:6px 12px 8px;
-  gap:6px;
+  padding:8px 12px 12px;
+  gap:8px;
   max-width:430px;
   margin:0 auto;
   z-index:40;
@@ -1120,68 +1120,77 @@ html.theme-night .screen#screen-bilanHebdo{background:linear-gradient(135deg, #1
 }
 
 .shortcut-btn{
-  width:40px;
-  height:40px;
-  padding:0;
-  background:var(--bg2);
-  border:1px solid var(--border2);
+  flex:1;
+  padding:8px 4px;
+  background:transparent;
+  border:1px solid rgba(255,255,255,.2);
   border-radius:10px;
-  color:var(--text);
-  font-size:20px;
+  color:white;
+  font-size:12px;
+  font-weight:500;
   cursor:pointer;
-  transition:all .2s ease;
+  transition:all .3s ease;
   display:flex;
   align-items:center;
   justify-content:center;
+  gap:4px;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  box-shadow:0 4px 30px rgba(0,0,0,.1), inset 0 1px 0 rgba(255,255,255,.2), inset 0 -1px 0 rgba(0,0,0,.1);
 }
 
 .shortcut-btn:active{
-  transform:scale(.85);
+  transform:scale(.95);
 }
 
 .shortcut-btn.training{
-  border-color:#4A90E2;
-  background:linear-gradient(135deg, rgba(74,144,226,.15), rgba(74,144,226,.05));
+  border-color:rgba(74,144,226,.4);
+  background:rgba(74,144,226,.12);
+  box-shadow:0 4px 30px rgba(74,144,226,.15), inset 0 1px 0 rgba(255,255,255,.2), inset 0 -1px 0 rgba(0,0,0,.1);
 }
 
 .shortcut-btn.training:active{
-  background:linear-gradient(135deg, rgba(74,144,226,.25), rgba(74,144,226,.1));
+  background:rgba(74,144,226,.18);
 }
 
 .shortcut-btn.diete{
-  border-color:#E07C39;
-  background:linear-gradient(135deg, rgba(224,124,57,.15), rgba(224,124,57,.05));
+  border-color:rgba(224,124,57,.4);
+  background:rgba(224,124,57,.12);
+  box-shadow:0 4px 30px rgba(224,124,57,.15), inset 0 1px 0 rgba(255,255,255,.2), inset 0 -1px 0 rgba(0,0,0,.1);
 }
 
 .shortcut-btn.diete:active{
-  background:linear-gradient(135deg, rgba(224,124,57,.25), rgba(224,124,57,.1));
+  background:rgba(224,124,57,.18);
 }
 
 .shortcut-btn.checkin{
-  border-color:#2ecc71;
-  background:linear-gradient(135deg, rgba(46,204,113,.15), rgba(46,204,113,.05));
+  border-color:rgba(46,204,113,.4);
+  background:rgba(46,204,113,.12);
+  box-shadow:0 4px 30px rgba(46,204,113,.15), inset 0 1px 0 rgba(255,255,255,.2), inset 0 -1px 0 rgba(0,0,0,.1);
 }
 
 .shortcut-btn.checkin:active{
-  background:linear-gradient(135deg, rgba(46,204,113,.25), rgba(46,204,113,.1));
+  background:rgba(46,204,113,.18);
 }
 
 .shortcut-btn.suivi{
-  border-color:#9b59b6;
-  background:linear-gradient(135deg, rgba(155,89,182,.15), rgba(155,89,182,.05));
+  border-color:rgba(155,89,182,.4);
+  background:rgba(155,89,182,.12);
+  box-shadow:0 4px 30px rgba(155,89,182,.15), inset 0 1px 0 rgba(255,255,255,.2), inset 0 -1px 0 rgba(0,0,0,.1);
 }
 
 .shortcut-btn.suivi:active{
-  background:linear-gradient(135deg, rgba(155,89,182,.25), rgba(155,89,182,.1));
+  background:rgba(155,89,182,.18);
 }
 
 .shortcut-btn.bilanHebdo{
-  border-color:#e94b3c;
-  background:linear-gradient(135deg, rgba(233,75,60,.15), rgba(233,75,60,.05));
+  border-color:rgba(233,75,60,.4);
+  background:rgba(233,75,60,.12);
+  box-shadow:0 4px 30px rgba(233,75,60,.15), inset 0 1px 0 rgba(255,255,255,.2), inset 0 -1px 0 rgba(0,0,0,.1);
 }
 
 .shortcut-btn.bilanHebdo:active{
-  background:linear-gradient(135deg, rgba(233,75,60,.25), rgba(233,75,60,.1));
+  background:rgba(233,75,60,.18);
 }
 
 </style>
@@ -1300,7 +1309,7 @@ html.theme-night .screen#screen-bilanHebdo{background:linear-gradient(135deg, #1
   <!-- SCREEN: DIÈTE -->
   <div class="screen" id="screen-diete">
     <div id="diete-topbar" style="position:sticky;top:0;z-index:10;background:var(--bg)"></div>
-    <div id="diete-macros"></div>
+    <div id="diete-macros" style="position:sticky;top:0;z-index:9;background:var(--bg);border-bottom:.5px solid var(--border)"></div>
     <div id="diete-content" style="padding:12px 16px 60px"></div>
   </div>
 
@@ -1325,11 +1334,11 @@ html.theme-night .screen#screen-bilanHebdo{background:linear-gradient(135deg, #1
 
   <!-- BARRE DE RACCOURCIS EN BAS -->
   <div id="shortcut-bar">
-    <button class="shortcut-btn training" onclick="showScreen('training')" title="Entraînement">💪</button>
-    <button class="shortcut-btn diete" onclick="showScreen('diete')" title="Diète">🍽️</button>
-    <button class="shortcut-btn checkin" onclick="showScreen('checkin')" title="Check-in">✅</button>
-    <button class="shortcut-btn suivi" onclick="showScreen('suivi')" title="Suivi">📊</button>
-    <button class="shortcut-btn bilanHebdo" onclick="showScreen('bilanHebdo')" title="Bilan">📈</button>
+    <button class="shortcut-btn training" onclick="showScreen('training')" title="Entraînement"><span>💪</span><span>Entraîn.</span></button>
+    <button class="shortcut-btn diete" onclick="showScreen('diete')" title="Diète"><span>🍽️</span><span>Diète</span></button>
+    <button class="shortcut-btn checkin" onclick="showScreen('checkin')" title="Check-in"><span>✅</span><span>Check</span></button>
+    <button class="shortcut-btn suivi" onclick="showScreen('suivi')" title="Suivi"><span>📊</span><span>Suivi</span></button>
+    <button class="shortcut-btn bilanHebdo" onclick="showScreen('bilanHebdo')" title="Bilan"><span>📈</span><span>Bilan</span></button>
   </div>
 
 </div>
@@ -2094,6 +2103,9 @@ async function toggleFavori(id){
 async function openClient(id){
   S.client=S.clients.find(c=>c.id===id);
   if(!S.client)return;
+  // Nettoyer les brouillons sessionStorage du client précédent
+  sessionStorage.removeItem('c_calcsPerte_draft');
+  sessionStorage.removeItem('c_blockPlan_draft');
   navigate('menu');
   // Sync client data in background (sans re-render si on est encore sur le même écran)
   syncClientData(id).catch(e=>console.warn('Sync error:',e));
@@ -2239,7 +2251,14 @@ function readBlockPlanForm(){
   };
 }
 function renderBlockPlannerSection(client, calcResults){
-  const bp=getClientBlockPlan(client);
+  let bp=getClientBlockPlan(client);
+  // Restaurer le brouillon en sessionStorage si le client correspond
+  try{
+    const draft=JSON.parse(sessionStorage.getItem('c_blockPlan_draft'));
+    if(draft && draft.clientId===client.id){
+      bp=draft.bp;
+    }
+  }catch(e){}
   const current=getBlockMetaForDate(client, new Date().toISOString().slice(0,10));
   const phasesHtml=bp.phases.map((phase,idx)=>{
     const i=idx+1;
@@ -2340,6 +2359,8 @@ function updateBlockPlan(rebuild=false){
     bp.phases=distributeBlockWeeks(bp.blockWeeks,bp.phaseCount,bp.phases);
   }
   S.client.blockPlan=bp;
+  // Sauvegarder aussi dans sessionStorage pour les changements non commités
+  sessionStorage.setItem('c_blockPlan_draft',JSON.stringify({clientId:S.client.id,bp:bp,timestamp:Date.now()}));
   persist();
   const host=document.getElementById('block-planner-section');
   if(!host) return;
@@ -2413,7 +2434,14 @@ function calculsSelectOptions(current, options){
 
 render.calculsPerte=function(){
   const c=S.client;
-  const d=getClientCalculsPerte(c);
+  // Restaurer le brouillon en sessionStorage si le client correspond
+  let d=getClientCalculsPerte(c);
+  try{
+    const draft=JSON.parse(sessionStorage.getItem('c_calcsPerte_draft'));
+    if(draft && draft.clientId===c.id){
+      d=draft.data;
+    }
+  }catch(e){}
   setTopbar('Calculs perte', c.prenom+' '+c.nom);
   const el=document.getElementById('calculsPerte-content');
   el.innerHTML=`
@@ -2524,6 +2552,8 @@ function updateCalculsPerte(){
   if(!S.client) return;
   const data=readCalculsPerteForm();
   S.client.calculsPerte=data;
+  // Sauvegarder aussi dans sessionStorage pour les changements non commités
+  sessionStorage.setItem('c_calcsPerte_draft',JSON.stringify({clientId:S.client.id,data:data,timestamp:Date.now()}));
   persist();
   const r=calculatePerteResults(data);
   const box=document.getElementById('calculs-results');
@@ -3547,47 +3577,10 @@ function isSerieDone(serie){
 }
 
 // ─────────────────────────────────────────
-// CHRONO DE REPOS (fiable avec écran verrouillé)
+// CHRONO DE REPOS (basé sur timestamps, pas de boucle audio)
 // ─────────────────────────────────────────
 S.restTimer={active:false,endTime:0,total:0,remaining:0,_interval:null,_alarmFired:false};
-let _silentAudioEl=null;
-let _silentAudioUrl=null;
 let _audioCtx=null;
-
-// Génère un WAV silencieux à la volée (0.5s, mono 8kHz). On le loop pendant le repos
-// pour empêcher iOS/Android de suspendre la page → le timer continue de tourner et
-// l'alarme audio se déclenche à l'heure même avec l'écran verrouillé.
-function _buildSilentWavUrl(){
-  if(_silentAudioUrl) return _silentAudioUrl;
-  const sr=8000, dur=0.5, n=Math.floor(sr*dur);
-  const buf=new ArrayBuffer(44+n);
-  const v=new DataView(buf);
-  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
-  ws(0,'RIFF'); v.setUint32(4,36+n,true); ws(8,'WAVE'); ws(12,'fmt ');
-  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
-  v.setUint32(24,sr,true); v.setUint32(28,sr,true);
-  v.setUint16(32,1,true); v.setUint16(34,8,true);
-  ws(36,'data'); v.setUint32(40,n,true);
-  for(let i=0;i<n;i++) v.setUint8(44+i,128); // 128 = silence en 8-bit unsigned
-  const blob=new Blob([buf],{type:'audio/wav'});
-  _silentAudioUrl=URL.createObjectURL(blob);
-  return _silentAudioUrl;
-}
-
-function _startSilentLoop(){
-  try{
-    if(_silentAudioEl){_silentAudioEl.pause();_silentAudioEl=null;}
-    _silentAudioEl=new Audio(_buildSilentWavUrl());
-    _silentAudioEl.loop=true;
-    _silentAudioEl.volume=0.01;
-    const p=_silentAudioEl.play();
-    if(p&&p.catch) p.catch(e=>console.warn('Silent loop blocked:',e));
-  }catch(e){console.warn('Silent loop error:',e);}
-}
-
-function _stopSilentLoop(){
-  if(_silentAudioEl){try{_silentAudioEl.pause();_silentAudioEl.src='';}catch(e){}_silentAudioEl=null;}
-}
 
 function _playAlarmBeeps(){
   try{
@@ -3656,9 +3649,10 @@ function startRestTimer(seconds){
     _interval:null,
     _alarmFired:false
   };
-  _startSilentLoop();
   renderRestTimerOverlay();
-  S.restTimer._interval=setInterval(_restTick,250);
+  // Utiliser setInterval à 1 seconde pour mettre à jour l'affichage
+  // (plus efficace que 250ms et suffisant pour l'UI)
+  S.restTimer._interval=setInterval(_restTick,1000);
 }
 
 function _restTick(){
@@ -3676,7 +3670,6 @@ function _restTick(){
 
 function stopRestTimer(){
   if(S.restTimer._interval) clearInterval(S.restTimer._interval);
-  _stopSilentLoop();
   S.restTimer={active:false,endTime:0,total:0,remaining:0,_interval:null,_alarmFired:false};
   const el=document.getElementById('rest-timer-overlay');
   if(el){el.classList.remove('active');el.innerHTML='';}
@@ -3690,6 +3683,14 @@ function adjustRestTimer(delta){
   if(delta>0) S.restTimer.total=Math.max(S.restTimer.total,rem);
   updateRestTimerDisplay();
 }
+
+// Quand l'app revient au premier plan (déverrouillage écran), recalcule le temps immédiatement
+// pour corriger tout décalage accumulé pendant que l'écran était verrouillé
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden && S.restTimer.active){
+    _restTick();
+  }
+});
 
 // Au retour de l'app (déverrouillage écran), recalcule l'affichage immédiatement
 document.addEventListener('visibilitychange',()=>{
@@ -4449,10 +4450,12 @@ render.exercices=function(filter=''){
       const isCustom=exo.id.startsWith('c');
       const videoBtn=exo.video?'<a href="'+exo.video+'" target="_blank" class="icon-btn" style="text-decoration:none;font-size:16px">🎬</a>':'';
       const deleteBtn=isCustom?'<button class="icon-btn" onclick="_deleteExo(\''+exo.id+'\')">🗑</button>':'';
+      const imgThumb=exo.image?'<div style="width:40px;height:40px;border-radius:6px;overflow:hidden;flex-shrink:0;margin-right:8px"><img src="'+exo.image+'" style="width:100%;height:100%;object-fit:cover" /></div>':'';
       html+='<div class="exo-list-row">'+
+        imgThumb+
         '<div class="exo-list-info" onclick="showExoDetailModal(\''+exo.id+'\')">'+
         '<div class="exo-list-name">'+exo.nom+(isCustom?' <span class="badge badge-green" style="font-size:10px;padding:1px 6px">perso</span>':'')+'</div>'+
-        '<div class="exo-list-meta">'+(exo.desc||'')+(exo.video?' · 🎬 vidéo':'')+'</div>'+
+        '<div class="exo-list-meta">'+(exo.desc||'')+(exo.video?' · 🎬 vidéo':'')+(exo.image?' · 📸 image':'')+'</div>'+
         '</div><div class="exo-list-actions">'+videoBtn+
         '<button class="icon-btn" onclick="showEditExoModal(\''+exo.id+'\')">✏️</button>'+
         deleteBtn+'</div></div>';
@@ -5307,6 +5310,8 @@ async function saveClientDiete(){
   // Snapshot as base diet
   const d=getClientDiete(S.client.id,S.dieteState.day);
   lsSet('c_baseDiete_'+S.client.id+'_'+S.dieteState.day, JSON.parse(JSON.stringify(d)));
+  // Nettoyer le brouillon sessionStorage puisqu'on a sauvegardé
+  sessionStorage.removeItem('c_dieteDraft_'+S.client.id+'_'+S.dieteState.day);
   toast('Sauvegarde…');
   await saveDieteToSupa(S.client.id,S.dieteState.day);
   toast('✓ Diète sauvegardée comme base');
@@ -5341,8 +5346,38 @@ function resetClientDiete(){
   S.dietes[S.client.id][S.dieteState.day]=JSON.parse(JSON.stringify(base));
   S.dietes[S.client.id][S.dieteState.day].iaModified=false;
   persist();
+  // Nettoyer le brouillon sessionStorage puisqu'on a réinitialisé
+  sessionStorage.removeItem('c_dieteDraft_'+S.client.id+'_'+S.dieteState.day);
   toast('↩ Diète réinitialisée');
   render.diete();
+}
+
+// ─────────────────────────────────────────
+// SAUVEGARDE DE BROUILLON DIÈTE
+// ─────────────────────────────────────────
+function saveDieteDraft(){
+  // Sauvegarder la diète modifiée en sessionStorage pour la préserver en cas de navigation
+  if(!S.client) return;
+  const diete=getClientDiete(S.client.id,S.dieteState.day);
+  if(!diete) return;
+  sessionStorage.setItem('c_dieteDraft_'+S.client.id+'_'+S.dieteState.day,JSON.stringify({
+    clientId:S.client.id,
+    day:S.dieteState.day,
+    diete:diete,
+    timestamp:Date.now()
+  }));
+}
+
+function restoreDieteDraft(){
+  // Restaurer le brouillon de diète depuis sessionStorage s'il existe
+  if(!S.client) return;
+  try{
+    const draft=JSON.parse(sessionStorage.getItem('c_dieteDraft_'+S.client.id+'_'+S.dieteState.day));
+    if(draft && draft.clientId===S.client.id && draft.day===S.dieteState.day){
+      if(!S.dietes[S.client.id]) S.dietes[S.client.id]={};
+      S.dietes[S.client.id][S.dieteState.day]=draft.diete;
+    }
+  }catch(e){}
 }
 
 // ─────────────────────────────────────────
@@ -5358,6 +5393,8 @@ render.diete=function(){
       <div class="icon-btn" onclick="navigate('recettes')" title="Recettes">👩‍🍳</div>
     </div>`
   );
+  // Restaurer le brouillon de diète depuis sessionStorage si le client et le jour correspondent
+  restoreDieteDraft();
   const diete=getClientDiete(c.id,ds.day);
 
   // Si aucune diète n'existe, afficher un message vide
@@ -5587,6 +5624,8 @@ function dAddItemToMeal(mi){
   const ii=meals[mi].items.length;
   meals[mi].items.push({food:'',cat:'',type:null,qty:100,enabled:true});
   S.dieteState.sel={mi,ii,tab:'cat',cat:null};
+  persist();
+  saveDieteDraft();
   render.diete();
   setTimeout(()=>{
     const content=document.getElementById('diete-content');
@@ -5759,12 +5798,16 @@ function dRemoveItem(mi,ii){
   const meals=ensureClientDiete(S.client.id,S.dieteState.day).meals;
   meals[mi].items.splice(ii,1);
   if(S.dieteState.sel&&S.dieteState.sel.mi===mi) S.dieteState.sel=null;
+  persist();
+  saveDieteDraft();
   render.diete();
 }
 
 function dAddMeal(){
   const meals=ensureClientDiete(S.client.id,S.dieteState.day).meals;
   meals.push({name:'Repas '+(meals.length+1),items:[]});
+  persist();
+  saveDieteDraft();
   render.diete();
 }
 function dMoveMeal(mi,dir){
@@ -5773,6 +5816,8 @@ function dMoveMeal(mi,dir){
   if(target<0||target>=meals.length)return;
   animateSwap('meal-card-'+mi,'meal-card-'+target,()=>{
     const tmp=meals[mi];meals[mi]=meals[target];meals[target]=tmp;
+    persist();
+    saveDieteDraft();
     render.diete();
   });
 }
@@ -5782,6 +5827,8 @@ function dDeleteMeal(mi){
   confirmDialog(`Supprimer "${meals[mi].name}" ?`,'Les aliments de ce repas seront perdus.','Supprimer',()=>{
     meals.splice(mi,1);
     if(S.dieteState.sel&&S.dieteState.sel.mi===mi) S.dieteState.sel=null;
+    persist();
+    saveDieteDraft();
     render.diete();
   });
 }
@@ -5789,9 +5836,17 @@ function dRenameMeal(mi){
   const meals=ensureClientDiete(S.client.id,S.dieteState.day).meals;
   const name=prompt('Nom du repas',meals[mi].name);
   if(name&&name.trim()) meals[mi].name=name.trim();
+  persist();
+  saveDieteDraft();
   render.diete();
 }
-function dSetDay(day){S.dieteState.day=day;S.dieteState.sel=null;render.diete();}
+function dSetDay(day){
+  S.dieteState.day=day;
+  S.dieteState.sel=null;
+  // Restaurer le brouillon du nouveau jour s'il existe (sinon on aura une diète vierge/sauvegardée)
+  restoreDieteDraft();
+  render.diete();
+}
 function dOpenSel(mi,ii){
   const ds=S.dieteState;
   if(ds.sel&&ds.sel.mi===mi&&ds.sel.ii===ii){ds.sel=null;}
@@ -5806,21 +5861,31 @@ function dPickFood(mi,ii,name,cat){
   const r=lookupFood(name);
   item.type=(r&&r.f.gpu)?'Unité':null;
   if(r&&r.f.isRecette) item.qty=1; // default 1 part
-  S.dieteState.sel=null;render.diete();
+  S.dieteState.sel=null;
+  persist();
+  saveDieteDraft();
+  render.diete();
 }
 function dToggle(mi,ii){
   ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii].enabled^=true;
+  persist();
+  saveDieteDraft();
   render.diete();
 }
 function dAdjQty(mi,ii,d){
   const item=ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii];
-  item.qty=Math.max(0,+(item.qty||0)+d);render.diete();
+  item.qty=Math.max(0,+(item.qty||0)+d);
+  persist();
+  saveDieteDraft();
+  render.diete();
 }
 function dSetQtyLive(mi,ii,v){
-  // Mise à jour silencieuse pendant la frappe (pas de re-rendu)
+  // Mise à jour silencieuse pendant la frappe (pas de re-rendu, mais sauvegarde le brouillon)
   const val=parseFloat(v);
   if(!isNaN(val)&&val>=0){
     ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii].qty=val;
+    persist();
+    saveDieteDraft();
   }
 }
 function dSetQty(mi,ii,v){
@@ -5829,6 +5894,8 @@ function dSetQty(mi,ii,v){
   if(!isNaN(val)&&val>=0){
     ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii].qty=val;
   }
+  persist();
+  saveDieteDraft();
   render.diete();
 }
 function showCiblesModal(){
@@ -7084,7 +7151,9 @@ async function saveRecetteToSupa(recette){
 async function saveExoCustomToSupa(exo){
   const existing=await supa('GET','exercices','',`?id=eq.${exo.id}`);
   if(!existing||!existing.length){
-    await supa('POST','exercices',{id:exo.id,nom:exo.nom,cat:exo.cat,desc_exercice:exo.desc||'',video:exo.video||'',is_custom:true});
+    await supa('POST','exercices',{id:exo.id,nom:exo.nom,cat:exo.cat,desc_exercice:exo.desc||'',video:exo.video||'',image:exo.image||null,is_custom:true});
+  }else{
+    await supa('PATCH','exercices',{nom:exo.nom,cat:exo.cat,desc_exercice:exo.desc||'',video:exo.video||'',image:exo.image||null},`?id=eq.${exo.id}`);
   }
 }
 
@@ -7256,12 +7325,16 @@ function showExoForm(exo){
   const catOptions=cats.map(c=>'<option value="'+c+'"'+(exo&&exo.cat===c?' selected':'')+'>'+c+'</option>').join('');
   const title=exo?'Modifier':'Créer un exercice';
   const deleteBtn=exo&&exo.id.startsWith('c')?'<button class="btn btn-danger" style="margin-top:8px" onclick="_deleteExo(\''+exo.id+'\')">Supprimer</button>':'';
+  const imgPreview=exo&&exo.image?'<img id="ef-img-preview" src="'+exo.image+'" style="width:100%;height:auto;border-radius:8px;margin-top:8px" />':'';
+  const imgBtn=exo&&exo.id?'<button class="btn btn-secondary" style="margin-top:8px" onclick="triggerExoImageUpload(\''+exo.id+'\')">📸 '+((exo&&exo.image)?'Changer':'Ajouter')+' une photo/gif</button>':'<button class="btn btn-secondary" style="margin-top:8px;opacity:0.5" disabled>📸 Ajouter une photo/gif (d\'abord créer l\'exercice)</button>';
   openModal(
     '<div class="modal-title">'+title+'</div>'+
     '<div class="form-group"><label class="form-label">Nom</label><input class="form-inp" id="ef-nom" value="'+(exo?exo.nom:'')+'" placeholder="ex : Squat barre" /></div>'+
     '<div class="form-group"><label class="form-label">Catégorie</label><select class="form-inp form-inp-sm form-select" id="ef-cat">'+catOptions+'</select></div>'+
     '<div class="form-group"><label class="form-label">Description (optionnel)</label><textarea class="form-inp form-inp-sm" id="ef-desc" rows="2" placeholder="Technique, points clés...">'+( exo&&exo.desc?exo.desc:'')+'</textarea></div>'+
     '<div class="form-group"><label class="form-label">Lien vidéo YouTube (optionnel)</label><input class="form-inp form-inp-sm" id="ef-video" value="'+(exo&&exo.video?exo.video:'')+'" placeholder="https://youtube.com/..." /></div>'+
+    '<div class="form-group">'+imgBtn+'<input type="file" id="ef-img-input" accept="image/*" style="display:none" onchange="handleExoImageUpload(this)" /></div>'+
+    imgPreview+
     '<button class="btn btn-primary" onclick="'+(exo?'saveExo(\''+exo.id+'\')':'createExo()')+'">Enregistrer</button>'+
     deleteBtn
   );
@@ -7293,18 +7366,57 @@ function saveExo(id){
   exo.desc=document.getElementById('ef-desc').value.trim()||'';
   exo.video=document.getElementById('ef-video').value.trim()||'';
   persist();
-  supa('PATCH','exercices',{nom:exo.nom,cat:exo.cat,desc_exercice:exo.desc,video:exo.video},'?id=eq.'+id);
+  const updateData={nom:exo.nom,cat:exo.cat,desc_exercice:exo.desc,video:exo.video};
+  if(exo.image) updateData.image=exo.image;
+  supa('PATCH','exercices',updateData,'?id=eq.'+id);
   closeModal();
   if(S.screen==='exercices') render.exercices();
   toast('✓ Modifié');
 }
 
+function triggerExoImageUpload(exoId){
+  document.getElementById('ef-img-input').click();
+  window.currentExoId=exoId;
+}
+
+function handleExoImageUpload(input){
+  const file=input.files[0];if(!file)return;
+  const exoId=window.currentExoId;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const tmpImg=new Image();
+    tmpImg.onload=()=>{
+      const MAX=600;
+      const scale=Math.min(1,MAX/Math.max(tmpImg.width,tmpImg.height));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.round(tmpImg.width*scale);
+      canvas.height=Math.round(tmpImg.height*scale);
+      canvas.getContext('2d').drawImage(tmpImg,0,0,canvas.width,canvas.height);
+      const compressed=canvas.toDataURL('image/jpeg',0.75);
+      const exo=S.exercices.find(x=>x.id===exoId);
+      if(exo){
+        exo.image=compressed;
+        persist();
+        if(exo.id.startsWith('c')) saveExoCustomToSupa(exo);
+        else supa('PATCH','exercices',{image:exo.image},'?id=eq.'+exoId);
+        document.getElementById('ef-img-preview').src=compressed;
+        toast('📸 Photo ajoutée');
+      }
+    };
+    tmpImg.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
 function showExoDetailModal(id){
   const exo=S.exercices.find(e=>e.id===id);if(!exo)return;
   const videoBtn=exo.video?'<a href="'+exo.video+'" target="_blank" class="btn btn-ghost" style="text-decoration:none;margin-bottom:12px">🎬 Voir la vidéo</a>':'';
+  const imgHtml=exo.image?'<img src="'+exo.image+'" style="width:100%;height:auto;border-radius:8px;margin-bottom:12px" />':'';
   openModal(
     '<div class="modal-title">'+exo.nom+'</div>'+
     '<span class="badge badge-green" style="margin-bottom:12px;display:inline-block">'+exo.cat+'</span>'+
+    imgHtml+
     (exo.desc?'<p style="margin-top:10px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px">'+exo.desc+'</p>':'')+
     videoBtn+
     '<div style="display:flex;gap:8px;margin-top:8px">'+
@@ -7446,6 +7558,9 @@ function startBlockPlan(){
   S.client.blockPlan = bp;
   persist();
   saveClientToSupa(S.client);
+
+  // Nettoyer le brouillon sessionStorage puisqu'on a commité
+  sessionStorage.removeItem('c_blockPlan_draft');
 
   if(typeof refreshBlockPlannerInPlace === 'function'){
     refreshBlockPlannerInPlace();
