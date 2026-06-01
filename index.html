@@ -1193,6 +1193,13 @@ html.theme-night .screen#screen-bilanHebdo{background:linear-gradient(135deg, #1
   background:rgba(233,75,60,.18);
 }
 
+/* ── DIET MODE TOGGLE ── */
+.diet-toggle-container{display:flex;gap:6px;align-items:center;transition:gap .3s ease}
+.diet-toggle-switch{width:50px;height:28px;border-radius:14px;position:relative;cursor:pointer;transition:background .3s ease;display:flex;align-items:center;padding:2px;box-sizing:border-box}
+.diet-toggle-switch-circle{width:22px;height:22px;border-radius:50%;background:white;transition:transform .3s cubic-bezier(.34,.1,.68,.55);position:relative}
+.diet-icon-btn{width:34px;height:34px;border-radius:50%;background:var(--bg2);border:.5px solid var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;transition:all .3s ease;opacity:1;transform:translateX(0)}
+.diet-icon-btn.hidden{opacity:0;transform:translateX(20px);pointer-events:none}
+
 </style>
 </head>
 <body>
@@ -3999,7 +4006,8 @@ async function createClient(){
     favori:false,
     archive:false,
     formule:'suivi',
-    calculsPerte:defaultCalculsPerte()
+    calculsPerte:defaultCalculsPerte(),
+    dietMode:'flexible'
   };
 
   S.clients.push(newClient);
@@ -4016,7 +4024,8 @@ async function createClient(){
     user_id:newClient.user_id,
     objectif:newClient.objectif||null,
     favori:newClient.favori||false,
-    archive:newClient.archive||false
+    archive:newClient.archive||false,
+    dietMode:newClient.dietMode||'flexible'
   });
 
   if(!created){
@@ -5386,11 +5395,13 @@ function restoreDieteDraft(){
 render.diete=function(){
   const c=S.client;
   const ds=S.dieteState;
+  const isDietStrict=(c.dietMode||'flexible')==='stricte';
   setTopbar('Diète', c.prenom+' '+c.nom,
-    `<div style="display:flex;gap:6px">
-      <div class="icon-btn" onclick="navigate('ia')" title="Assistant IA">🤖</div>
-      <div class="icon-btn" onclick="navigate('aliments')" title="Créateur aliments">🥑</div>
-      <div class="icon-btn" onclick="navigate('recettes')" title="Recettes">👩‍🍳</div>
+    `<div class="diet-toggle-container">
+      ${currentIsCoach?`<div class="diet-toggle-switch" onclick="toggleDietMode()" style="background:${isDietStrict?'#E24B4A':'#1D9E75'}" title="Mode: ${isDietStrict?'Stricte':'Flexible'}"><div class="diet-toggle-switch-circle" style="transform:translateX(${isDietStrict?'22px':'0px'})"></div></div>`:''}
+      <div class="diet-icon-btn ${isDietStrict?'hidden':''}" onclick="navigate('ia')" title="Assistant IA">🤖</div>
+      <div class="diet-icon-btn ${isDietStrict?'hidden':''}" onclick="navigate('aliments')" title="Créateur aliments">🥑</div>
+      <div class="diet-icon-btn ${isDietStrict?'hidden':''}" onclick="navigate('recettes')" title="Recettes">👩‍🍳</div>
     </div>`
   );
   // Restaurer le brouillon de diète depuis sessionStorage si le client et le jour correspondent
@@ -5441,17 +5452,16 @@ render.diete=function(){
     <div id="meal-card-${mi}" style="background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px 8px;background:var(--bg2);border-bottom:.5px solid var(--border)">
         <div style="display:flex;align-items:center;gap:8px">
-          <button onclick="dDeleteMeal(${mi})" style="width:22px;height:22px;border-radius:50%;border:.5px solid var(--border2);background:transparent;color:var(--text3);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
-          <span class="meal-name-d" onclick="dRenameMeal(${mi})" style="cursor:pointer" title="Renommer">${meal.name}</span>
+          ${isDietStrict?'<div style="width:22px"></div>':'<button onclick="dDeleteMeal(${mi})" style="width:22px;height:22px;border-radius:50%;border:.5px solid var(--border2);background:transparent;color:var(--text3);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>'}
+          <span class="meal-name-d" onclick="${isDietStrict?'':'dRenameMeal('+mi+')'}" style="cursor:${isDietStrict?'default':'pointer'}" title="${isDietStrict?'':'Renommer'}">${meal.name}</span>
           <div style="display:flex;gap:2px;margin-left:4px">
-            <button onclick="dMoveMeal(${mi},-1)" ${mi===0?'disabled':''} style="width:20px;height:20px;border-radius:4px;border:.5px solid var(--border2);background:transparent;color:${mi===0?'var(--text3)':'var(--text2)'};font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${mi===0?'0.3':'1'}">↑</button>
-            <button onclick="dMoveMeal(${mi},1)" ${mi===meals.length-1?'disabled':''} style="width:20px;height:20px;border-radius:4px;border:.5px solid var(--border2);background:transparent;color:${mi===meals.length-1?'var(--text3)':'var(--text2)'};font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${mi===meals.length-1?'0.3':'1'}">↓</button>
+            <button onclick="dMoveMeal(${mi},-1)" ${mi===0||isDietStrict?'disabled':''} style="width:20px;height:20px;border-radius:4px;border:.5px solid var(--border2);background:transparent;color:${mi===0||isDietStrict?'var(--text3)':'var(--text2)'};font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${mi===0||isDietStrict?'0.3':'1'}">↑</button>
+            <button onclick="dMoveMeal(${mi},1)" ${mi===meals.length-1||isDietStrict?'disabled':''} style="width:20px;height:20px;border-radius:4px;border:.5px solid var(--border2);background:transparent;color:${mi===meals.length-1||isDietStrict?'var(--text3)':'var(--text2)'};font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${mi===meals.length-1||isDietStrict?'0.3':'1'}">↓</button>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="meal-kcal-d">${mealKcalD(meal.items)} kcal</span>
-          <button onclick="dScanAddToMeal(${mi})" title="Scanner une étiquette" style="width:24px;height:24px;border-radius:50%;border:.5px solid var(--border);background:var(--bg3);color:var(--text2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;margin-right:2px">📷</button>
-          <button onclick="dAddItemToMeal(${mi})" style="width:24px;height:24px;border-radius:50%;border:.5px solid var(--green);background:var(--green-light);color:var(--green-dark);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
+          ${isDietStrict?'':'<button onclick="dScanAddToMeal('+mi+')" title="Scanner une étiquette" style="width:24px;height:24px;border-radius:50%;border:.5px solid var(--border);background:var(--bg3);color:var(--text2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;margin-right:2px">📷</button><button onclick="dAddItemToMeal('+mi+')" style="width:24px;height:24px;border-radius:50%;border:.5px solid var(--green);background:var(--green-light);color:var(--green-dark);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">+</button>'}
         </div>
       </div>
       <div style="padding:8px 10px">
@@ -5459,16 +5469,16 @@ render.diete=function(){
           const cv=calcFoodItem(item);
           const isUnit=(item.type||'').toUpperCase()==='UNITÉ';
           const step=isUnit?1:5;
-          const isOpen=ds.sel&&ds.sel.mi===mi&&ds.sel.ii===ii;
+          const isOpen=!isDietStrict&&ds.sel&&ds.sel.mi===mi&&ds.sel.ii===ii;
           return `<div class="food-card-d${item.enabled?'':' disabled'}${isOpen?' open':''}">
             <div class="food-row1">
               <div class="chk${item.enabled?' on':''}" onclick="dToggle(${mi},${ii})"></div>
-              <div class="food-info-d" onclick="dOpenSel(${mi},${ii})">
+              <div class="food-info-d" onclick="${isDietStrict?'':'dOpenSel('+mi+','+ii+')'}" style="cursor:${isDietStrict?'default':'pointer'}">
                 <div class="food-nm">${item.food}</div>
-                <div class="food-ct">${item.cat} · changer →</div>
+                <div class="food-ct">${isDietStrict?item.cat:item.cat+' · changer →'}</div>
               </div>
               <div class="food-kcal-d">${item.enabled?cv.kcal+' kcal':'—'}</div>
-              <button onclick="dRemoveItem(${mi},${ii})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0">✕</button>
+              ${isDietStrict?'<div style="width:24px"></div>':'<button onclick="dRemoveItem('+mi+','+ii+')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0">✕</button>'}
             </div>
             ${item.enabled?`<div class="food-macros-d">
               <span class="${over.prot?'over':''}">P ${cv.prot}g</span>
@@ -5486,7 +5496,7 @@ render.diete=function(){
         }).join('')}
       </div>
     </div>`).join('')+`
-    <button class="btn btn-ghost" style="margin-bottom:10px" onclick="dAddMeal()">+ Ajouter un repas</button>
+    ${isDietStrict?'':'<button class="btn btn-ghost" style="margin-bottom:10px" onclick="dAddMeal()">+ Ajouter un repas</button>'}
     <div style="display:flex;gap:8px">
       <button class="btn btn-primary" style="flex:1" onclick="saveClientDiete()">💾 Sauvegarder la diète</button>
       <button class="btn btn-secondary" style="flex:1" onclick="resetClientDiete()">↩ Réinitialiser</button>
@@ -6450,6 +6460,7 @@ async function resetIaKey(){
 // ALIMENTS CUSTOM
 // ─────────────────────────────────────────
 render.aliments=function(){
+  if(S.client&&(S.client.dietMode||'flexible')==='stricte'){navigate('diete');return;}
   setTopbar('Créateur d\'aliments','',`<div class="icon-btn" onclick="navigate('recettes')">👩‍🍳</div>`);
   const db=getDieteDB();
   const el=document.getElementById('aliments-content');
@@ -6569,10 +6580,21 @@ function _dDeleteAliment(id){
   renderCustomAlimentsList();toast('Aliment supprimé');
 }
 
+function toggleDietMode(){
+  if(!S.client)return;
+  const newMode=(S.client.dietMode||'flexible')==='flexible'?'stricte':'flexible';
+  S.client.dietMode=newMode;
+  persist();
+  supa('PATCH','clients',{dietMode:newMode},`?id=eq.${S.client.id}`);
+  toast(`Mode régime: ${newMode==='flexible'?'Flexible ✨':'Stricte 🔒'}`);
+  render.diete();
+}
+
 // ─────────────────────────────────────────
 // RECETTES
 // ─────────────────────────────────────────
 render.recettes=function(){
+  if(S.client&&(S.client.dietMode||'flexible')==='stricte'){navigate('diete');return;}
   setTopbar('Recettes','',`<div class="icon-btn" onclick="showNewRecetteModal()">＋</div>`);
   const el=document.getElementById('recettes-content');
   if(!S.recettes.length){
@@ -6802,6 +6824,7 @@ async function syncClients(){
     if(!row) return row;
     if(row.block_plan!==undefined){ row.blockPlan=row.block_plan; delete row.block_plan; }
     if(row.jour_bilan!==undefined){ row.jourBilan=row.jour_bilan; delete row.jour_bilan; }
+    if(!row.dietMode){ row.dietMode='flexible'; }
     return row;
   };
   if(actifs){const a=actifs.map(normalize);S.clients=a;lsSet('c_clients',a);}
