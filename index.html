@@ -5227,15 +5227,14 @@ function getDieteDB(){
   for(const c in DB_BASE) db[c]=[...DB_BASE[c]];
   // Catégories custom vides (créées par l'utilisateur mais sans aliment encore)
   (S.customCategories||[]).forEach(c=>{ if(!db[c]) db[c]=[]; });
-  // Custom aliments
-  // Filtrer par client courant (ou aliments sans client_id pour rétrocompat)
-  const clientId=S.client?.id;
-  S.customAliments.filter(a=>!a.client_id||a.client_id===clientId).forEach(a=>{
+  // Custom aliments — tous visibles (pas de filtre par client)
+  S.customAliments.forEach(a=>{
     if(!db[a.categorie]) db[a.categorie]=[];
     if(!db[a.categorie].find(x=>x.n===a.nom)) db[a.categorie].push({n:a.nom,k:a.kcal,p:a.proteines,g:a.glucides,l:a.lipides,gpu:a.poids_unite||undefined,custom:true});
   });
-  // Recettes — calculer kcal/100g équivalent pour 1 part
-  S.recettes.forEach(r=>{
+  // Recettes — client-spécifiques, calculer kcal/100g équivalent pour 1 part
+  const clientId=S.client?.id;
+  S.recettes.filter(r=>!r.client_id||r.client_id===clientId).forEach(r=>{
     const cat=r.categorie||'Recettes';
     if(!db[cat]) db[cat]=[];
     if(db[cat].find(x=>x.n===r.nom)) return;
@@ -5781,8 +5780,7 @@ function _confirmMealScan(mi,poids_unite){
   const isUnit=document.currentMealScanMode==='unit';
   const newAliment={
     id:uid(),nom,categorie:cat,kcal,proteines:prot,glucides:gluc,lipides:lip,
-    poids_unite:isUnit?poids_unite:null,
-    client_id:S.client?.id||null
+    poids_unite:isUnit?poids_unite:null
   };
   if(!S.customAliments) S.customAliments=[];
   if(!S.customAliments.find(a=>a.nom.toLowerCase()===nom.toLowerCase())){
@@ -6227,8 +6225,7 @@ function applyIaDietModification(modIdx){
               id:uid(),
               nom:f.nom,
               categorie:f.cat||'Divers',
-              kcal,proteines:prot,glucides:gluc,lipides:lip,
-              client_id:S.client.id
+              kcal,proteines:prot,glucides:gluc,lipides:lip
             };
             S.customAliments.push(entry);
             saveCustomAlimentToSupa(entry);
@@ -6553,7 +6550,7 @@ function dSubmitAliment(){
   if(!S.dieteState.creatorCat){toast('⚠ Sélectionne une catégorie');return;}
   if(!nom){toast('⚠ Saisis un nom');return;}
   if([kcal,prot,gluc,lip].some(isNaN)){toast('⚠ Remplis toutes les valeurs');return;}
-  const entry={id:'ca'+uid(),categorie:S.dieteState.creatorCat,nom,kcal,proteines:prot,glucides:gluc,lipides:lip,client_id:S.client?.id||null};
+  const entry={id:'ca'+uid(),categorie:S.dieteState.creatorCat,nom,kcal,proteines:prot,glucides:gluc,lipides:lip};
   if(S.dieteState.unitOn){const gpu=parseFloat(document.getElementById('fa-gpu').value);if(!isNaN(gpu)&&gpu>0)entry.poids_unite=gpu;}
   S.customAliments.push(entry);
   lsSet('c_customAliments',S.customAliments);
@@ -6597,11 +6594,12 @@ render.recettes=function(){
   if(S.client&&(S.client.dietMode||'flexible')==='stricte'){navigate('diete');return;}
   setTopbar('Recettes','',`<div class="icon-btn" onclick="showNewRecetteModal()">＋</div>`);
   const el=document.getElementById('recettes-content');
-  if(!S.recettes.length){
+  const clientRecettes=S.recettes.filter(r=>!r.client_id||r.client_id===S.client?.id);
+  if(!clientRecettes.length){
     el.innerHTML=`<div class="empty"><div class="empty-icon">👩‍🍳</div><div class="empty-title">Aucune recette</div><div class="empty-sub">Crée ta première recette</div><div style="padding:0 32px;margin-top:8px"><button class="btn btn-primary" onclick="showNewRecetteModal()">+ Créer une recette</button></div></div>`;
     return;
   }
-  el.innerHTML=S.recettes.map(r=>{
+  el.innerHTML=clientRecettes.map(r=>{
     let totalK=0,totalP=0;
     (r.ingredients||[]).forEach(ing=>{const res=lookupFood(ing.aliment);if(res){totalK+=ing.quantite/100*res.f.k;totalP+=ing.quantite/100*res.f.p;}});
     const pp=r.nb_parts>0?Math.round(totalK/r.nb_parts):Math.round(totalK);
@@ -6680,7 +6678,7 @@ function createRecette(){
   if(!nom){toast('⚠ Saisis un nom');return;}
   if(!S.recetteEnCours.ingredients.length){toast('⚠ Ajoute au moins un ingrédient');return;}
   const rcCat=document.getElementById('rc-cat').value.trim()||'Recettes';
-  const newR={id:'r'+uid(),nom,categorie:rcCat,nb_parts:S.recetteEnCours.nb_parts||1,ingredients:S.recetteEnCours.ingredients};
+  const newR={id:'r'+uid(),nom,categorie:rcCat,nb_parts:S.recetteEnCours.nb_parts||1,ingredients:S.recetteEnCours.ingredients,client_id:S.client.id};
   S.recettes.push(newR);
   S.recettes.sort((a,b)=>a.nom.localeCompare(b.nom));
   lsSet('c_recettes',S.recettes);
@@ -6715,7 +6713,7 @@ function saveRecette(id){
   const nom=document.getElementById('rc-nom').value.trim();if(!nom){toast('⚠ Nom obligatoire');return;}
   const idx=S.recettes.findIndex(r=>r.id===id);
   const rcCat2=document.getElementById('rc-cat').value.trim()||'Recettes';
-  if(idx>=0) S.recettes[idx]={id,nom,categorie:rcCat2,nb_parts:S.recetteEnCours.nb_parts,ingredients:S.recetteEnCours.ingredients};
+  if(idx>=0) S.recettes[idx]={id,nom,categorie:rcCat2,nb_parts:S.recetteEnCours.nb_parts,ingredients:S.recetteEnCours.ingredients,client_id:S.client.id};
   lsSet('c_recettes',S.recettes);closeModal();render.recettes();toast('✓ Recette modifiée');
 }
 function deleteRecette(id){
@@ -7155,8 +7153,7 @@ async function saveCustomAlimentToSupa(aliment){
       proteines:aliment.proteines||0,
       glucides:aliment.glucides||0,
       lipides:aliment.lipides||0,
-      poids_unite:aliment.poids_unite||null,
-      client_id:aliment.client_id||S.client?.id||null
+      poids_unite:aliment.poids_unite||null
     };
     await supa('POST','aliments_custom',payload);
   }
