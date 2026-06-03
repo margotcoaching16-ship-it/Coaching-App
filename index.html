@@ -1593,10 +1593,12 @@ async function doSetPassword(){
   }
 }
 
-async function supa(method,table,body,query=''){
+async function supa(method,table,body,query='',opts){
   try{
     const url=`${SUPA_URL}/rest/v1/${table}${query}`;
-    const r=await fetch(url,{method,headers:getHeaders(),body:body?JSON.stringify(body):undefined});
+    const headers=getHeaders();
+    if(opts&&opts.prefer){headers['Prefer']=opts.prefer;}
+    const r=await fetch(url,{method,headers,body:body?JSON.stringify(body):undefined});
     if(!r.ok){const e=await r.text();console.error('Supabase error:',e);return null;}
     if(method==='DELETE'||r.status===204)return true;
     return r.json();
@@ -1631,7 +1633,7 @@ async function supaDeleteVideo(path){
 
 // localStorage comme cache offline
 function lsGet(k){try{const r=localStorage.getItem(k);return r?JSON.parse(r):null;}catch{return null;}}
-function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){console.error('localStorage plein ou indisponible:',k,e);try{if(typeof toast==='function')toast('⚠ Stockage local plein — sauvegarde serveur prioritaire');}catch{}return false;}}
 
 // persist() garde la compatibilité — sauvegarde locale uniquement
 function persist(){
@@ -2700,7 +2702,7 @@ render.training=function(){
       <div class="prog-header" onclick="toggleProg('${prog.id}')">
         <div class="prog-icon">📋</div>
         <div class="prog-info">
-          <div class="prog-name">${prog.nom}</div>
+          <div class="prog-name">${prog.nom}${currentIsCoach?` <button class="reorder-btn" style="vertical-align:middle" onclick="event.stopPropagation();renameProg('${prog.id}')" title="Renommer">✏️</button>`:''}</div>
           <div class="prog-meta">${prog.nb_seances} séance${prog.nb_seances>1?'s':''} · ${seances.length} configurée${seances.length>1?'s':''}</div>
         </div>
         <div class="prog-chevron${prog._open?' open':''}" id="chev-${prog.id}">›</div>
@@ -2712,6 +2714,7 @@ render.training=function(){
             <div class="seance-name">${s.nom}</div>
             <div style="display:flex;align-items:center;gap:4px">
               ${(()=>{const al=lsGet('c_activeLog');return al&&al.seance_type_id===s.id?'<span style="font-size:10px;font-weight:700;color:var(--amber);background:var(--amber-light);padding:2px 7px;border-radius:10px">en cours</span>':''})()}
+              ${currentIsCoach?`<button class="reorder-btn" onclick="event.stopPropagation();renameSeance('${s.id}')" title="Renommer">✏️</button>`:''}
               ${currentIsCoach&&seances.length>1?`
                 <button class="reorder-btn" onclick="event.stopPropagation();moveSeance('${s.id}','${prog.id}',-1)" ${i===0?'disabled':''}>↑</button>
                 <button class="reorder-btn" onclick="event.stopPropagation();moveSeance('${s.id}','${prog.id}',1)" ${i===seances.length-1?'disabled':''}>↓</button>
@@ -2724,7 +2727,7 @@ render.training=function(){
           <div class="seance-name" style="color:var(--green)">Ajouter une séance</div>
         </div>`:''}
         <div style="padding:8px 14px;display:flex;gap:8px">
-          <button class="btn btn-ghost btn-sm" style="flex:1" onclick="showLogModal('${prog.id}')">▶ Démarrer une séance</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1" onclick="showAddSeanceModal('${prog.id}')">➕ Ajouter une séance</button>
           <button class="btn btn-danger btn-sm" style="width:auto;padding:8px 12px" onclick="deleteProg('${prog.id}')">🗑</button>
         </div>
       </div>`:''}
@@ -2755,6 +2758,46 @@ async function moveSeance(seanceId, progId, dir){
   ]);
 }
 
+function renameProg(id){
+  event&&event.stopPropagation&&event.stopPropagation();
+  const prog=S.programmes.find(p=>p.id===id);if(!prog)return;
+  openModal(
+    '<div class="modal-title">Renommer le programme</div>'+
+    '<div class="form-group"><label class="form-label">Nom du programme</label><input class="form-inp" id="prog-rename-inp" value="'+(prog.nom||'').replace(/"/g,'&quot;')+'" /></div>'+
+    '<button class="btn btn-primary" onclick="saveProgName(\''+id+'\')">Enregistrer</button>'
+  );
+  setTimeout(()=>{const el=document.getElementById('prog-rename-inp');if(el){el.focus();el.select();}},300);
+}
+function saveProgName(id){
+  const nom=document.getElementById('prog-rename-inp').value.trim();
+  if(!nom){toast('⚠ Saisis un nom');return;}
+  const prog=S.programmes.find(p=>p.id===id);if(!prog)return;
+  prog.nom=nom;
+  persist();closeModal();render.training();
+  supa('PATCH','programmes',{nom},`?id=eq.${id}`);
+  toast('✓ Programme renommé');
+}
+function renameSeance(id){
+  event&&event.stopPropagation&&event.stopPropagation();
+  const s=S.seancesType.find(x=>x.id===id);if(!s)return;
+  openModal(
+    '<div class="modal-title">Renommer la séance</div>'+
+    '<div class="form-group"><label class="form-label">Nom de la séance</label><input class="form-inp" id="seance-rename-inp" value="'+(s.nom||'').replace(/"/g,'&quot;')+'" /></div>'+
+    '<button class="btn btn-primary" onclick="saveSeanceName(\''+id+'\')">Enregistrer</button>'
+  );
+  setTimeout(()=>{const el=document.getElementById('seance-rename-inp');if(el){el.focus();el.select();}},300);
+}
+function saveSeanceName(id){
+  const nom=document.getElementById('seance-rename-inp').value.trim();
+  if(!nom){toast('⚠ Saisis un nom');return;}
+  const s=S.seancesType.find(x=>x.id===id);if(!s)return;
+  s.nom=nom;
+  persist();closeModal();
+  if(S.seanceType&&S.seanceType.id===id&&S.screen==='seance') render.seance(); else render.training();
+  supa('PATCH','seances_type',{nom},`?id=eq.${id}`);
+  toast('✓ Séance renommée');
+}
+
 function deleteProg(id){
   confirmDialog('Supprimer ce programme ?','Toutes les séances associées seront également supprimées.','Supprimer',()=>{
   _deleteProg(id);
@@ -2774,7 +2817,7 @@ async function _deleteProg(id){
 render.seance=function(){
   const s=S.seanceType;
   const prog=S.programmes.find(p=>p.id===s.programme_id);
-  setTopbar(s.nom,prog?prog.nom:'',`<div class="icon-btn" onclick="showAddExoModal()">＋</div>`);
+  setTopbar(s.nom,prog?prog.nom:'',`<div style="display:flex;gap:6px">${currentIsCoach?`<div class="icon-btn" onclick="renameSeance('${s.id}')" title="Renommer la séance">✏️</div>`:''}<div class="icon-btn" onclick="showAddExoModal()">＋</div></div>`);
   const el=document.getElementById('seance-content');
   const exos=s.exercices||[];
   const activeLog=lsGet('c_activeLog');
@@ -2905,7 +2948,7 @@ function syncExoToActiveLog(exoId, updates){
   if(!S.logSeance||S.logSeance.seance_type_id!==S.seanceType?.id)return;
   const logExo=S.logSeance.exercices.find(e=>e.exo_id===exoId);
   if(logExo)Object.assign(logExo,updates);
-  lsSet('c_activeLog',S.logSeance);
+  saveActiveLog(S.logSeance);
 }
 
 function moveGroupInSeance(gi,dir){
@@ -2934,7 +2977,7 @@ function moveGroupInSeance(gi,dir){
         ...exos.map(e=>byId[e.exo_id]).filter(Boolean),
         ...S.logSeance.exercices.filter(e=>!seanceIds.has(e.exo_id))
       ];
-      lsSet('c_activeLog',S.logSeance);
+      saveActiveLog(S.logSeance);
     }
     const idx=S.seancesType.findIndex(s=>s.id===S.seanceType.id);
     if(idx>=0)S.seancesType[idx]=S.seanceType;
@@ -2948,7 +2991,7 @@ function removeExoFromSeance(ei){
   // Synchroniser avec le log actif
   if(removedId&&S.logSeance&&S.logSeance.seance_type_id===S.seanceType.id){
     S.logSeance.exercices=S.logSeance.exercices.filter(e=>e.exo_id!==removedId);
-    lsSet('c_activeLog',S.logSeance);
+    saveActiveLog(S.logSeance);
   }
   const idx=S.seancesType.findIndex(s=>s.id===S.seanceType.id);
   if(idx>=0)S.seancesType[idx]=S.seanceType;
@@ -3500,7 +3543,7 @@ function setIntensMethodSuperset(ei, ej, context){
   exos[ei].methode='superset'; exos[ei].supersetWith=exos[ej].exo_id||ej;
   exos[ej].methode='superset'; exos[ej].supersetWith=exos[ei].exo_id||ei;
   if(context==='log'){
-    lsSet('c_activeLog',S.logSeance);
+    saveActiveLog(S.logSeance);
     closeModal();render.log();
   } else {
     syncExoToActiveLog(exos[ei].exo_id,{methode:'superset',supersetWith:exos[ei].supersetWith});
@@ -3523,7 +3566,7 @@ function setIntensMethod(ei, method, context='seance'){
   exos[ei].methode=method;
   exos[ei].supersetWith=null;
   if(context==='log'){
-    lsSet('c_activeLog',S.logSeance);
+    saveActiveLog(S.logSeance);
     closeModal();render.log();
   } else {
     syncExoToActiveLog(exos[ei].exo_id,{methode:method,supersetWith:null});
@@ -3559,13 +3602,13 @@ function updateLogDrop(ei,field,val){
   const exo=S.logSeance.exercices[ei];
   if(field==='poids') exo._dropPoids=val;
   else exo._dropReps=val;
-  lsSet('c_activeLog',S.logSeance);
+  saveActiveLog(S.logSeance);
 }
 function toggleLogDrop(ei){
   if(!S.logSeance) return;
   const exo=S.logSeance.exercices[ei];
   exo._dropDone=!exo._dropDone;
-  lsSet('c_activeLog',S.logSeance);
+  saveActiveLog(S.logSeance);
   render.log();
 }
 
@@ -3757,7 +3800,7 @@ function updateLogSerie(ei,si,field,val,inputEl){
   const row=inputEl?.closest('.serie-row');
   const doneEl=row?.querySelector('.serie-done');
   if(doneEl) doneEl.classList.toggle('on',serie.done);
-  lsSet('c_activeLog',S.logSeance);
+  saveActiveLog(S.logSeance);
 }
 
 // ─────────────────────────────────────────
@@ -3935,7 +3978,7 @@ function swapLogExo(ei, newExoId, newNom, newCat, newVideo){
     video:newVideo||'',
     _replacedFrom:original._replacedFrom||original.nom // conserver l'original de base
   };
-  lsSet('c_activeLog',S.logSeance);
+  saveActiveLog(S.logSeance);
   closeModal();
   render.log();
   toast(`🔄 ${original.nom} → ${newNom}`);
@@ -3944,12 +3987,15 @@ function swapLogExo(ei, newExoId, newNom, newCat, newVideo){
 function updateLogComment(ei, val){
   if(!(S.logSeance&&S.logSeance.exercices[ei]))return;
   S.logSeance.exercices[ei].commentaire=val.trim();
-  lsSet('c_activeLog',S.logSeance);
+  saveActiveLog(S.logSeance);
 }
 
 function saveLog(){
+  const finishedClientId=S.logSeance&&S.logSeance.client_id;
   S.logsSeances.push(S.logSeance);persist();
   saveLogToSupa(S.logSeance);
+  clearTimeout(_pushActiveLogTimer);
+  clearActiveLogServer(finishedClientId);
   localStorage.removeItem('c_activeLog');
   const prev=S.history.pop();S.client=prev.client;S.programme=prev.programme;S.seanceType=prev.seanceType;
   showScreen(prev.screen,{noHistory:true});
@@ -3958,6 +4004,9 @@ function saveLog(){
 
 function confirmCancelLog(){
   confirmDialog('Annuler la séance ?','Les données saisies ne seront pas sauvegardées.','Annuler la séance',()=>{
+    const cancelClientId=S.logSeance&&S.logSeance.client_id;
+    clearTimeout(_pushActiveLogTimer);
+    clearActiveLogServer(cancelClientId);
     localStorage.removeItem('c_activeLog');
     S.logSeance=null;
     const prev=S.history.pop();S.client=prev.client;S.programme=prev.programme;S.seanceType=prev.seanceType;
@@ -4090,6 +4139,12 @@ function createSeanceType(progId){
   const ordre=S.seancesType.filter(s=>s.programme_id===progId).length;
   const newST={id:uid(),programme_id:progId,nom,ordre,exercices:[]};
   S.seancesType.push(newST);
+  // Augmente nb_seances du programme si on dépasse le nombre prévu
+  const prog=S.programmes.find(p=>p.id===progId);
+  if(prog && (ordre+1)>prog.nb_seances){
+    prog.nb_seances=ordre+1;
+    supa('PATCH','programmes',{nb_seances:prog.nb_seances},`?id=eq.${prog.id}`);
+  }
   persist();closeModal();render.training();
   supa('POST','seances_type',{id:newST.id,programme_id:newST.programme_id,nom:newST.nom,ordre:newST.ordre,exercices:newST.exercices});
   toast('✓ Séance créée');
@@ -4216,7 +4271,7 @@ function confirmAddExo(exoId){
       duree_min:duree_min||0,nb_series,reps_min,reps_max,methode:null,supersetWith:null,
       series:Array.from({length:isCardio?1:nb_series},()=>isCardio?{duree:'',done:false}:{poids:'',reps:'',done:false})
     });
-    lsSet('c_activeLog',S.logSeance);
+    saveActiveLog(S.logSeance);
   }
   persist();saveSeanceTypeToSupa(S.seanceType);closeModal();render.seance();toast(`✓ ${exo.nom} ajouté`);
 }
@@ -4242,8 +4297,66 @@ function showLogModal(progId){
   );
 }
 
+// ─── Synchro de la séance en cours avec Supabase (table seances_en_cours) ───
+let _pushActiveLogTimer=null;
+// Sauvegarde locale immédiate + push serveur (debounce ~1.2s)
+function saveActiveLog(log){
+  if(!log){return;}
+  log.updated_at_ts=Date.now();
+  lsSet('c_activeLog',log);
+  clearTimeout(_pushActiveLogTimer);
+  _pushActiveLogTimer=setTimeout(()=>{pushActiveLogNow(log);},1200);
+}
+// Upsert immédiat de la séance en cours vers le serveur
+async function pushActiveLogNow(log){
+  if(!log||!log.client_id){return;}
+  const payload={
+    client_id:log.client_id,
+    seance_type_id:log.seance_type_id||null,
+    data:log,
+    updated_at:new Date().toISOString()
+  };
+  // upsert sur la contrainte unique(client_id)
+  await supa('POST','seances_en_cours',payload,'?on_conflict=client_id',{prefer:'resolution=merge-duplicates'});
+}
+// Supprime la séance en cours côté serveur (fin ou annulation)
+async function clearActiveLogServer(clientId){
+  if(!clientId){return;}
+  await supa('DELETE','seances_en_cours','',`?client_id=eq.${clientId}`);
+}
+// Récupère la séance en cours stockée sur le serveur pour un client donné
+async function fetchActiveLogServer(clientId){
+  if(!clientId){return null;}
+  const rows=await supa('GET','seances_en_cours','',`?client_id=eq.${clientId}&limit=1`);
+  if(rows&&rows.length){return rows[0];}
+  return null;
+}
+
 async function restoreActiveSession(){
-  const activeLog = lsGet('c_activeLog');
+  let activeLog = lsGet('c_activeLog');
+
+  // Détermine quel client est concerné par une éventuelle séance en cours.
+  // Côté cliente : son propre id. Côté coach : celui de l'activeLog local.
+  const candidateClientId = !currentIsCoach
+    ? (S.client && S.client.id)
+    : (activeLog && activeLog.client_id);
+
+  // Va chercher la version serveur et garde la plus récente (dernière modif gagne).
+  if(candidateClientId){
+    try{
+      const serverRow = await fetchActiveLogServer(candidateClientId);
+      if(serverRow && serverRow.data){
+        const localTs = activeLog && activeLog.client_id===candidateClientId && activeLog.updated_at_ts ? activeLog.updated_at_ts : 0;
+        const serverTs = serverRow.updated_at ? Date.parse(serverRow.updated_at) : 0;
+        // Si pas d'activeLog local pertinent, ou serveur plus récent → on prend le serveur
+        if(!activeLog || activeLog.client_id!==candidateClientId || serverTs>=localTs){
+          activeLog = serverRow.data;
+          lsSet('c_activeLog',activeLog);
+        }
+      }
+    }catch(e){console.error('fetchActiveLogServer:',e);}
+  }
+
   if(!activeLog || !activeLog.seance_type_id || !activeLog.client_id) return false;
 
   // Mode client : un seul client, doit matcher
@@ -4312,7 +4425,8 @@ function startLog(seanceTypeId){
       series:Array.from({length:exo.cat==='Cardio'?1:exo.nb_series},()=>exo.cat==='Cardio'?{duree:'',done:false}:{poids:'',reps:'',done:false})
     }))
   };
-  lsSet('c_activeLog',S.logSeance);
+  saveActiveLog(S.logSeance);
+  pushActiveLogNow(S.logSeance);
   closeModal();navigate('log');
 }
 
@@ -4576,9 +4690,12 @@ function renderBhPhotos(bilan, allWeeks){
   const mensuFields=[
     {key:'poitrine',label:'Poitrine'},
     {key:'taille',label:'Taille'},
+    {key:'epaules',label:'Épaules'},
     {key:'fessiers',label:'Fessiers'},
-    {key:'cuisses',label:'Cuisses'},
-    {key:'bras',label:'Bras'},
+    {key:'cuisses',label:'Cuisse G'},
+    {key:'cuisse_d',label:'Cuisse D'},
+    {key:'bras',label:'Bras G'},
+    {key:'bras_d',label:'Bras D'},
   ];
   function diffHtml(key){
     if(!prevBilan)return'';
@@ -4615,9 +4732,12 @@ function renderBhMensurations(bilan, allWeeks){
   const fields=[
     {key:'poitrine',label:'Poitrine',unit:'cm'},
     {key:'taille',label:'Taille',unit:'cm'},
+    {key:'epaules',label:'Épaules',unit:'cm'},
     {key:'fessiers',label:'Fessiers',unit:'cm'},
-    {key:'cuisses',label:'Cuisses',unit:'cm'},
-    {key:'bras',label:'Bras',unit:'cm'},
+    {key:'cuisses',label:'Cuisse G',unit:'cm'},
+    {key:'cuisse_d',label:'Cuisse D',unit:'cm'},
+    {key:'bras',label:'Bras G',unit:'cm'},
+    {key:'bras_d',label:'Bras D',unit:'cm'},
   ];
   function diffHtml(key){
     if(!prevBilan)return'';
@@ -4677,7 +4797,7 @@ function renderBhComparaison(clientId, allWeeks){
 
 
 function renderMensuComparaison(a,b){
-  const fields=[{key:'poitrine',label:'Poitrine'},{key:'taille',label:'Taille'},{key:'fessiers',label:'Fessiers'},{key:'cuisses',label:'Cuisses'},{key:'bras',label:'Bras'}];
+  const fields=[{key:'poitrine',label:'Poitrine'},{key:'taille',label:'Taille'},{key:'epaules',label:'Épaules'},{key:'fessiers',label:'Fessiers'},{key:'cuisses',label:'Cuisse G'},{key:'cuisse_d',label:'Cuisse D'},{key:'bras',label:'Bras G'},{key:'bras_d',label:'Bras D'}];
   const hasData=fields.some(f=>a.mensurations[f.key]||b.mensurations[f.key]);
   if(!hasData)return'';
   let rows='';
@@ -4928,7 +5048,7 @@ function getOrCreateBilanHebdo(clientId,date){
       client_id:clientId,
       date:monday,
       photos:{face:null,gauche:null,droit:null,dos:null},
-      mensurations:{poitrine:'',taille:'',fessiers:'',cuisses:'',bras:''},
+      mensurations:{poitrine:'',taille:'',epaules:'',fessiers:'',cuisses:'',cuisse_d:'',bras:'',bras_d:''},
       notes:'',
       modifDiete:'',
       modifTraining:''
@@ -4936,7 +5056,8 @@ function getOrCreateBilanHebdo(clientId,date){
     S.bilansHebdo.push(bilan);
   }
   if(!bilan.photos) bilan.photos={face:null,gauche:null,droit:null,dos:null};
-  if(!bilan.mensurations) bilan.mensurations={poitrine:'',taille:'',fessiers:'',cuisses:'',bras:''};
+  if(!bilan.mensurations) bilan.mensurations={poitrine:'',taille:'',epaules:'',fessiers:'',cuisses:'',cuisse_d:'',bras:'',bras_d:''};
+  ['poitrine','taille','epaules','fessiers','cuisses','cuisse_d','bras','bras_d'].forEach(k=>{if(bilan.mensurations[k]===undefined)bilan.mensurations[k]='';});
   if(bilan.modifDiete===undefined) bilan.modifDiete='';
   if(bilan.modifTraining===undefined) bilan.modifTraining='';
   return bilan;
@@ -5460,7 +5581,7 @@ render.diete=function(){
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="meal-kcal-d">${mealKcalD(meal.items)} kcal</span>
-          ${isDietStrict?'':'<button onclick="dScanAddToMeal('+mi+')" title="Scanner une étiquette" style="width:24px;height:24px;border-radius:50%;border:.5px solid var(--border);background:var(--bg3);color:var(--text2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;margin-right:2px">📷</button><button onclick="dAddItemToMeal('+mi+')" style="width:24px;height:24px;border-radius:50%;border:.5px solid var(--green);background:var(--green-light);color:var(--green-dark);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">+</button>'}
+          ${isDietStrict?'':'<button onclick="dScanAddToMeal('+mi+')" title="Scanner une étiquette" style="width:24px;height:24px;border-radius:50%;border:.5px solid var(--border);background:var(--bg3);color:var(--text2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;margin-right:2px">📷</button>'}
         </div>
       </div>
       <div style="padding:8px 10px">
@@ -5493,6 +5614,7 @@ render.diete=function(){
             ${isOpen?dSelHTML(mi,ii):''}
           </div>`;
         }).join('')}
+        ${isDietStrict?'':'<button onclick="dAddItemToMeal('+mi+')" style="width:100%;margin-top:6px;padding:8px;border-radius:8px;border:.5px dashed var(--green);background:var(--green-light);color:var(--green-dark);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;line-height:1"><span style="font-size:16px">+</span> Ajouter un aliment</button>'}
       </div>
     </div>`).join('')+`
     ${isDietStrict?'':'<button class="btn btn-ghost" style="margin-bottom:10px" onclick="dAddMeal()">+ Ajouter un repas</button>'}
@@ -5545,8 +5667,8 @@ function dSelHTML(mi,ii){
   }
 
   return `<div class="sel-panel"><div class="sel-tabs-d">
-    <button class="sel-tab-d${isCat?' active':''}" onclick="dSelTab(${mi},${ii},'cat')">Catégorie</button>
     <button class="sel-tab-d${!isCat?' active':''}" onclick="dSelTab(${mi},${ii},'food')">Aliment${ds.sel.cat?' — '+ds.sel.cat:''}</button>
+    <button class="sel-tab-d${isCat?' active':''}" onclick="dSelTab(${mi},${ii},'cat')">Catégorie</button>
   </div><div class="sel-body">${isCat?searchBar+catGrid:fc}</div></div>`;
 }
 
@@ -5858,7 +5980,7 @@ function dSetDay(day){
 function dOpenSel(mi,ii){
   const ds=S.dieteState;
   if(ds.sel&&ds.sel.mi===mi&&ds.sel.ii===ii){ds.sel=null;}
-  else{const item=getClientDiete(S.client.id,ds.day).meals[mi].items[ii];ds.sel={mi,ii,tab:'cat',cat:item.cat||null};}
+  else{const item=getClientDiete(S.client.id,ds.day).meals[mi].items[ii];ds.sel={mi,ii,tab:'food',cat:item.cat||null};}
   render.diete();
 }
 function dSelTab(mi,ii,tab){if(S.dieteState.sel){S.dieteState.sel.tab=tab;}render.diete();}
@@ -6768,7 +6890,7 @@ async function syncBilansThisWeek(){
   S.bilansHebdo.push(...res.map(b=>({
     id:b.id,client_id:b.client_id,date:b.semaine_debut,
     photos:b.photos||{face:null,gauche:null,droit:null,dos:null},
-    mensurations:{poitrine:b.poitrine||'',taille:b.taille||'',fessiers:b.fessiers||'',cuisses:b.cuisses||'',bras:b.bras||''},
+    mensurations:{poitrine:b.poitrine||'',taille:b.taille||'',epaules:b.epaules||'',fessiers:b.fessiers||'',cuisses:b.cuisses||'',cuisse_d:b.cuisse_d||'',bras:b.bras||'',bras_d:b.bras_d||''},
     notes:b.notes||'',
     completed:b.completed||false,
     modifDiete:b.modif_diete||'',
@@ -6921,7 +7043,7 @@ async function syncClientData(clientId){
     S.bilansHebdo.push(...bilans.map(b=>({
       id:b.id,client_id:b.client_id,date:b.semaine_debut,
       photos:b.photos||{face:null,gauche:null,droit:null,dos:null},
-      mensurations:{poitrine:b.poitrine||'',taille:b.taille||'',fessiers:b.fessiers||'',cuisses:b.cuisses||'',bras:b.bras||''},
+      mensurations:{poitrine:b.poitrine||'',taille:b.taille||'',epaules:b.epaules||'',fessiers:b.fessiers||'',cuisses:b.cuisses||'',cuisse_d:b.cuisse_d||'',bras:b.bras||'',bras_d:b.bras_d||''},
       notes:b.notes||'',
       completed:b.completed||false,
       modifDiete:b.modif_diete||'',
@@ -7121,9 +7243,12 @@ async function saveBilanHebdoToSupa(bilan){
     photos:bilan.photos||{face:null,gauche:null,droit:null,dos:null},
     poitrine:parseFloat(bilan.mensurations?.poitrine)||null,
     taille:parseFloat(bilan.mensurations?.taille)||null,
+    epaules:parseFloat(bilan.mensurations?.epaules)||null,
     fessiers:parseFloat(bilan.mensurations?.fessiers)||null,
     cuisses:parseFloat(bilan.mensurations?.cuisses)||null,
+    cuisse_d:parseFloat(bilan.mensurations?.cuisse_d)||null,
     bras:parseFloat(bilan.mensurations?.bras)||null,
+    bras_d:parseFloat(bilan.mensurations?.bras_d)||null,
     notes:bilan.notes||null,
     completed:bilan.completed||false,
     modif_diete:bilan.modifDiete||null,
