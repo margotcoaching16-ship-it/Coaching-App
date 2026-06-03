@@ -4025,7 +4025,7 @@ async function createClient(){
     objectif:newClient.objectif||null,
     favori:newClient.favori||false,
     archive:newClient.archive||false,
-    dietMode:newClient.dietMode||'flexible'
+    diet_mode:newClient.dietMode||'flexible'
   });
 
   if(!created){
@@ -6582,7 +6582,7 @@ function toggleDietMode(){
   const newMode=(S.client.dietMode||'flexible')==='flexible'?'stricte':'flexible';
   S.client.dietMode=newMode;
   persist();
-  supa('PATCH','clients',{dietMode:newMode},`?id=eq.${S.client.id}`);
+  supa('PATCH','clients',{diet_mode:newMode},`?id=eq.${S.client.id}`);
   toast(`Mode régime: ${newMode==='flexible'?'Flexible ✨':'Stricte 🔒'}`);
   render.diete();
 }
@@ -6822,6 +6822,7 @@ async function syncClients(){
     if(!row) return row;
     if(row.block_plan!==undefined){ row.blockPlan=row.block_plan; delete row.block_plan; }
     if(row.jour_bilan!==undefined){ row.jourBilan=row.jour_bilan; delete row.jour_bilan; }
+    if(row.diet_mode!==undefined){ row.dietMode=row.diet_mode; delete row.diet_mode; }
     if(!row.dietMode){ row.dietMode='flexible'; }
     return row;
   };
