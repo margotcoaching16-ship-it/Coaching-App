@@ -1341,11 +1341,11 @@ html.theme-night .screen#screen-bilanHebdo{background:linear-gradient(135deg, #1
 
   <!-- BARRE DE RACCOURCIS EN BAS -->
   <div id="shortcut-bar">
-    <button class="shortcut-btn training" onclick="showScreen('training')" title="Entraînement"><span>💪</span><span>Entraîn.</span></button>
-    <button class="shortcut-btn diete" onclick="showScreen('diete')" title="Diète"><span>🍽️</span><span>Diète</span></button>
-    <button class="shortcut-btn checkin" onclick="showScreen('checkin')" title="Check-in"><span>✅</span><span>Check</span></button>
-    <button class="shortcut-btn suivi" onclick="showScreen('suivi')" title="Suivi"><span>📊</span><span>Suivi</span></button>
-    <button class="shortcut-btn bilanHebdo" onclick="showScreen('bilanHebdo')" title="Bilan"><span>📈</span><span>Bilan</span></button>
+    <button class="shortcut-btn training" onclick="navigate('training')" title="Entraînement"><span>💪</span><span>Entraîn.</span></button>
+    <button class="shortcut-btn diete" onclick="navigate('diete')" title="Diète"><span>🍽️</span><span>Diète</span></button>
+    <button class="shortcut-btn checkin" onclick="navigate('checkin')" title="Check-in"><span>✅</span><span>Check</span></button>
+    <button class="shortcut-btn suivi" onclick="navigate('suivi')" title="Suivi"><span>📊</span><span>Suivi</span></button>
+    <button class="shortcut-btn bilanHebdo" onclick="navigate('bilanHebdo')" title="Bilan"><span>📈</span><span>Bilan</span></button>
   </div>
 
 </div>
@@ -1643,7 +1643,9 @@ function persist(){
   lsSet('c_logsSeances',S.logsSeances);
   lsSet('c_exercices',S.exercices);
   lsSet('c_checkins',S.checkIns||[]);
-  lsSet('c_bilansHebdo',S.bilansHebdo||[]);
+  // Les photos de bilans (base64) saturent le localStorage : on les exclut du cache.
+  // Elles restent sur Supabase et sont rechargées via syncBilansThisWeek / syncClientData.
+  lsSet('c_bilansHebdo',(S.bilansHebdo||[]).map(b=>({...b,photos:undefined})));
   lsSet('c_dietes',S.dietes||{});
   lsSet('c_customAliments',S.customAliments||[]);
   lsSet('c_recettes',S.recettes||[]);
@@ -4303,7 +4305,21 @@ let _pushActiveLogTimer=null;
 function saveActiveLog(log){
   if(!log){return;}
   log.updated_at_ts=Date.now();
-  lsSet('c_activeLog',log);
+  // La séance en cours est prioritaire : si le quota local est plein,
+  // on tente l'écriture, et en cas d'échec on purge les caches lourds puis on réessaie.
+  try{
+    localStorage.setItem('c_activeLog',JSON.stringify(log));
+  }catch(e){
+    try{
+      // Purge des caches volumineux non critiques pour faire de la place.
+      localStorage.removeItem('c_bilansHebdo');
+      localStorage.removeItem('c_videos');
+      localStorage.setItem('c_activeLog',JSON.stringify(log));
+    }catch(e2){
+      console.error('Impossible de sauvegarder c_activeLog même après purge:',e2);
+      // La séance reste sauvegardée côté serveur via pushActiveLogNow ci-dessous.
+    }
+  }
   clearTimeout(_pushActiveLogTimer);
   _pushActiveLogTimer=setTimeout(()=>{pushActiveLogNow(log);},1200);
 }
