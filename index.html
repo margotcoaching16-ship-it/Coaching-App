@@ -7427,6 +7427,21 @@ function showVideoSourcePicker(cameraInputId, galleryInputId){
 async function saveDieteToSupa(clientId,day){
   const d=getClientDiete(clientId,day);
   const payload={client_id:clientId,jour:day,repas:d.meals,cible_kcal:d.targets.kcal,cible_prot:d.targets.prot,cible_gluc:d.targets.gluc,cible_lip:d.targets.lip};
+  // Si on n'a pas d'_id local, vérifier qu'une ligne n'existe pas déjà en base
+  // (sinon le POST crée un doublon client_id+jour).
+  if(!d._id){
+    try{
+      const existing=await supa('GET','dietes','',`?client_id=eq.${clientId}&jour=eq.${day}&select=id&order=updated_at.desc`);
+      if(existing&&existing.length){
+        d._id=existing[0].id;
+        if(S.dietes[clientId]&&S.dietes[clientId][day]) S.dietes[clientId][day]._id=existing[0].id;
+        // Nettoyer d'éventuels doublons plus anciens
+        if(existing.length>1){
+          for(let i=1;i<existing.length;i++){ supa('DELETE','dietes','',`?id=eq.${existing[i].id}`); }
+        }
+      }
+    }catch(e){console.warn('saveDieteToSupa lookup:',e);}
+  }
   if(d._id){
     await supa('PATCH','dietes',payload,`?id=eq.${d._id}`);
   } else {
