@@ -85,6 +85,20 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 
 .app{max-width:430px;margin:0 auto;background:var(--bg);height:100dvh;min-height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden}
 
+/* ── VERSION ORDINATEUR (grand écran) ── */
+@media (min-width:1024px){
+  html,body{font-size:17px}
+  .app{
+    max-width:1100px;
+    border-left:1px solid var(--border);
+    border-right:1px solid var(--border);
+    box-shadow:0 0 40px rgba(0,0,0,.06);
+  }
+  .modal{max-width:1100px}
+  #auth-shell > div{max-width:520px}
+  #shortcut-bar{max-width:1100px}
+}
+
 /* ── TOPBAR ── */
 .topbar{background:var(--bg);border-bottom:.5px solid var(--border);padding:10px 16px 8px;position:sticky;top:0;z-index:50;flex-shrink:0}
 .topbar-inner{display:flex;align-items:center;gap:10px;min-height:32px}
@@ -2566,6 +2580,13 @@ function updateCalculsPerte(){
   // Sauvegarder aussi dans sessionStorage pour les changements non commités
   sessionStorage.setItem('c_calcsPerte_draft',JSON.stringify({clientId:S.client.id,data:data,timestamp:Date.now()}));
   persist();
+  // Sauvegarde Supabase (debounced) pour persister durablement, comme le planificateur de blocs
+  clearTimeout(window._calcsPerteSaveTimer);
+  const cid=S.client.id;
+  window._calcsPerteSaveTimer=setTimeout(()=>{
+    const c=S.clients.find(x=>x.id===cid)||(S.client&&S.client.id===cid?S.client:null);
+    if(c) saveClientToSupa(c);
+  },1200);
   const r=calculatePerteResults(data);
   const box=document.getElementById('calculs-results');
   if(!box) return;
@@ -2870,7 +2891,7 @@ render.seance=function(){
     return `<div class="exo-card" id="exo-card-${ei}">
       <div class="exo-card-name">${exo.nom}</div>
       <div class="exo-card-header" style="padding-top:4px">
-        <div class="exo-order-actions">${isBottom?placeholder:upBtn}${isTop?placeholder:downBtn}</div>
+        <div class="exo-order-actions">${isBottom?placeholder:upBtn}${isTop?placeholder:downBtn}<button class="exo-mini-btn drag-handle" title="Glisser pour réordonner" onpointerdown="startExoDrag(event,${gi})" style="cursor:grab;touch-action:none">⠿</button></div>
         <div class="exo-num-badge" style="${badgeStyle}">${ei+1}</div>
         <div class="exo-card-info">
           <div class="exo-card-cat" style="${catStyle}">${isCardio?exo.cat+' · '+(exo.duree_min||'?')+' min':(exo.repsPerSeries && exo.repsPerSeries.length > 0)?exo.cat+' · '+exo.nb_series+' séries':exo.cat+' · '+exo.nb_series+' séries · '+exo.reps_min+'-'+exo.reps_max+' reps'}</div>
@@ -2987,6 +3008,79 @@ function moveGroupInSeance(gi,dir){
   });
 }
 
+// Réordonne un groupe (exo seul ou superset) de la position fromGi vers toGi
+function reorderGroupInSeance(fromGi,toGi){
+  if(!S.seanceType||!Array.isArray(S.seanceType.exercices))return;
+  if(fromGi===toGi)return;
+  const exos=S.seanceType.exercices;
+  function isSupersetPair(a,b){return a&&b&&a.methode==='superset'&&b.methode==='superset'&&(a.supersetWith===b.exo_id||b.supersetWith===a.exo_id);}
+  const groups=[];let k=0;
+  while(k<exos.length){
+    if(k+1<exos.length&&isSupersetPair(exos[k],exos[k+1])){groups.push([k,k+1]);k+=2;}
+    else{groups.push([k]);k++;}
+  }
+  if(fromGi<0||fromGi>=groups.length||toGi<0||toGi>=groups.length)return;
+  // Reconstruire l'ordre des groupes
+  const groupArrays=groups.map(g=>g.map(i=>exos[i]));
+  const [moved]=groupArrays.splice(fromGi,1);
+  groupArrays.splice(toGi,0,moved);
+  S.seanceType.exercices=groupArrays.flat();
+  // Synchroniser le log actif
+  if(S.logSeance&&S.logSeance.seance_type_id===S.seanceType.id){
+    const byId={};S.logSeance.exercices.forEach(e=>{if(e.exo_id)byId[e.exo_id]=e;});
+    const seanceIds=new Set(S.seanceType.exercices.map(e=>e.exo_id));
+    S.logSeance.exercices=[
+      ...S.seanceType.exercices.map(e=>byId[e.exo_id]).filter(Boolean),
+      ...S.logSeance.exercices.filter(e=>!seanceIds.has(e.exo_id))
+    ];
+    saveActiveLog(S.logSeance);
+  }
+  const idx=S.seancesType.findIndex(s=>s.id===S.seanceType.id);
+  if(idx>=0)S.seancesType[idx]=S.seanceType;
+  persist();saveSeanceTypeToSupa(S.seanceType);render.seance();
+}
+
+// Drag tactile/souris d'un groupe d'exercices
+let _exoDrag=null;
+function startExoDrag(ev,gi){
+  ev.preventDefault();ev.stopPropagation();
+  const groupEls=[...document.querySelectorAll('[id^="exo-group-"]')];
+  const startEl=document.getElementById('exo-group-'+gi);
+  if(!startEl)return;
+  _exoDrag={fromGi:gi,curGi:gi,el:startEl};
+  startEl.style.opacity='0.5';
+  startEl.style.transition='none';
+  document.body.style.userSelect='none';
+  const onMove=(e)=>{
+    const y=e.clientY!=null?e.clientY:(e.touches&&e.touches[0]?e.touches[0].clientY:0);
+    let target=_exoDrag.curGi;
+    groupEls.forEach((g)=>{
+      const r=g.getBoundingClientRect();
+      const giAttr=parseInt(g.id.replace('exo-group-',''),10);
+      if(y>r.top&&y<r.bottom) target=giAttr;
+    });
+    if(target!==_exoDrag.curGi){
+      _exoDrag.curGi=target;
+      // feedback visuel léger : surligner la cible
+      groupEls.forEach(g=>g.style.outline='');
+      const tEl=document.getElementById('exo-group-'+target);
+      if(tEl&&target!==_exoDrag.fromGi) tEl.style.outline='2px dashed var(--green)';
+    }
+  };
+  const onUp=()=>{
+    window.removeEventListener('pointermove',onMove);
+    window.removeEventListener('pointerup',onUp);
+    document.body.style.userSelect='';
+    if(_exoDrag.el){_exoDrag.el.style.opacity='';}
+    document.querySelectorAll('[id^="exo-group-"]').forEach(g=>g.style.outline='');
+    const {fromGi,curGi}=_exoDrag;
+    _exoDrag=null;
+    if(fromGi!==curGi) reorderGroupInSeance(fromGi,curGi);
+  };
+  window.addEventListener('pointermove',onMove);
+  window.addEventListener('pointerup',onUp);
+}
+
 function removeExoFromSeance(ei){
   const removedId=S.seanceType.exercices[ei]?.exo_id;
   S.seanceType.exercices.splice(ei,1);
@@ -3089,7 +3183,7 @@ render.log=function(){
     <div class="log-banner">
       <div>📅</div>
       <div class="log-banner-text">${dateStr}</div>
-      <button class="btn btn-primary btn-sm" style="width:auto;flex-shrink:0" onclick="saveLog()">💾 Terminer</button>
+      <button class="btn btn-secondary btn-sm" style="width:auto;flex-shrink:0" onclick="confirmCancelLog()">Annuler</button>
     </div>
     ${(()=>{
       // Build superset pairs map : exo_id → partner index
@@ -3184,10 +3278,22 @@ render.log=function(){
       });
       return html;
     })()}
+    <div style="padding:0 16px;margin-top:4px">
+      <div class="form-group" style="margin-bottom:10px">
+        <label class="form-label">💬 Commentaire global sur la séance</label>
+        <textarea class="form-inp" rows="3" placeholder="Ressenti général, énergie, conditions particulières du jour…" style="resize:none" oninput="updateLogSeanceComment(this.value)">${log.commentaireSeance||''}</textarea>
+      </div>
+    </div>
     <div style="padding:0 16px;margin-top:8px">
-      <button class="btn btn-secondary" onclick="confirmCancelLog()">Annuler la séance</button>
+      <button class="btn btn-primary" onclick="saveLog()">💾 Terminer la séance</button>
     </div>`;
 };
+
+function updateLogSeanceComment(val){
+  if(!S.logSeance) return;
+  S.logSeance.commentaireSeance=val;
+  saveActiveLog(S.logSeance);
+}
 
 // ─────────────────────────────────────────
 // RENDER: VIDÉOS CLIENT (archive)
@@ -4484,7 +4590,7 @@ render.historique=function(){
     .forEach(log=>{
       const found=log.exercices&&log.exercices.find(e=>e.exo_id===exo.id);
       const hasData=found&&found.series&&found.series.some(s=>s.poids||s.reps||s.duree);
-      if(hasData) logs.push({date:log.date, seance_nom:log.seance_nom, series:found.series||[]});
+      if(hasData) logs.push({date:log.date, seance_nom:log.seance_nom, series:found.series||[], commentaire:found.commentaire||'', commentaireSeance:log.commentaireSeance||''});
     });
 
   const el=document.getElementById('historique-content');
@@ -4563,6 +4669,8 @@ render.historique=function(){
           <span class="hist-serie-done">${s.done?'✅':'⬜'}</span>
         </div>`).join('')}
       </div>
+      ${log.commentaire?`<div style="margin:8px 12px 0;padding:8px 10px;background:var(--bg2);border-left:3px solid var(--green);border-radius:6px;font-size:13px;color:var(--text2)"><strong style="color:var(--green-dark)">💬 Commentaire exo :</strong> ${escapeHtml(log.commentaire)}</div>`:''}
+      ${log.commentaireSeance?`<div style="margin:6px 12px 0;padding:8px 10px;background:var(--bg2);border-left:3px solid var(--amber);border-radius:6px;font-size:13px;color:var(--text2)"><strong style="color:var(--amber)">📋 Note séance :</strong> ${escapeHtml(log.commentaireSeance)}</div>`:''}
     </div>`;
   });
 
@@ -4792,9 +4900,11 @@ function renderBhComparaison(clientId, allWeeks){
     if(!d)return'—';
     return d===getMondayStr()?'Cette semaine':new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
   }
-  function photoCol(bilan,label){
+  function photoCol(bilan,label,slot){
     const src=bilan&&bilan.photos[S.bhCompareView];
-    const inner=src?'<img src="'+src+'" style="width:100%;height:100%;object-fit:cover" />':'<div class="compare-photo-empty">Pas de photo<br>'+viewLabels[S.bhCompareView]+'</div>';
+    const inner=src
+      ?'<img src="'+src+'" data-zoom="'+slot+'" style="width:100%;height:100%;object-fit:cover;touch-action:none;transform-origin:center center;cursor:grab" onpointerdown="comparePhotoDown(event)" onwheel="comparePhotoWheel(event)" ondblclick="comparePhotoReset(this)" />'
+      :'<div class="compare-photo-empty">Pas de photo<br>'+viewLabels[S.bhCompareView]+'</div>';
     return'<div><div style="font-size:11px;font-weight:600;color:var(--text3);text-align:center;margin-bottom:6px">'+label+'</div><div class="compare-photo-wrap">'+inner+'</div></div>';
   }
 
@@ -4807,8 +4917,68 @@ function renderBhComparaison(clientId, allWeeks){
     '<div class="compare-vs">VS</div>'+
     '<div class="compare-date-wrap"><div class="compare-date-label">Semaine B</div><select class="compare-date-sel" onchange="S.bhCompareB=this.value;render.bilanHebdo()">'+dateOptsB+'</select></div>'+
     '</div><div class="compare-view-tabs">'+viewTabs+'</div>'+
-    '<div class="compare-photo-grid">'+photoCol(bilanA,wkLabel(S.bhCompareA))+photoCol(bilanB,wkLabel(S.bhCompareB))+'</div>'+
+    '<div class="compare-photo-grid">'+photoCol(bilanA,wkLabel(S.bhCompareA),'A')+photoCol(bilanB,wkLabel(S.bhCompareB),'B')+'</div>'+
+    '<div style="font-size:11px;color:var(--text3);text-align:center;padding:2px 16px 4px">Pince ou molette pour zoomer · glisse pour déplacer · double-clic pour réinitialiser</div>'+
     (bilanA&&bilanB?renderMensuComparaison(bilanA,bilanB):'');
+}
+
+// ── Zoom / déplacement des photos de comparaison ──
+const _photoZoom={};
+function _pzState(img){
+  const k=img.getAttribute('data-zoom')||'_';
+  if(!_photoZoom[k])_photoZoom[k]={scale:1,x:0,y:0};
+  return _photoZoom[k];
+}
+function _pzApply(img,st){
+  img.style.transform='translate('+st.x+'px,'+st.y+'px) scale('+st.scale+')';
+}
+function comparePhotoReset(img){
+  const st=_pzState(img);st.scale=1;st.x=0;st.y=0;_pzApply(img,st);
+}
+function comparePhotoWheel(ev){
+  ev.preventDefault();
+  const img=ev.currentTarget;const st=_pzState(img);
+  const delta=ev.deltaY<0?1.12:0.89;
+  st.scale=Math.min(5,Math.max(1,st.scale*delta));
+  if(st.scale===1){st.x=0;st.y=0;}
+  _pzApply(img,st);
+}
+function comparePhotoDown(ev){
+  const img=ev.currentTarget;const st=_pzState(img);
+  // Pincement à deux doigts
+  img._pointers=img._pointers||new Map();
+  img._pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+  img.setPointerCapture&&img.setPointerCapture(ev.pointerId);
+  ev.preventDefault();
+  const startX=ev.clientX,startY=ev.clientY,ox=st.x,oy=st.y;
+  let startDist=null,startScale=st.scale;
+  const onMove=(e)=>{
+    if(img._pointers.has(e.pointerId)) img._pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    const pts=[...img._pointers.values()];
+    if(pts.length>=2){
+      const d=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);
+      if(startDist===null){startDist=d;startScale=st.scale;}
+      st.scale=Math.min(5,Math.max(1,startScale*(d/startDist)));
+      if(st.scale===1){st.x=0;st.y=0;}
+      _pzApply(img,st);
+    } else if(st.scale>1){
+      st.x=ox+(e.clientX-startX);
+      st.y=oy+(e.clientY-startY);
+      _pzApply(img,st);
+    }
+  };
+  const onUp=(e)=>{
+    img._pointers.delete(e.pointerId);
+    if(img._pointers.size<2) startDist=null;
+    if(img._pointers.size===0){
+      img.removeEventListener('pointermove',onMove);
+      img.removeEventListener('pointerup',onUp);
+      img.removeEventListener('pointercancel',onUp);
+    }
+  };
+  img.addEventListener('pointermove',onMove);
+  img.addEventListener('pointerup',onUp);
+  img.addEventListener('pointercancel',onUp);
 }
 
 
@@ -6057,13 +6227,16 @@ function showCiblesModal(){
     <button class="btn btn-primary" onclick="saveCibles()">Enregistrer</button>
   `);
 }
-function saveCibles(){
+async function saveCibles(){
   const tgt=ensureClientDiete(S.client.id,S.dieteState.day).targets;
   tgt.kcal=parseInt(document.getElementById('ct-kcal').value)||tgt.kcal;
   tgt.prot=parseInt(document.getElementById('ct-prot').value)||tgt.prot;
   tgt.gluc=parseInt(document.getElementById('ct-gluc').value)||tgt.gluc;
   tgt.lip=parseInt(document.getElementById('ct-lip').value)||tgt.lip;
+  persist();
   closeModal();render.diete();
+  try{ await saveDieteToSupa(S.client.id,S.dieteState.day); toast('✓ Cibles enregistrées'); }
+  catch(e){ console.error('saveCibles → Supabase:',e); toast('⚠ Cibles sauvées localement, erreur serveur'); }
 }
 
 // ─────────────────────────────────────────
@@ -6959,6 +7132,7 @@ async function syncClients(){
   const normalize=row=>{
     if(!row) return row;
     if(row.block_plan!==undefined){ row.blockPlan=row.block_plan; delete row.block_plan; }
+    if(row.calculs_perte!==undefined){ row.calculsPerte=row.calculs_perte; delete row.calculs_perte; }
     if(row.jour_bilan!==undefined){ row.jourBilan=row.jour_bilan; delete row.jour_bilan; }
     if(row.diet_mode!==undefined){ row.dietMode=row.diet_mode; delete row.diet_mode; }
     if(!row.dietMode){ row.dietMode='flexible'; }
@@ -7015,8 +7189,18 @@ async function syncClientData(clientId){
     const dON=dietes.find(d=>d.jour==='on');
     const dOFF=dietes.find(d=>d.jour==='off');
     if(!S.dietes[clientId]) S.dietes[clientId]={};
-    if(dON){S.dietes[clientId].on={...S.dietes[clientId].on,targets:{kcal:dON.cible_kcal,prot:dON.cible_prot,gluc:dON.cible_gluc,lip:dON.cible_lip},meals:dON.repas,_id:dON.id};}
-    if(dOFF){S.dietes[clientId].off={...S.dietes[clientId].off,targets:{kcal:dOFF.cible_kcal,prot:dOFF.cible_prot,gluc:dOFF.cible_gluc,lip:dOFF.cible_lip},meals:dOFF.repas,_id:dOFF.id};}
+    // Ne pas écraser les repas si une modif locale non sauvegardée existe (brouillon en cours)
+    const hasDraft=(day)=>!!sessionStorage.getItem('c_dieteDraft_'+clientId+'_'+day);
+    if(dON){
+      const keepMeals=hasDraft('on');
+      S.dietes[clientId].on={...S.dietes[clientId].on,targets:{kcal:dON.cible_kcal,prot:dON.cible_prot,gluc:dON.cible_gluc,lip:dON.cible_lip},_id:dON.id};
+      if(!keepMeals) S.dietes[clientId].on.meals=dON.repas;
+    }
+    if(dOFF){
+      const keepMeals=hasDraft('off');
+      S.dietes[clientId].off={...S.dietes[clientId].off,targets:{kcal:dOFF.cible_kcal,prot:dOFF.cible_prot,gluc:dOFF.cible_gluc,lip:dOFF.cible_lip},_id:dOFF.id};
+      if(!keepMeals) S.dietes[clientId].off.meals=dOFF.repas;
+    }
   }
   if(progs){
     const supaProgIds=new Set(progs.map(p=>p.id));
@@ -7044,7 +7228,7 @@ async function syncClientData(clientId){
     pendingLogs.forEach(l=>saveLogToSupa(l));
     S.logsSeances=S.logsSeances.filter(l=>l.client_id!==clientId);
     // Remapper exercices_log → exercices (Supabase stocke sous exercices_log)
-    S.logsSeances.push(...logs.map(l=>({...l,date:l.date_seance||l.date,exercices:l.exercices||l.exercices_log||[]})),...pendingLogs);
+    S.logsSeances.push(...logs.map(l=>({...l,date:l.date_seance||l.date,exercices:l.exercices||l.exercices_log||[],commentaireSeance:l.commentaire_seance||''})),...pendingLogs);
   }
   if(checkins){
     const supaCheckinDates=new Set(checkins.map(ci=>ci.date));
@@ -7151,6 +7335,7 @@ async function saveClientToSupa(client){
     goals:client.goals||null,
     notes_coach:client.notes_coach||null,
     block_plan:client.blockPlan||null,
+    calculs_perte:client.calculsPerte||null,
     jour_bilan:client.jourBilan||null,
     formule:client.formule||'suivi'
   };
@@ -7189,7 +7374,8 @@ async function saveLogToSupa(log){
     seance_type_id:log.seance_type_id||null,
     nom:log.seance_nom||log.nom||'Séance',
     date_seance:log.date||new Date().toISOString(),
-    exercices_log:log.exercices||[]
+    exercices_log:log.exercices||[],
+    commentaire_seance:log.commentaireSeance||null
   });
   return res;
 }
@@ -7666,6 +7852,10 @@ async function initApp(){
   if(clientRecord && clientRecord.block_plan!==undefined){
     clientRecord.blockPlan=clientRecord.block_plan;
     delete clientRecord.block_plan;
+  }
+  if(clientRecord && clientRecord.calculs_perte!==undefined){
+    clientRecord.calculsPerte=clientRecord.calculs_perte;
+    delete clientRecord.calculs_perte;
   }
   if(clientRecord && clientRecord.jour_bilan!==undefined){
     clientRecord.jourBilan=clientRecord.jour_bilan;
