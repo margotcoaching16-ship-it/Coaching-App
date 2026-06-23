@@ -392,6 +392,19 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .bh-date-selector{display:flex;gap:8px;padding:10px 16px;overflow-x:auto;border-bottom:.5px solid var(--border)}
 .bh-date-chip{padding:6px 12px;font-size:12px;font-weight:600;border-radius:20px;border:.5px solid var(--border2);background:var(--bg2);cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:inherit}
 .bh-date-chip.active{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
+/* Tableau des modifications hebdo */
+.bhm-tbl{border:.5px solid var(--border);border-radius:14px;overflow:hidden;background:var(--bg);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.bhm-head{display:grid;grid-template-columns:62px 1fr 1fr;background:var(--bg2);font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.bhm-head div{padding:9px 8px;border-right:.5px solid var(--border)}
+.bhm-head div:last-child{border-right:none}
+.bhm-row{display:grid;grid-template-columns:62px 1fr 1fr;border-top:.5px solid var(--border)}
+.bhm-date{padding:9px 8px;border-right:.5px solid var(--border);font-size:12px;font-weight:800;color:var(--text)}
+.bhm-date.bhm-now{color:var(--green-dark)}
+.bhm-cell{border-right:.5px solid var(--border);padding:5px 6px}
+.bhm-cell:last-child{border-right:none}
+.bhm-inp{width:100%;border:.5px solid transparent;border-radius:7px;background:transparent;color:var(--text);font-size:12px;line-height:1.4;padding:5px 6px;resize:vertical;min-height:42px;font-family:inherit}
+.bhm-inp:focus{outline:none;border-color:var(--green);background:var(--bg2)}
+.bhm-add{width:100%;border:none;background:var(--bg2);color:var(--green-dark);font-size:13px;font-weight:700;padding:11px;cursor:pointer;border-top:.5px solid var(--border);font-family:inherit}
 
 
 /* ── DIÈTE ── */
@@ -4998,38 +5011,48 @@ render.bilanHebdo=function(){
   if(S.bhTab==='photos') tabContent=renderBhPhotos(bilan,allWeeks);
   else if(S.bhTab==='comparaison') tabContent=renderBhComparaison(c.id,allWeeks);
   else if(S.bhTab==='resultats') tabContent=renderBhResultats(c.id);
-  else if(S.bhTab==='modifs') tabContent=renderBhModifications(bilan);
+  else if(S.bhTab==='modifs') tabContent=renderBhModifications(c.id, allWeeks, thisWeek);
 
   el.innerHTML=weekSelector+tabs+tabContent;
 };
 
-function renderBhModifications(bilan){
-  const dieteVal = (bilan.modifDiete||'').replace(/"/g,'&quot;');
-  const trainingVal = (bilan.modifTraining||'').replace(/"/g,'&quot;');
+function renderBhModifications(clientId, allWeeks, thisWeek){
+  // Tableau de toutes les semaines : Date | Diète | Training (édition au clic)
+  // allWeeks est trié du plus récent au plus ancien.
+  const rows=allWeeks.map(w=>{
+    const bilan=getBilanHebdo(clientId,w);
+    const d=new Date(w);
+    const dateLabel=(w===thisWeek)?'Cette semaine':d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+    const dieteVal=escapeHtml((bilan&&bilan.modifDiete)||'');
+    const trainVal=escapeHtml((bilan&&bilan.modifTraining)||'');
+    const nowCls=(w===thisWeek)?' bhm-now':'';
+    return `<div class="bhm-row">
+      <div class="bhm-date${nowCls}">${dateLabel}</div>
+      <div class="bhm-cell">
+        <textarea class="bhm-inp" rows="2" placeholder="—"
+          onblur="saveBhModifDate('${w}','diete',this.value)">${dieteVal}</textarea>
+      </div>
+      <div class="bhm-cell">
+        <textarea class="bhm-inp" rows="2" placeholder="—"
+          onblur="saveBhModifDate('${w}','training',this.value)">${trainVal}</textarea>
+      </div>
+    </div>`;
+  }).join('');
   return `
-    <div style="padding:16px;display:flex;flex-direction:column;gap:16px">
-      <div class="form-group" style="margin:0">
-        <label class="form-label" style="display:flex;align-items:center;gap:6px;font-size:13px">🍽️ Modification diète</label>
-        <textarea class="form-inp" id="bh-modif-diete" rows="5"
-          placeholder="ex : +30g glucides Day ON, baisse 10g lipides Day OFF…"
-          style="resize:vertical;min-height:90px;width:100%"
-          onblur="saveBhModif('diete',this.value)">${escapeHtml(bilan.modifDiete||'')}</textarea>
-      </div>
-      <div class="form-group" style="margin:0">
-        <label class="form-label" style="display:flex;align-items:center;gap:6px;font-size:13px">🏋️ Modification training</label>
-        <textarea class="form-inp" id="bh-modif-training" rows="5"
-          placeholder="ex : +1 set sur squat, ajouté hip thrust, baissé cardio à 2x/sem…"
-          style="resize:vertical;min-height:90px;width:100%"
-          onblur="saveBhModif('training',this.value)">${escapeHtml(bilan.modifTraining||'')}</textarea>
-      </div>
-      <div style="font-size:11px;color:var(--text3);text-align:center;padding-top:4px">
-        💾 Sauvegarde automatique quand tu cliques en-dehors du champ
+    <div style="padding:12px">
+      <div style="font-size:12px;color:var(--text2);line-height:1.45;margin-bottom:12px">Toutes les semaines d'un coup d'œil. Touche une case pour écrire ou modifier — ça s'enregistre quand tu cliques en dehors.</div>
+      <div class="bhm-tbl">
+        <div class="bhm-head">
+          <div>Date</div><div>🍽️ Diète</div><div>🏋️ Training</div>
+        </div>
+        ${rows}
+        <button class="bhm-add" onclick="addBilanWeek()">+ Ajouter une semaine</button>
       </div>
     </div>`;
 }
 
-function saveBhModif(field,value){
-  const bilan=getOrCreateBilanHebdo(S.client.id,S.bhCurrentDate);
+function saveBhModifDate(dateISO, field, value){
+  const bilan=getOrCreateBilanHebdo(S.client.id, dateISO);
   if(field==='diete') bilan.modifDiete=(value||'').trim();
   else if(field==='training') bilan.modifTraining=(value||'').trim();
   persist();
