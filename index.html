@@ -8,6 +8,14 @@
 <meta name="apple-mobile-web-app-title" content="Coaching">
 <meta name="theme-color" content="#ede8de">
 <title>Coaching App</title>
+<!-- Moteur d'animations Lottie (avec lien de secours si le premier échoue) -->
+<script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js"></script>
+<script>
+// Si le premier lien n'a pas chargé Lottie, on tente un second fournisseur.
+if(typeof lottie==='undefined'){
+  document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"><\/script>');
+}
+</script>
 <script>
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/Coaching-App/sw.js').then(reg=>{
@@ -401,7 +409,8 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .food-card-d.disabled{opacity:.4}
 .food-card-d.open{border-color:var(--green)}
 .food-row1{display:flex;align-items:flex-start;gap:10px;padding:9px 12px 4px}
-.chk{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.chk{position:relative;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--border2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.chk .lottie-pop{position:absolute;width:52px;height:52px;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:6}
 .chk.on{background:var(--green);border-color:var(--green)}
 .chk.on::after{content:'';display:block;width:4px;height:8px;border:2px solid #fff;border-top:none;border-left:none;transform:rotate(42deg) translateY(-1px)}
 .food-info-d{flex:1;min-width:0;cursor:pointer}
@@ -631,6 +640,40 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
   transform:scale(.98);
   box-shadow:0 5px 12px rgba(29,158,117,.22);
 }
+
+/* ── Roadmap de paliers ── */
+.rm-profil{background:linear-gradient(135deg,var(--green-dark),var(--green));color:#fff;border-radius:16px;padding:14px 16px;margin:0 0 12px}
+.rm-profil-tag{display:inline-block;background:rgba(255,255,255,.18);border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700;letter-spacing:.03em}
+.rm-profil-titre{font-size:18px;font-weight:800;margin:8px 0 3px}
+.rm-profil-desc{font-size:12px;opacity:.92;line-height:1.45}
+.rm-legende{font-size:10px;color:var(--text3);display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap}
+.rm-legende span{display:flex;align-items:center;gap:5px}
+.rm-ldot{width:10px;height:10px;border-radius:50%}
+.rm-road{position:relative;margin:6px 2px 0;padding-left:30px}
+.rm-road::before{content:"";position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.rm-palier{position:relative;margin-bottom:10px}
+.rm-dot{position:absolute;left:-30px;top:2px;width:24px;height:24px;border-radius:50%;background:var(--bg2);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--text3);z-index:2}
+.rm-palier.rm-done .rm-dot{background:var(--green);border-color:var(--green);color:#fff}
+.rm-palier.rm-current .rm-dot{background:var(--bg);border-color:var(--green);color:var(--green);box-shadow:0 0 0 4px var(--green-light)}
+.rm-box{background:var(--bg2);border:.5px solid var(--border);border-radius:12px;padding:10px 12px}
+.rm-palier.rm-current .rm-box{background:var(--bg);border:1.5px solid var(--green);box-shadow:var(--shadow)}
+.rm-palier.rm-done .rm-box{opacity:.62}
+.rm-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rm-nom{font-size:13px;font-weight:700}
+.rm-badge{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:3px 7px;border-radius:20px}
+.rm-badge-cur{background:var(--green-light);color:var(--green-dark)}
+.rm-badge-done{background:var(--bg3);color:var(--text3)}
+.rm-macros{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.rm-chip{font-size:11px;font-weight:600;background:var(--bg);border:.5px solid var(--border);border-radius:8px;padding:4px 8px;color:var(--text2)}
+.rm-chip b{color:var(--text)}
+.rm-extra{font-size:11px;color:var(--text3);margin-top:7px;line-height:1.4}
+.rm-gen{width:100%;margin-top:9px;border:none;border-radius:9px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;background:var(--green-dark);color:#fff}
+.rm-gen-off{background:var(--bg3);color:var(--text3);cursor:default}
+.rm-actions{display:flex;gap:8px;margin-top:10px}
+.rm-mini{flex:1;border:none;border-radius:9px;padding:8px;font-size:12px;font-weight:700;cursor:pointer}
+.rm-valider{background:var(--green);color:#fff}
+.rm-retour{background:var(--bg3);color:var(--text2)}
+.rm-hint{font-size:11px;background:var(--amber-light);color:var(--amber);border-radius:10px;padding:9px 11px;line-height:1.4;margin-top:6px}
 
 @keyframes floatIcon{
   0%,100%{transform:translateY(0)}
@@ -1647,7 +1690,32 @@ async function supaDeleteVideo(path){
 
 // localStorage comme cache offline
 function lsGet(k){try{const r=localStorage.getItem(k);return r?JSON.parse(r):null;}catch{return null;}}
-function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){console.error('localStorage plein ou indisponible:',k,e);try{if(typeof toast==='function')toast('⚠ Stockage local plein — sauvegarde serveur prioritaire');}catch{}return false;}}
+// Caches lourds et non essentiels : ils sont toujours rechargés depuis le serveur,
+// donc on peut les vider en premier pour faire de la place sans rien perdre.
+function _lsFreeSpace(except){
+  ['c_bilansHebdo','c_videos','c_logsSeances'].forEach(key=>{
+    if(key!==except){try{localStorage.removeItem(key);}catch{}}
+  });
+}
+function lsSet(k,v){
+  const str=JSON.stringify(v);
+  try{
+    localStorage.setItem(k,str);
+    return true;
+  }catch(e){
+    // Boîte pleine : on fait le ménage des caches lourds puis on réessaie en silence.
+    try{
+      _lsFreeSpace(k);
+      localStorage.setItem(k,str);
+      return true;
+    }catch(e2){
+      // Même après ménage ça échoue : là seulement on prévient (les données restent sur le serveur).
+      console.error('localStorage plein ou indisponible:',k,e2);
+      try{if(typeof toast==='function')toast('⚠ Stockage local plein — sauvegarde serveur prioritaire');}catch{}
+      return false;
+    }
+  }
+}
 
 // persist() garde la compatibilité — sauvegarde locale uniquement
 function persist(){
@@ -2110,7 +2178,7 @@ function clientRowHTML(c,i){
     </div>
     <div class="client-actions">
       ${jourChip}
-      <button class="client-mini-btn" onclick="openCalculsPerte('${c.id}')" title="Calculs perte">Perte</button>
+      <button class="client-mini-btn" onclick="openCalculsPerte('${c.id}')" title="Trame">Plan</button>
       <button class="fav-btn${c.favori?' on':''}" onclick="toggleFavori('${c.id}')">${c.favori?'⭐':'☆'}</button>
       <button class="icon-btn" onclick="event.stopPropagation();showClientOptionsModal('${c.id}')" style="width:28px;height:28px;font-size:14px">⋯</button>
     </div>
@@ -2158,7 +2226,11 @@ function defaultCalculsPerte(){
     intensiteCardio:'Moyenne (130-150bpm)',
     cardios:0,
     dureeCardio:20,
-    deficit:20
+    deficit:20,
+    protGParKg:2,
+    palierIdx:0,
+    actifPlus:false,
+    hormonal:false
   };
 }
 
@@ -2467,16 +2539,32 @@ render.calculsPerte=function(){
       d=draft.data;
     }
   }catch(e){}
-  setTopbar('Calculs perte', c.prenom+' '+c.nom);
+  setTopbar('Trame', c.prenom+' '+c.nom);
   const el=document.getElementById('calculsPerte-content');
+  const curPhase = (S.client.blockPlan && S.client.blockPlan.active) ? (S.client.blockPlan.objectif||'') : '';
+  const curStart = (S.client.blockPlan && S.client.blockPlan.startDate) || '';
   el.innerHTML=`
     <div class="calc-wrap">
-      <div class="calc-toggle">
-        <button id="btn-calcul" class="active" onclick="switchCalcView('calcul')"><span class="btn-icon">⚡</span><span>Calcul perte</span></button>
-        <button id="btn-blocs" onclick="switchCalcView('blocs')"><span class="btn-icon">📊</span><span>Planificateur de blocs</span></button>
-      </div>
-
       <div id="view-calcul" class="calc-view">
+        <div class="calc-section">
+          <div class="calc-section-head">Phase / bloc</div>
+          <div class="calc-section-body">
+            <div class="calc-grid">
+              <div class="form-group">
+                <label class="form-label">Phase en cours</label>
+                <select class="form-inp form-select" id="cp-phase" onchange="updateClientPhase()">
+                  ${calculsSelectOptions(curPhase,['—','Sèche','Diet Break','Refeed','Reverse','Maintien','Prise de masse','Minicut'])}
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Début de la phase</label>
+                <input class="form-inp" id="cp-phase-start" type="date" value="${curStart}" onchange="updateClientPhase()" />
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.4">La phase et le numéro de semaine s'affichent en badge dans les bilans (ex : « SÈCHE · S3 »).</div>
+          </div>
+        </div>
+
         <div class="calc-section">
           <div class="calc-section-head">Données client</div>
           <div class="calc-section-body">
@@ -2498,6 +2586,23 @@ render.calculsPerte=function(){
               <div class="form-group">
                 <label class="form-label">Objectif de % de mg</label>
                 <input class="form-inp" id="cp-objectifMg" type="number" step="0.1" value="${d.objectifMg}" oninput="updateCalculsPerte()" />
+              </div>
+              <div class="form-group" style="grid-column:1/3">
+                <label class="form-label">Protéines : <b id="cp-protVal">${(d.protGParKg||2).toFixed(1).replace('.',',')}</b> g / kg de masse maigre</label>
+                <input class="form-inp" id="cp-protGParKg" type="range" min="2" max="2.5" step="0.1" value="${d.protGParKg||2}" oninput="updateCalculsPerte()" style="padding:0;height:30px;accent-color:var(--green)" />
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:2px"><span>2 g</span><span>2,5 g</span></div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Grosse activité (15k pas / métier)</label>
+                <select class="form-inp form-select" id="cp-actifPlus" onchange="updateCalculsPerte()">
+                  ${calculsSelectOptions(d.actifPlus?'Oui':'Non',['Non','Oui'])}
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Souci hormonal (femme)</label>
+                <select class="form-inp form-select" id="cp-hormonal" onchange="updateCalculsPerte()">
+                  ${calculsSelectOptions(d.hormonal?'Oui':'Non',['Non','Oui'])}
+                </select>
               </div>
             </div>
           </div>
@@ -2543,19 +2648,31 @@ render.calculsPerte=function(){
 
         <div id="calculs-results"></div>
       </div>
-
-      <div id="view-blocs" class="calc-view" style="display:none">
-        ${renderBlockPlannerSection(S.client, calculatePerteResults(d))}
-      
-<div style="margin-top:16px">
-  <button class="btn-start-block" onclick="startBlockPlan()"><span class="btn-icon">🚀</span><span>Commencer le bloc</span></button>
-</div>
-</div>
     </div>
   `;
   updateCalculsPerte();
-  switchCalcView('calcul');
 };
+
+// menu phase : alimente blockPlan (objectif + startDate + active) pour le badge des bilans
+function updateClientPhase(){
+  if(!S.client) return;
+  const phase=document.getElementById('cp-phase')?.value || '—';
+  const start=document.getElementById('cp-phase-start')?.value || '';
+  const bp=getClientBlockPlan(S.client);
+  if(phase==='—'){
+    bp.active=false;
+  } else {
+    bp.active=true;
+    bp.objectif=phase;
+    if(start) bp.startDate=start;
+  }
+  S.client.blockPlan=bp;
+  persist();
+  const cid=S.client.id;
+  const c=S.clients.find(x=>x.id===cid)||S.client;
+  if(c) saveClientToSupa(c);
+  toast('✓ Phase enregistrée');
+}
 
 function readCalculsPerteForm(){
   return {
@@ -2569,7 +2686,11 @@ function readCalculsPerteForm(){
     intensiteCardio: document.getElementById('cp-intensiteCardio')?.value || 'Moyenne (130-150bpm)',
     cardios: num(document.getElementById('cp-cardios')?.value),
     dureeCardio: num(document.getElementById('cp-dureeCardio')?.value),
-    deficit: num(document.getElementById('cp-deficit')?.value || 20)
+    deficit: num(document.getElementById('cp-deficit')?.value || 20),
+    protGParKg: parseFloat(document.getElementById('cp-protGParKg')?.value) || 2,
+    actifPlus: (document.getElementById('cp-actifPlus')?.value === 'Oui'),
+    hormonal: (document.getElementById('cp-hormonal')?.value === 'Oui'),
+    palierIdx: (S.client?.calculsPerte?.palierIdx) || 0
   };
 }
 
@@ -2587,6 +2708,9 @@ function updateCalculsPerte(){
     const c=S.clients.find(x=>x.id===cid)||(S.client&&S.client.id===cid?S.client:null);
     if(c) saveClientToSupa(c);
   },1200);
+  // maj live de la valeur protéines affichée
+  const pv=document.getElementById('cp-protVal');
+  if(pv) pv.textContent=(data.protGParKg||2).toFixed(1).replace('.',',');
   const r=calculatePerteResults(data);
   const box=document.getElementById('calculs-results');
   if(!box) return;
@@ -2615,15 +2739,136 @@ function updateCalculsPerte(){
           <div class="calc-kpi"><div class="calc-kpi-label">Dépense séance training</div><div class="calc-kpi-value">${round0(r.depenseTraining)}</div><div class="calc-kpi-sub">kcal</div></div>
           <div class="calc-kpi"><div class="calc-kpi-label">Dépense séance cardio</div><div class="calc-kpi-value">${round0(r.depenseCardio)}</div><div class="calc-kpi-sub">kcal</div></div>
         </div>
-      
-<div style="margin-top:16px">
-  <button class="btn-start-block" onclick="startBlockPlan()"><span class="btn-icon">🚀</span><span>Commencer le bloc</span></button>
-</div>
-</div>
+      </div>
     </div>
+    <div id="roadmap-section"></div>
   `;
 
-  refreshBlockPlannerInPlace();
+  renderRoadmapSection(data, r);
+}
+
+// ─────────────────────────────────────────
+// ROADMAP DE PALIERS (perte de poids)
+// ─────────────────────────────────────────
+const ROADMAP_PALIERS_HOMME = [
+  {nom:"Base de départ", on:300, off:220, lip:60, note:"Jour ON 300g gluc · 60g lip · reste prot. OFF 220g gluc."},
+  {nom:"Modif 1 — lipides", on:300, off:220, lip:45, note:"On passe à 45g de lipides ON et OFF. Ne pas enchaîner les modifs trop vite."},
+  {nom:"Modif 2", on:280, off:200, lip:45, note:"ON 280g · OFF 200g de glucides."},
+  {nom:"Modif 3", on:250, off:180, lip:45, note:"ON 250g · OFF 180g."},
+  {nom:"Modif 4", on:230, off:150, lip:45, note:"ON 230g · OFF 150g."},
+  {nom:"Modif 5", on:200, off:120, lip:45, note:"ON 200g · OFF 120g."},
+  {nom:"Modif 6 (rare)", on:180, off:100, lip:45, note:"Peu utilisé chez l'homme. ON 180g · OFF 100g."},
+  {nom:"Jours hauts / jours bas", on:null, off:null, lip:45, note:"Les ON deviennent jours hauts, les OFF jours bas : 1 jour haut / 2 jours bas."},
+  {nom:"Jours hauts / jours bas (+ serré)", on:null, off:null, lip:45, note:"1 jour haut / 3 jours bas."}
+];
+const ROADMAP_PALIERS_FEMME = [
+  {nom:"Départ (palier 3)", on:250, off:180, lip:60, note:"Les femmes démarrent au palier 3. Lipides 60g maintenus tout du long."},
+  {nom:"Modif", on:230, off:150, lip:60, note:"ON 230g · OFF 150g · lipides 60g."},
+  {nom:"Modif", on:200, off:120, lip:60, note:"ON 200g · OFF 120g · lipides 60g."},
+  {nom:"Modif", on:180, off:100, lip:60, note:"ON 180g · OFF 100g · lipides 60g."},
+  {nom:"Minimum palier", on:150, off:100, lip:60, note:"Plancher : ON 150g · OFF 100g. Lipides 60g."},
+  {nom:"Jours hauts / jours bas", on:null, off:null, lip:60, note:"On passe en jours hauts / jours bas. Chez la femme, le JOUR HAUT = le jour des jambes. 1 jour haut / 2 jours bas."},
+  {nom:"Jours hauts / jours bas (+ serré)", on:null, off:null, lip:60, note:"1 jour haut (jour des jambes) / 3 jours bas."}
+];
+
+// renvoie {paliers, protCible, tag, titre, desc} selon le profil
+function buildRoadmap(data, r){
+  const mm = r.masseMaigre || 0;
+  const protCible = Math.round((data.protGParKg||2) * mm);
+  let paliers, tag, titre, desc;
+  if(data.sexe==='Femme'){
+    paliers = JSON.parse(JSON.stringify(ROADMAP_PALIERS_FEMME));
+    if(data.hormonal) paliers.forEach(p=>p.lip=65);
+    tag="PARCOURS FEMME";
+    titre="Femme — démarrage palier 3";
+    desc="Lipides ≈60g constants"+(data.hormonal?" (un peu + car souci hormonal)":"")+". On descend palier par palier. Pas de modif pendant les règles.";
+  } else {
+    const mg=data.tauxMg||0;
+    paliers = JSON.parse(JSON.stringify(ROADMAP_PALIERS_HOMME));
+    if(mg<=17){
+      paliers[0]={nom:"Base — Cas 1", on:data.actifPlus?250:200, off:data.actifPlus?180:120, lip:45,
+        note:data.actifPlus?"Grosse activité : ON 250g · OFF 180g · 45g lip. Cardio 30min post-training, 7j/7.":"Sec / actif : ON 200g · OFF 120g · 45g lip. Cardio 30min post-training."};
+      tag="HOMME · CAS 1"; titre="Homme sec / très actif (≤17%)";
+      desc="Déjà lean ou grosse dépense. On démarre haut en glucides et on descend doucement.";
+    } else if(mg<=25){
+      tag="HOMME · CAS 2"; titre="Homme intermédiaire (18–25%)";
+      desc="Cas de référence. Base ON 300g / OFF 220g, puis on baisse les glucides palier après palier.";
+    } else {
+      tag="HOMME · CAS 3"; titre="Homme +26% de mg";
+      desc="On démarre sur les mêmes macros que le cas 2 (ou plus haut). Perte plus rapide tolérée au début.";
+    }
+  }
+  return {paliers, protCible, tag, titre, desc};
+}
+
+function renderRoadmapSection(data, r){
+  const sec=document.getElementById('roadmap-section');
+  if(!sec) return;
+  const rm=buildRoadmap(data, r);
+  let cur=(data.palierIdx||0);
+  if(cur>=rm.paliers.length) cur=rm.paliers.length-1;
+  const prot=rm.protCible;
+  const road=rm.paliers.map((p,i)=>{
+    const cls=i<cur?'rm-done':(i===cur?'rm-current':'');
+    const macros=(p.on!==null)
+      ? `<span class="rm-chip">Prot <b>${prot}g</b></span><span class="rm-chip">ON <b>${p.on}g</b></span><span class="rm-chip">OFF <b>${p.off}g</b></span><span class="rm-chip">Lip <b>${p.lip}g</b></span>`
+      : `<span class="rm-chip">Prot <b>${prot}g</b></span><span class="rm-chip">Lip <b>${p.lip}g</b></span>`;
+    let badge='';
+    if(i===cur) badge='<span class="rm-badge rm-badge-cur">En cours</span>';
+    else if(i<cur) badge='<span class="rm-badge rm-badge-done">✓ Franchi</span>';
+    const genBtn=(p.on!==null)
+      ? `<button class="rm-gen" onclick="genDieteFromPalier(${i})">🍽️ Générer la diète (Day ON / OFF)</button>`
+      : `<button class="rm-gen rm-gen-off" disabled>🍽️ Jours hauts/bas — à faire à la main</button>`;
+    let actions='';
+    if(i===cur){
+      actions=`<div class="rm-actions">
+        ${cur>0?'<button class="rm-mini rm-retour" onclick="roadmapStep(-1)">↑ Palier précédent</button>':''}
+        ${cur<rm.paliers.length-1?'<button class="rm-mini rm-valider" onclick="roadmapStep(1)">Valider → palier suivant</button>':'<button class="rm-mini rm-valider" disabled>Dernier palier</button>'}
+      </div>`;
+    }
+    return `<div class="rm-palier ${cls}">
+      <div class="rm-dot">${i<cur?'✓':(i+1)}</div>
+      <div class="rm-box">
+        <div class="rm-top"><div class="rm-nom">${p.nom}</div>${badge}</div>
+        <div class="rm-macros">${macros}</div>
+        <div class="rm-extra">${p.note}</div>
+        ${genBtn}
+        ${actions}
+      </div>
+    </div>`;
+  }).join('');
+
+  sec.innerHTML=`
+    <div class="rm-profil">
+      <span class="rm-profil-tag">${rm.tag}</span>
+      <div class="rm-profil-titre">${rm.titre}</div>
+      <div class="rm-profil-desc">${rm.desc}</div>
+    </div>
+    <div class="calc-section">
+      <div class="calc-section-head">🗺️ Roadmap — paliers à franchir</div>
+      <div class="calc-section-body">
+        <div class="rm-legende">
+          <span><span class="rm-ldot" style="background:var(--green)"></span> Franchi</span>
+          <span><span class="rm-ldot" style="background:var(--bg);border:2px solid var(--green)"></span> En cours</span>
+          <span><span class="rm-ldot" style="background:var(--bg2);border:2px solid var(--border2)"></span> À venir</span>
+        </div>
+        <div class="rm-road">${road}</div>
+        <div class="rm-hint">💡 À chaque bilan, <b>tu décides</b> si on franchit le palier suivant.</div>
+      </div>
+    </div>`;
+}
+
+function roadmapStep(delta){
+  if(!S.client) return;
+  const d=getClientCalculsPerte(S.client);
+  let idx=(d.palierIdx||0)+delta;
+  if(idx<0) idx=0;
+  S.client.calculsPerte=Object.assign(d,{palierIdx:idx});
+  persist();
+  const cid=S.client.id;
+  const c=S.clients.find(x=>x.id===cid)||S.client;
+  if(c) saveClientToSupa(c);
+  renderRoadmapSection(S.client.calculsPerte, calculatePerteResults(S.client.calculsPerte));
 }
 
 // ─────────────────────────────────────────
@@ -5620,6 +5865,95 @@ function createNewDiete(){
     toast('✓ Diète créée');
   }
 }
+
+// ─────────────────────────────────────────
+// GÉNÉRATION AUTOMATIQUE DE DIÈTE depuis un palier de la roadmap
+// ─────────────────────────────────────────
+function _rmFood(name){ // récupère un aliment de la base par son nom exact
+  const r=lookupFoodBase(name);
+  return r?{n:name,k:r.k,p:r.p,g:r.g,l:r.l}:{n:name,k:0,p:0,g:0,l:0};
+}
+// construit les meals d'une journée pour des cibles prot/gluc/lip
+function _rmBuildDay(targProt, targGluc, targLip){
+  const F={
+    poulet:_rmFood("Filet de poulet cuit"), skyr:_rmFood("Skyr"), fb:_rmFood("Fromage blanc 0%"),
+    riz:_rmFood("Riz blanc cuit"), avoine:_rmFood("Flocon d'avoine"), patate:_rmFood("Pomme de terre cuites"),
+    banane:_rmFood("Banane"), legume:_rmFood("Broccolis cuits"), huile:_rmFood("Huile d'olive"), amandes:_rmFood("Amandes")
+  };
+  const amandes=15, banane=120, avoine=40, legume2=150, skyr=150, fb=150;
+  const legume=legume2*2;
+  let glucFixe=banane/100*F.banane.g+legume/100*F.legume.g+avoine/100*F.avoine.g+amandes/100*F.amandes.g;
+  let glucRest=Math.max(0,targGluc-glucFixe);
+  let riz=(glucRest*0.55)/F.riz.g*100, patate=(glucRest*0.45)/F.patate.g*100;
+  let protFixe=skyr/100*F.skyr.p+fb/100*F.fb.p+avoine/100*F.avoine.p+riz/100*F.riz.p+patate/100*F.patate.p
+              +legume/100*F.legume.p+banane/100*F.banane.p+amandes/100*F.amandes.p;
+  let poulet=Math.max(0,targProt-protFixe)/F.poulet.p*100;
+  let lipResid=amandes/100*F.amandes.l+avoine/100*F.avoine.l+poulet/100*F.poulet.l+legume/100*F.legume.l
+              +banane/100*F.banane.l+riz/100*F.riz.l+patate/100*F.patate.l;
+  let huile=Math.max(0,(targLip-lipResid)*100/F.huile.l);
+  const R=Math.round;
+  const meals=[
+    {name:'Petit déjeuner',items:[
+      {food:"Flocon d'avoine",cat:'Céréales',type:null,qty:R(avoine),enabled:true},
+      {food:"Skyr",cat:'Produits laitiers',type:null,qty:skyr,enabled:true},
+      {food:"Banane",cat:'Fruits',type:'Unité',qty:1,enabled:true}
+    ]},
+    {name:'Déjeuner',items:[
+      {food:"Filet de poulet cuit",cat:'Viande',type:null,qty:R(poulet/2),enabled:true},
+      {food:"Riz blanc cuit",cat:'Féculents',type:null,qty:R(riz),enabled:true},
+      {food:"Broccolis cuits",cat:'Légumes',type:null,qty:legume2,enabled:true},
+      {food:"Huile d'olive",cat:'Huile',type:null,qty:R(huile/2),enabled:true}
+    ]},
+    {name:'Collation',items:[
+      {food:"Fromage blanc 0%",cat:'Produits laitiers',type:null,qty:fb,enabled:true},
+      {food:"Amandes",cat:'Oléagineux',type:null,qty:amandes,enabled:true}
+    ]},
+    {name:'Dîner',items:[
+      {food:"Filet de poulet cuit",cat:'Viande',type:null,qty:R(poulet/2),enabled:true},
+      {food:"Pomme de terre cuites",cat:'Féculents',type:null,qty:R(patate),enabled:true},
+      {food:"Broccolis cuits",cat:'Légumes',type:null,qty:legume2,enabled:true},
+      {food:"Huile d'olive",cat:'Huile',type:null,qty:R(huile/2),enabled:true}
+    ]}
+  ];
+  // kcal cible = calculée auto à partir des macros
+  const targets={kcal:R(targProt*4+targGluc*4+targLip*9),prot:R(targProt),gluc:R(targGluc),lip:R(targLip)};
+  return {targets,meals};
+}
+
+function genDieteFromPalier(idx){
+  if(!S.client) return;
+  const data=getClientCalculsPerte(S.client);
+  const r=calculatePerteResults(data);
+  const rm=buildRoadmap(data,r);
+  const p=rm.paliers[idx];
+  if(!p || p.on===null){ toast('Ce palier n\'a pas de macros fixes'); return; }
+  const dietOn=_rmBuildDay(rm.protCible, p.on, p.lip);
+  const dietOff=_rmBuildDay(rm.protCible, p.off, p.lip);
+  confirmDialog(
+    'Générer la diète ?',
+    'Cela remplacera la diète Day ON et Day OFF actuelle de '+S.client.prenom+' (basée sur le palier « '+p.nom+' »).',
+    'Générer',
+    ()=>{ _applyGeneratedDiete(dietOn, dietOff); }
+  );
+}
+
+async function _applyGeneratedDiete(dietOn, dietOff){
+  const cid=S.client.id;
+  if(!S.dietes[cid]) S.dietes[cid]={};
+  // conserver l'_id Supabase existant -> PATCH (mise à jour) au lieu de créer un doublon
+  const prevOn=S.dietes[cid]['on'], prevOff=S.dietes[cid]['off'];
+  if(prevOn && prevOn._id) dietOn._id = prevOn._id;
+  if(prevOff && prevOff._id) dietOff._id = prevOff._id;
+  S.dietes[cid]['on']=dietOn;
+  S.dietes[cid]['off']=dietOff;
+  persist();
+  S.dieteState.day='on';
+  toast('Génération…');
+  try{ await saveDieteToSupa(cid,'on'); await saveDieteToSupa(cid,'off'); }catch(e){ console.error('Save diète générée:',e); }
+  navigate('diete');
+  toast('✓ Diète générée (Day ON / OFF)');
+}
+
 async function saveClientDiete(){
   persist();
   // Snapshot as base diet
@@ -5786,7 +6120,7 @@ render.diete=function(){
           const isOpen=!isDietStrict&&ds.sel&&ds.sel.mi===mi&&ds.sel.ii===ii;
           return `<div class="food-card-d${item.enabled?'':' disabled'}${isOpen?' open':''}">
             <div class="food-row1">
-              <div class="chk${item.enabled?' on':''}" onclick="dToggle(${mi},${ii})"></div>
+              <div class="chk${item.enabled?' on':''}" data-chk="${mi}-${ii}" onclick="dToggle(${mi},${ii})"></div>
               <div class="food-info-d" onclick="${isDietStrict?'':'dOpenSel('+mi+','+ii+')'}" style="cursor:${isDietStrict?'default':'pointer'}">
                 <div class="food-nm">${item.food}</div>
                 <div class="food-ct">${isDietStrict?item.cat:item.cat+' · changer →'}</div>
@@ -6190,11 +6524,38 @@ function dPickFood(mi,ii,name,cat){
   saveDieteDraft();
   render.diete();
 }
+// ─── Animation Lottie "coche réussie" sur les cases de la diète ───
+const SUCCESS_CHECK_ANIM={"v":"4.8.0","meta":{"g":"LottieFiles AE 1.0.0","a":"","k":"","d":"","tc":""},"fr":60,"ip":0,"op":130,"w":512,"h":512,"nm":"HDFC Success","ddd":0,"assets":[],"layers":[{"ddd":0,"ind":1,"ty":4,"nm":"check","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":0,"k":0,"ix":10},"p":{"a":0,"k":[256,256,0],"ix":2},"a":{"a":0,"k":[0,0,0],"ix":1},"s":{"a":0,"k":[100,100,100],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"ind":0,"ty":"sh","ix":1,"ks":{"a":0,"k":{"i":[[0,0],[0,0],[0,0]],"o":[[0,0],[0,0],[0,0]],"v":[[-82.5,4.5],[-31,55],[73,-52.5]],"c":false},"ix":2},"nm":"Path 1","mn":"ADBE Vector Shape - Group","hd":false},{"ty":"tm","s":{"a":0,"k":0,"ix":1},"e":{"a":1,"k":[{"i":{"x":[0.667],"y":[1]},"o":{"x":[1],"y":[0.076]},"t":60,"s":[0]},{"t":85,"s":[100]}],"ix":2},"o":{"a":0,"k":0,"ix":3},"m":1,"ix":2,"nm":"Trim Paths 1","mn":"ADBE Vector Filter - Trim","hd":false},{"ty":"st","c":{"a":0,"k":[1,1,1,1],"ix":3},"o":{"a":0,"k":100,"ix":4},"w":{"a":0,"k":30,"ix":5},"lc":2,"lj":2,"bm":0,"nm":"Stroke 1","mn":"ADBE Vector Graphic - Stroke","hd":false},{"ty":"tr","p":{"a":0,"k":[0,0],"ix":2},"a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transform"}],"nm":"Shape 1","np":4,"cix":2,"bm":0,"ix":1,"mn":"ADBE Vector Group","hd":false}],"ip":0,"op":240,"st":0,"bm":0},{"ddd":0,"ind":3,"ty":4,"nm":"Shape Layer 2","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":0,"k":0,"ix":10},"p":{"a":0,"k":[256,257.86,0],"ix":2},"a":{"a":0,"k":[0,0,0],"ix":1},"s":{"a":1,"k":[{"i":{"x":[0,0,0.833],"y":[0.98,0.98,-66.114]},"o":{"x":[0.656,0.656,0.167],"y":[0.872,0.872,67.114]},"t":20,"s":[0,0,100]},{"t":60,"s":[150,150,100]}],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"d":1,"ty":"el","s":{"a":0,"k":[236,236],"ix":2},"p":{"a":0,"k":[0,0],"ix":3},"nm":"Ellipse Path 1","mn":"ADBE Vector Shape - Ellipse","hd":false},{"ty":"fl","c":{"a":0,"k":[0.172549019608,0.854901960784,0.580392156863,1],"ix":4},"o":{"a":0,"k":100,"ix":5},"r":1,"bm":0,"nm":"Fill 1","mn":"ADBE Vector Graphic - Fill","hd":false},{"ty":"tr","p":{"a":0,"k":[0,-3],"ix":2},"a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transform"}],"nm":"Ellipse 1","np":3,"cix":2,"bm":0,"ix":1,"mn":"ADBE Vector Group","hd":false}],"ip":0,"op":240,"st":0,"bm":0},{"ddd":0,"ind":4,"ty":4,"nm":"Shape Layer 1","sr":1,"ks":{"o":{"a":1,"k":[{"i":{"x":[0.626],"y":[0.729]},"o":{"x":[0.912],"y":[0.073]},"t":76,"s":[100]},{"t":119,"s":[0]}],"ix":11},"r":{"a":0,"k":0,"ix":10},"p":{"a":0,"k":[256,257.86,0],"ix":2},"a":{"a":0,"k":[0,0,0],"ix":1},"s":{"a":1,"k":[{"i":{"x":[0,0,0.667],"y":[0.999,0.999,1]},"o":{"x":[0.477,0.477,0.333],"y":[0.587,0.587,0]},"t":10,"s":[0,0,100]},{"i":{"x":[0.833,0.833,0.833],"y":[1,1,1]},"o":{"x":[0.167,0.167,0.167],"y":[0,0,0]},"t":50,"s":[150,150,100]},{"i":{"x":[0.833,0.833,0.833],"y":[1,1,1]},"o":{"x":[0.167,0.167,0.167],"y":[0,0,0]},"t":76,"s":[150,150,100]},{"t":123,"s":[210,210,100]}],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"d":1,"ty":"el","s":{"a":0,"k":[236,236],"ix":2},"p":{"a":0,"k":[0,0],"ix":3},"nm":"Ellipse Path 1","mn":"ADBE Vector Shape - Ellipse","hd":false},{"ty":"st","c":{"a":0,"k":[1,1,1,1],"ix":3},"o":{"a":0,"k":100,"ix":4},"w":{"a":0,"k":2,"ix":5},"lc":1,"lj":1,"ml":4,"bm":0,"nm":"Stroke 1","mn":"ADBE Vector Graphic - Stroke","hd":false},{"ty":"fl","c":{"a":0,"k":[0.783504889993,0.945098039216,0.880089314779,1],"ix":4},"o":{"a":0,"k":100,"ix":5},"r":1,"bm":0,"nm":"Fill 1","mn":"ADBE Vector Graphic - Fill","hd":false},{"ty":"tr","p":{"a":0,"k":[0,-3],"ix":2},"a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transform"}],"nm":"Ellipse 1","np":3,"cix":2,"bm":0,"ix":1,"mn":"ADBE Vector Group","hd":false}],"ip":0,"op":240,"st":0,"bm":0},{"ddd":0,"ind":5,"ty":4,"nm":"BG","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":0,"k":0,"ix":10},"p":{"a":0,"k":[256,256,0],"ix":2},"a":{"a":0,"k":[0,0,0],"ix":1},"s":{"a":0,"k":[100,100,100],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"ty":"rc","d":1,"s":{"a":0,"k":[554,556],"ix":2},"p":{"a":0,"k":[0,0],"ix":3},"r":{"a":0,"k":0,"ix":4},"nm":"Rectangle Path 1","mn":"ADBE Vector Shape - Rect","hd":false},{"ty":"fl","c":{"a":0,"k":[1,1,1,1],"ix":4},"o":{"a":0,"k":100,"ix":5},"r":1,"bm":0,"nm":"Fill 1","mn":"ADBE Vector Graphic - Fill","hd":false},{"ty":"tr","p":{"a":0,"k":[-1,6],"ix":2},"a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transform"}],"nm":"Rectangle 1","np":3,"cix":2,"bm":0,"ix":1,"mn":"ADBE Vector Group","hd":false}],"ip":0,"op":240,"st":0,"bm":0}],"markers":[]};
+// Joue l'animation par-dessus une case .chk. Sans danger : si Lottie n'est pas
+// chargé (réseau coupé), on ne fait rien et la coche normale reste affichée.
+function playCheckAnim(chkEl){
+  try{
+    if(typeof lottie==='undefined'||!chkEl) return;
+    const old=chkEl.querySelector('.lottie-pop'); if(old) old.remove();
+    const holder=document.createElement('div');
+    holder.className='lottie-pop';
+    chkEl.appendChild(holder);
+    const anim=lottie.loadAnimation({container:holder,renderer:'svg',loop:false,autoplay:true,animationData:SUCCESS_CHECK_ANIM});
+    anim.setSpeed(1.8);
+    anim.addEventListener('complete',()=>{try{anim.destroy();}catch(e){}holder.remove();});
+  }catch(e){/* l'animation est un bonus, jamais bloquant */}
+}
+
 function dToggle(mi,ii){
-  ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii].enabled^=true;
+  const item=ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii];
+  const wasEnabled=!!item.enabled;
+  item.enabled^=true;
   persist();
   saveDieteDraft();
   render.diete();
+  // On joue l'animation seulement quand on COCHE (passage éteint -> coché),
+  // après le redessin, sur la bonne case retrouvée par son repère data-chk.
+  if(!wasEnabled && item.enabled){
+    requestAnimationFrame(()=>{
+      const chkEl=document.querySelector('.chk[data-chk="'+mi+'-'+ii+'"]');
+      playCheckAnim(chkEl);
+    });
+  }
 }
 function dAdjQty(mi,ii,d){
   const item=ensureClientDiete(S.client.id,S.dieteState.day).meals[mi].items[ii];
@@ -7554,6 +7915,12 @@ function showClientOptionsModal(clientId){
     <div class="modal-title">${c.prenom} ${c.nom}</div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
       <div style="display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Adresse mail</div>
+        <input class="form-inp" id="edit-client-email" type="email" placeholder="client@email.com" value="${(c.email||'').replace(/"/g,'&quot;')}" />
+        <button class="btn btn-primary" style="font-size:13px;padding:8px" onclick="saveClientEmail('${clientId}')">💾 Enregistrer le mail</button>
+        <div style="font-size:11px;color:var(--text3);line-height:1.35">⚠ Modifier le mail ici ne renvoie pas l'invitation. Après correction, retourne dans Supabase (Auth → Invite user) pour réinviter le client avec cette nouvelle adresse.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
         <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Formule</div>
         <div style="display:flex;gap:4px;background:var(--bg);border-radius:999px;padding:3px">
           <button onclick="setClientFormule('${clientId}','suivi')" style="flex:1;padding:8px 10px;border-radius:999px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:${formule==='suivi'?'var(--green)':'transparent'};color:${formule==='suivi'?'#fff':'var(--text3)'};box-shadow:${formule==='suivi'?'0 1px 3px rgba(0,0,0,.15)':'none'}">✓ Suivi complet</button>
@@ -7567,6 +7934,22 @@ function showClientOptionsModal(clientId){
       <button class="btn btn-secondary" onclick="closeModal()">Fermer</button>
     </div>
   `);
+}
+
+function saveClientEmail(clientId){
+  const c=S.clients.find(x=>x.id===clientId)||S.archivedClients?.find(x=>x.id===clientId);
+  if(!c)return;
+  const inp=document.getElementById('edit-client-email');
+  const email=(inp?.value||'').trim().toLowerCase();
+  if(!email){ toast('⚠ Adresse mail vide'); return; }
+  // validation simple du format
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast('⚠ Adresse mail invalide'); return; }
+  c.email=email;
+  persist();
+  saveClientToSupa(c);
+  // rafraîchir la liste pour montrer le nouveau mail
+  if(typeof render.clients==='function') render.clients();
+  toast('✓ Adresse mail mise à jour');
 }
 
 function setClientFormule(clientId,formule){
@@ -8008,49 +8391,6 @@ async function seedProgrammeTheo(){
   }catch(e){console.error('[seed] erreur:',e);}
 }
 bootstrapAuth();
-
-let calcView = 'calcul';
-
-function switchCalcView(view){
-  calcView = view;
-  document.querySelectorAll('.calc-view').forEach(el=>el.style.display='none');
-  document.getElementById('view-'+view).style.display='block';
-
-  document.getElementById('btn-calcul').classList.toggle('active', view==='calcul');
-  document.getElementById('btn-blocs').classList.toggle('active', view==='blocs');
-}
-
-
-function startBlockPlan(){
-  if(!S.client) return;
-
-  const bp = readBlockPlanForm();
-  const startInput = document.getElementById('bp-start-date');
-  if(startInput && startInput.value){
-    bp.startDate = startInput.value;
-  }
-
-  bp.active = true;
-  S.client.blockPlan = bp;
-  persist();
-  saveClientToSupa(S.client);
-
-  // Nettoyer le brouillon sessionStorage puisqu'on a commité
-  sessionStorage.removeItem('c_blockPlan_draft');
-
-  if(typeof refreshBlockPlannerInPlace === 'function'){
-    refreshBlockPlannerInPlace();
-  }
-
-  if(S.screen === 'suivi'){
-    render.suivi();
-  }
-
-  toast('Bloc activé');
-}
-
-
-
 
 </script>
 
