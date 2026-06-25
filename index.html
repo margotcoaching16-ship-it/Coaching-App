@@ -2719,11 +2719,27 @@ render.calculsPerte=function(){
                 <label class="form-label">Cardio / semaine</label>
                 <input class="form-inp" id="cp-cardios" type="number" step="1" min="0" value="${d.cardios}" oninput="updateCalculsPerte()" />
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="calc-section">
+          <div class="calc-section-head">Cardio en fin de séance</div>
+          <div class="calc-section-body">
+            <div class="calc-grid">
               <div class="form-group">
-                <label class="form-label">Minutes / séance cardio</label>
-                <input class="form-inp" id="cp-dureeCardio" type="number" step="1" min="0" value="${d.dureeCardio}" oninput="updateCalculsPerte()" />
+                <label class="form-label">Type de cardio</label>
+                <select class="form-inp form-select" id="cp-cardioType">
+                  ${(()=>{const cardios=S.exercices.filter(e=>e.cat==='Cardio').sort((a,b)=>a.nom.localeCompare(b.nom));return '<option value="">— Choisir —</option>'+cardios.map(e=>`<option value="${e.id}">${escapeHtml(e.nom)}</option>`).join('');})()}
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Durée du cardio (min)</label>
+                <input class="form-inp" id="cp-cardioDuree" type="number" step="1" min="1" value="${d.dureeCardio||20}" oninput="updateCalculsPerte()" />
               </div>
             </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.4">Ce cardio sera ajouté automatiquement à la fin de toutes les séances de musculation du client.</div>
+            <button class="btn btn-primary" style="margin-top:12px" onclick="appliquerCardioToutesSeances()">Ajouter à toutes les séances</button>
           </div>
         </div>
 
@@ -2733,6 +2749,34 @@ render.calculsPerte=function(){
   `;
   updateCalculsPerte();
 };
+
+// Ajoute le cardio choisi (type + durée) à la fin de chaque séance de musculation du client
+async function appliquerCardioToutesSeances(){
+  if(!S.client){toast('⚠ Aucun client sélectionné');return;}
+  const exoId=document.getElementById('cp-cardioType')?.value||'';
+  if(!exoId){toast('⚠ Choisis un type de cardio');return;}
+  const exo=S.exercices.find(e=>e.id===exoId);
+  if(!exo){toast('⚠ Exercice cardio introuvable');return;}
+  const duree_min=parseInt(document.getElementById('cp-cardioDuree')?.value)||20;
+  // Toutes les séances type des programmes du client
+  const progIds=S.programmes.filter(p=>p.client_id===S.client.id).map(p=>p.id);
+  const seances=S.seancesType.filter(s=>progIds.includes(s.programme_id));
+  if(!seances.length){toast('⚠ Aucune séance trouvée pour ce client');return;}
+  let count=0;
+  for(const seance of seances){
+    if(!Array.isArray(seance.exercices))seance.exercices=[];
+    const newExoEntry={exo_id:exoId,nom:exo.nom,cat:exo.cat,desc:exo.desc||'',video:exo.video||'',nb_series:1,reps_min:0,reps_max:0,repos:0,notes:'',repsPerSeries:null,duree_min,cardioAuto:true};
+    // Retirer un éventuel cardio auto déjà présent en fin de séance, puis remettre le nouveau tout en bas
+    while(seance.exercices.length && seance.exercices[seance.exercices.length-1].cardioAuto){seance.exercices.pop();}
+    seance.exercices.push(newExoEntry);
+    const idx=S.seancesType.findIndex(s=>s.id===seance.id);
+    if(idx>=0)S.seancesType[idx]=seance;
+    count++;
+  }
+  persist();
+  for(const seance of seances){await saveSeanceTypeToSupa(seance);}
+  toast(`✓ ${exo.nom} (${duree_min} min) ajouté à ${count} séance(s)`);
+}
 
 // menu phase : alimente blockPlan (objectif + startDate + active) pour le badge des bilans
 function updateClientPhase(){
@@ -2766,7 +2810,7 @@ function readCalculsPerteForm(){
     seances: num(document.getElementById('cp-seances')?.value),
     intensiteCardio: document.getElementById('cp-intensiteCardio')?.value || 'Moyenne (130-150bpm)',
     cardios: num(document.getElementById('cp-cardios')?.value),
-    dureeCardio: num(document.getElementById('cp-dureeCardio')?.value),
+    dureeCardio: (document.getElementById('cp-cardioDuree') ? num(document.getElementById('cp-cardioDuree').value) : (S.client?.calculsPerte?.dureeCardio ?? 20)),
     deficit: num(document.getElementById('cp-deficit')?.value || 20),
     protGParKg: parseFloat(document.getElementById('cp-protGParKg')?.value) || 2,
     actifPlus: (document.getElementById('cp-actifPlus')?.value === 'Oui'),
@@ -3197,6 +3241,8 @@ render.seance=function(){
 
   function cardHTML(exo,ei,gi,isTop,isBottom){
     const isCardio=exo.cat==='Cardio';
+    const exoMaster=S.exercices.find(x=>x.id===exo.exo_id);
+    const videoUrl=exo.video||exoMaster?.video||'';
     const badgeStyle=isCardio?'background:var(--amber-light);color:var(--amber)':'';
     const catStyle=isCardio?'color:var(--amber)':'';
     const placeholder=`<div style="width:24px;height:24px"></div>`;
@@ -3223,7 +3269,7 @@ render.seance=function(){
           <div class="exo-card-cat" style="${catStyle}">${isCardio?exo.cat+' · '+(exo.duree_min||'?')+' min':(exo.repsPerSeries && exo.repsPerSeries.length > 0)?exo.cat+' · '+exo.nb_series+' séries':exo.cat+' · '+exo.nb_series+' séries · '+exo.reps_min+'-'+exo.reps_max+' reps'}</div>
         </div>
         <div class="exo-card-actions">
-          ${exo.video?`<a class="exo-mini-btn" href="${exo.video}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">▶️</a>`:''}
+          ${videoUrl?`<a class="exo-mini-btn" href="${videoUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">▶️</a>`:''}
           <button class="exo-mini-btn" onclick="openHistorique('${exo.exo_id}')">📈</button>
           <button class="exo-mini-btn" onclick="editExoConfig(${ei})">✏️</button>
           <button class="intens-picker-btn" onclick="showExoOptionsMenu(${ei},'seance')">⚙️</button>
@@ -3300,6 +3346,12 @@ function syncExoToActiveLog(exoId, updates){
   saveActiveLog(S.logSeance);
 }
 
+// Si un cardio "auto" n'est plus en toute dernière position (donc déplacé manuellement), il devient un exercice normal
+function unflagMovedCardio(exos){
+  if(!Array.isArray(exos))return;
+  exos.forEach((e,i)=>{ if(e&&e.cardioAuto && i!==exos.length-1){ delete e.cardioAuto; } });
+}
+
 function moveGroupInSeance(gi,dir){
   if(!S.seanceType||!Array.isArray(S.seanceType.exercices))return;
   const exos=S.seanceType.exercices;
@@ -3318,6 +3370,7 @@ function moveGroupInSeance(gi,dir){
     // Nouvel ordre : groupe courant passe devant/derrière la cible
     const newOrder=(dir<0?[...group,...target]:[...target,...group]).map(i=>exos[i]);
     newOrder.forEach((e,off)=>exos[minIdx+off]=e);
+    unflagMovedCardio(exos);
     // Synchroniser le log actif en réordonnant selon la séance
     if(S.logSeance&&S.logSeance.seance_type_id===S.seanceType.id){
       const byId={};S.logSeance.exercices.forEach(e=>{if(e.exo_id)byId[e.exo_id]=e;});
@@ -3351,6 +3404,7 @@ function reorderGroupInSeance(fromGi,toGi){
   const [moved]=groupArrays.splice(fromGi,1);
   groupArrays.splice(toGi,0,moved);
   S.seanceType.exercices=groupArrays.flat();
+  unflagMovedCardio(S.seanceType.exercices);
   // Synchroniser le log actif
   if(S.logSeance&&S.logSeance.seance_type_id===S.seanceType.id){
     const byId={};S.logSeance.exercices.forEach(e=>{if(e.exo_id)byId[e.exo_id]=e;});
@@ -4706,7 +4760,10 @@ function confirmAddExo(exoId){
     reps_max=parseInt(document.getElementById('nc-rmax').value)||12;
   }
   const newExoEntry={exo_id:exoId,nom:exo.nom,cat:exo.cat,desc:exo.desc||'',video:exo.video||'',nb_series,reps_min,reps_max,repos,notes,repsPerSeries:null,...(isCardio?{duree_min}:{})};
-  S.seanceType.exercices.push(newExoEntry);
+  // Si un cardio auto est en fin de séance, insérer le nouvel exercice juste au-dessus (le cardio reste tout en bas)
+  let insertAt=S.seanceType.exercices.length;
+  while(insertAt>0 && S.seanceType.exercices[insertAt-1].cardioAuto){insertAt--;}
+  S.seanceType.exercices.splice(insertAt,0,newExoEntry);
   const idx=S.seancesType.findIndex(s=>s.id===S.seanceType.id);
   if(idx>=0)S.seancesType[idx]=S.seanceType;
   // Si une séance est en cours pour ce type, on l'ajoute aussi au log actif
