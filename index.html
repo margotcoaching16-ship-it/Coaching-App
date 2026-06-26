@@ -7848,7 +7848,7 @@ async function syncClientData(clientId){
     pendingLogs.forEach(l=>saveLogToSupa(l));
     S.logsSeances=S.logsSeances.filter(l=>l.client_id!==clientId);
     // Remapper exercices_log → exercices (Supabase stocke sous exercices_log)
-    S.logsSeances.push(...logs.map(l=>({...l,date:l.date_seance||l.date,exercices:l.exercices||l.exercices_log||[],commentaireSeance:l.commentaire_seance||''})),...pendingLogs);
+    S.logsSeances.push(...logs.map(l=>({...l,date:l.date_seance||l.date,seance_nom:l.seance_nom||l.nom||'Séance',exercices:l.exercices||l.exercices_log||[],commentaireSeance:l.commentaire_seance||''})),...pendingLogs);
   }
   if(checkins){
     const supaCheckinDates=new Set(checkins.map(ci=>ci.date));
