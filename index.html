@@ -133,6 +133,13 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .section-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;padding:10px 16px 5px}
 .exo-cat-header{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--green-dark);text-transform:uppercase;letter-spacing:.04em;padding:9px 16px;margin-top:6px;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
 .exo-cat-count{margin-left:auto;font-size:11px;font-weight:700;color:var(--text2);background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1px 8px;text-transform:none;letter-spacing:0}
+.copy-client-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto}
+.copy-client-row{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);cursor:pointer;font-size:14px;color:var(--text);text-align:left}
+.copy-client-row:hover{border-color:var(--green);background:var(--green-light)}
+.copy-client-name{font-weight:600}
+.copy-client-arrow{font-size:20px;color:var(--green)}
+.sel-strict-head{font-size:12px;font-weight:700;color:var(--green-dark);padding:8px 4px 2px;display:flex;align-items:center;gap:8px}
+.sel-strict-cat{font-size:11px;font-weight:600;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1px 8px}
 
 .client-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:.5px solid var(--border);cursor:pointer;transition:background .1s}
 .client-row:active{background:var(--bg2)}
@@ -3136,6 +3143,7 @@ render.training=function(){
         </div>`:''}
         <div style="padding:8px 14px;display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" style="flex:1" onclick="showAddSeanceModal('${prog.id}')">➕ Ajouter une séance</button>
+          ${currentIsCoach?`<button class="btn btn-secondary btn-sm" style="width:auto;padding:8px 12px" onclick="showCopyProgModal('${prog.id}')" title="Copier ce programme vers une autre cliente">📑 Copier</button>`:''}
           <button class="btn btn-danger btn-sm" style="width:auto;padding:8px 12px" onclick="deleteProg('${prog.id}')">🗑</button>
         </div>
       </div>`:''}
@@ -3217,6 +3225,63 @@ async function _deleteProg(id){
   persist();render.training();
   await supa('DELETE','programmes','',`?id=eq.${id}`);
   toast('Programme supprimé');
+}
+
+// ─── COPIER UN PROGRAMME VERS UNE AUTRE CLIENTE ───
+function showCopyProgModal(progId){
+  event&&event.stopPropagation&&event.stopPropagation();
+  const prog=S.programmes.find(p=>p.id===progId);if(!prog)return;
+  // Toutes les clientes sauf la cliente actuelle, triées par nom
+  const cibles=(S.clients||[])
+    .filter(c=>c.id!==S.client.id)
+    .sort((a,b)=>(a.prenom+' '+a.nom).localeCompare(b.prenom+' '+b.nom));
+  if(!cibles.length){toast('⚠ Aucune autre cliente disponible');return;}
+  const options=cibles.map(c=>
+    `<button class="copy-client-row" onclick="copyProgToClient('${progId}','${c.id}')">`+
+      `<span class="copy-client-name">${c.prenom} ${c.nom}</span>`+
+      `<span class="copy-client-arrow">›</span>`+
+    `</button>`
+  ).join('');
+  openModal(
+    '<div class="modal-title">Copier le programme</div>'+
+    '<div style="font-size:13px;color:var(--text2);line-height:1.45;margin-bottom:12px">'+
+      'Copie « <strong>'+(prog.nom||'').replace(/</g,'&lt;')+'</strong> » et toutes ses séances vers la cliente de ton choix. '+
+      'Le programme original n\'est pas modifié.</div>'+
+    '<div class="copy-client-list">'+options+'</div>'
+  );
+}
+
+async function copyProgToClient(progId,targetClientId){
+  const prog=S.programmes.find(p=>p.id===progId);
+  const target=(S.clients||[]).find(c=>c.id===targetClientId);
+  if(!prog||!target){toast('⚠ Erreur');return;}
+  closeModal();
+
+  // 1) Nouveau programme pour la cliente cible (même nom, mêmes nb_seances)
+  const newProg={id:uid(),client_id:target.id,nom:prog.nom,nb_seances:prog.nb_seances,_open:false};
+  S.programmes.push(newProg);
+
+  // 2) Copier chaque séance type avec ses exercices (copie profonde)
+  const seances=S.seancesType
+    .filter(s=>s.programme_id===prog.id)
+    .sort((a,b)=>a.ordre-b.ordre);
+  const newSeances=seances.map(s=>({
+    id:uid(),
+    programme_id:newProg.id,
+    nom:s.nom,
+    ordre:s.ordre,
+    exercices:JSON.parse(JSON.stringify(s.exercices||[]))
+  }));
+  newSeances.forEach(ns=>S.seancesType.push(ns));
+
+  persist();render.training();
+
+  // 3) Sauvegarder en Supabase (programme puis séances)
+  await supa('POST','programmes',{id:newProg.id,client_id:newProg.client_id,nom:newProg.nom,nb_seances:newProg.nb_seances});
+  for(const ns of newSeances){
+    await supa('POST','seances_type',{id:ns.id,programme_id:ns.programme_id,nom:ns.nom,ordre:ns.ordre,exercices:ns.exercices});
+  }
+  toast(`✓ Programme copié vers ${target.prenom}`);
 }
 
 // ─────────────────────────────────────────
@@ -6329,13 +6394,13 @@ render.diete=function(){
           const cv=calcFoodItem(item);
           const isUnit=(item.type||'').toUpperCase()==='UNITÉ';
           const step=isUnit?1:5;
-          const isOpen=!isDietStrict&&ds.sel&&ds.sel.mi===mi&&ds.sel.ii===ii;
+          const isOpen=ds.sel&&ds.sel.mi===mi&&ds.sel.ii===ii;
           return `<div class="food-card-d${item.enabled?'':' disabled'}${isOpen?' open':''}">
             <div class="food-row1">
               <div class="chk${item.enabled?' on':''}" data-chk="${mi}-${ii}" onclick="dToggle(${mi},${ii})"></div>
-              <div class="food-info-d" onclick="${isDietStrict?'':'dOpenSel('+mi+','+ii+')'}" style="cursor:${isDietStrict?'default':'pointer'}">
+              <div class="food-info-d" onclick="${isDietStrict?'dOpenSelStrict('+mi+','+ii+')':'dOpenSel('+mi+','+ii+')'}" style="cursor:pointer">
                 <div class="food-nm">${item.food}</div>
-                <div class="food-ct">${isDietStrict?item.cat:item.cat+' · changer →'}</div>
+                <div class="food-ct">${item.cat+' · changer l\'aliment →'}</div>
               </div>
               <div class="food-kcal-d">${item.enabled?cv.kcal+' kcal':'—'}</div>
               ${isDietStrict?'<div style="width:24px"></div>':'<button onclick="dRemoveItem('+mi+','+ii+')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px;padding:0 2px;line-height:1;flex-shrink:0">✕</button>'}
@@ -6351,7 +6416,7 @@ render.diete=function(){
               <span class="qunit">${isUnit?'u':'g'}</span>
               <button class="qbtn" onclick="dAdjQty(${mi},${ii},${step})">+</button>
             </div>
-            ${isOpen?dSelHTML(mi,ii):''}
+            ${isOpen?(isDietStrict?dSelHTMLStrict(mi,ii):dSelHTML(mi,ii)):''}
           </div>`;
         }).join('')}
         ${isDietStrict?'':'<button onclick="dAddItemToMeal('+mi+')" style="width:100%;margin-top:6px;padding:8px;border-radius:8px;border:.5px dashed var(--green);background:var(--green-light);color:var(--green-dark);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;line-height:1"><span style="font-size:16px">+</span> Ajouter un aliment</button>'}
@@ -6410,6 +6475,82 @@ function dSelHTML(mi,ii){
     <button class="sel-tab-d${!isCat?' active':''}" onclick="dSelTab(${mi},${ii},'food')">Aliment${ds.sel.cat?' — '+ds.sel.cat:''}</button>
     <button class="sel-tab-d${isCat?' active':''}" onclick="dSelTab(${mi},${ii},'cat')">Catégorie</button>
   </div><div class="sel-body">${isCat?searchBar+catGrid:fc}</div></div>`;
+}
+
+// ─── DIÈTE STRICTE : changer l'aliment sans changer la catégorie ───
+function dOpenSelStrict(mi,ii){
+  const ds=S.dieteState;
+  if(ds.sel&&ds.sel.mi===mi&&ds.sel.ii===ii){ds.sel=null;}
+  else{
+    const item=getClientDiete(S.client.id,ds.day).meals[mi].items[ii];
+    // On verrouille la catégorie de l'item : la cliente/le coach ne peut
+    // changer QUE l'aliment, à l'intérieur de cette même catégorie.
+    ds.sel={mi,ii,tab:'food',cat:item.cat||null,strict:true};
+  }
+  render.diete();
+}
+
+// Panneau de sélection en mode strict : pas d'onglet Catégorie,
+// recherche + liste limitées à la catégorie de l'item.
+function dSelHTMLStrict(mi,ii){
+  const ds=S.dieteState;const db=getDieteDB();
+  const lockedCat=ds.sel.cat;
+  const searchText=(ds.sel?.search||'').toLowerCase().trim();
+
+  const searchBar=`<div style="padding:8px 0">
+    <input type="text" id="dSearch-${mi}-${ii}" class="form-inp" placeholder="🔍 Chercher dans ${lockedCat||'la catégorie'}..." style="width:100%;margin-bottom:8px" value="${searchText}" oninput="dUpdateSearchStrict(${mi},${ii},this.value)"/>
+  </div>`;
+
+  // On ne cherche QUE dans la catégorie verrouillée
+  let foodList=(db[lockedCat]||[]).map(f=>({...f,cat:lockedCat}));
+  if(searchText) foodList=foodList.filter(f=>matchesSearch(f.n,searchText));
+
+  let fc=searchBar;
+  if(foodList.length===0){
+    fc+=`<div class="no-cat">Aucun aliment trouvé</div>`;
+  }else{
+    fc+=`<div class="food-list-d">${foodList.map(f=>`
+      <div class="food-row-d" onclick="dPickFoodData(${mi},${ii},this)" data-food="${f.n.replace(/"/g,'&quot;')}" data-cat="${(f.cat||'').replace(/"/g,'&quot;')}">
+        <span>${f.n}${f.custom?'<span class="custom-badge">perso</span>':''}</span>
+        <span class="fr-k">${f.isRecette?f.k+' kcal/part':f.k+' kcal/100g'}</span>
+      </div>`).join('')}</div>`;
+  }
+
+  return `<div class="sel-panel">
+    <div class="sel-strict-head">Changer l'aliment <span class="sel-strict-cat">${lockedCat||''}</span></div>
+    <div class="sel-body">${fc}</div></div>`;
+}
+
+// Recherche live en mode strict (catégorie verrouillée)
+function dUpdateSearchStrict(mi,ii,value){
+  if(!S.dieteState.sel) return;
+  S.dieteState.sel.search=value;
+  const db=getDieteDB();
+  const lockedCat=S.dieteState.sel.cat;
+  const searchText=(value||'').toLowerCase().trim();
+  let foodList=(db[lockedCat]||[]).map(f=>({...f,cat:lockedCat}));
+  if(searchText) foodList=foodList.filter(f=>matchesSearch(f.n,searchText));
+  let listHtml='';
+  if(foodList.length===0){
+    listHtml=`<div class="no-cat">Aucun aliment trouvé</div>`;
+  }else{
+    listHtml=`<div class="food-list-d">${foodList.map(f=>`
+      <div class="food-row-d" onclick="dPickFoodData(${mi},${ii},this)" data-food="${f.n.replace(/"/g,'&quot;')}" data-cat="${(f.cat||'').replace(/"/g,'&quot;')}">
+        <span>${f.n}${f.custom?'<span class="custom-badge">perso</span>':''}</span>
+        <span class="fr-k">${f.isRecette?f.k+' kcal/part':f.k+' kcal/100g'}</span>
+      </div>`).join('')}</div>`;
+  }
+  const input=document.getElementById(`dSearch-${mi}-${ii}`);
+  if(input){
+    const container=input.closest('.sel-body');
+    if(container){
+      const searchBarDiv=input.parentElement;
+      container.innerHTML='';
+      container.appendChild(searchBarDiv);
+      container.insertAdjacentHTML('beforeend',listHtml);
+      input.focus();
+    }
+  }
 }
 
 function dUpdateSearch(mi,ii,value){
