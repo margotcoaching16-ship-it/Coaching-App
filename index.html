@@ -131,6 +131,8 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .search-inp:focus{outline:none;border-color:var(--green)}
 
 .section-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;padding:10px 16px 5px}
+.exo-cat-header{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--green-dark);text-transform:uppercase;letter-spacing:.04em;padding:9px 16px;margin-top:6px;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
+.exo-cat-count{margin-left:auto;font-size:11px;font-weight:700;color:var(--text2);background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1px 8px;text-transform:none;letter-spacing:0}
 
 .client-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:.5px solid var(--border);cursor:pointer;transition:background .1s}
 .client-row:active{background:var(--bg2)}
@@ -1875,9 +1877,22 @@ function loadExercices(){
   // Add any new defaults not in saved
   const savedDefaultIds=new Set(savedDefaults.map(e=>e.id));
   const newDefaults=defaults.filter(e=>!savedDefaultIds.has(e.id));
-  const merged=[...savedDefaults,...newDefaults,...custom];
-  if(newDefaults.length>0){lsSet('c_exercices',merged);}
-  return merged;
+  let merged=[...savedDefaults,...newDefaults,...custom];
+  // Nettoyage : on retire de "Full body" les exercices dont le nom existe
+  // déjà dans une autre catégorie (sinon ils apparaissent en double).
+  const cleaned=dedupeFullBody(merged);
+  if(newDefaults.length>0 || cleaned.length!==merged.length){lsSet('c_exercices',cleaned);}
+  return cleaned;
+}
+
+// Supprime les exercices "Full body" qui font doublon avec un exercice
+// portant le même nom dans une autre catégorie.
+function dedupeFullBody(exos){
+  const norm=s=>(s||'').trim().toLowerCase();
+  const nomsAilleurs=new Set(
+    exos.filter(e=>e.cat!=='Full body').map(e=>norm(e.nom))
+  );
+  return exos.filter(e=>!(e.cat==='Full body' && nomsAilleurs.has(norm(e.nom))));
 }
 
 function defaultExos(){return [
@@ -5092,16 +5107,39 @@ render.historique=function(){
 render.exercices=function(filter=''){
   setTopbar("Exercices",'',`<div class="icon-btn" onclick="showNewExoModal()">＋</div>`);
   const el=document.getElementById('exercices-content');if(!el)return;
-  const cats=[...new Set(S.exercices.map(e=>e.cat))].sort();
+  // On dessine la barre de recherche UNE seule fois (champ fixe).
+  // La liste, elle, vit dans son propre conteneur et est la seule chose
+  // redessinée quand on tape → le curseur ne saute plus.
+  el.innerHTML=
+    '<div style="padding:10px 16px 0">'+
+      '<input class="form-inp form-inp-sm" id="exo-list-search" placeholder="Rechercher un exercice..." '+
+      'oninput="renderExoListResults(this.value)" style="margin-bottom:12px" />'+
+    '</div>'+
+    '<div id="exo-list-results"></div>';
+  renderExoListResults(filter);
+};
+
+// Dessine uniquement la liste filtrée (sans toucher au champ de recherche).
+function renderExoListResults(filter=''){
+  const box=document.getElementById('exo-list-results');if(!box)return;
+  // Ordre fixe et logique des groupes musculaires (et pas alphabétique).
+  const ordreCats=['Jambes','Fessiers','Pectoraux','Dos','Épaules','Biceps','Triceps','Abdominaux','Full body','Cardio','Autre'];
+  const presentes=[...new Set(S.exercices.map(e=>e.cat))];
+  const cats=[
+    ...ordreCats.filter(c=>presentes.includes(c)),
+    ...presentes.filter(c=>!ordreCats.includes(c)).sort()
+  ];
   let list=S.exercices;
   if(filter) list=list.filter(e=>e.nom.toLowerCase().includes(filter.toLowerCase())||e.cat.toLowerCase().includes(filter.toLowerCase()));
 
-  let html='<div style="padding:10px 16px 0"><input class="form-inp form-inp-sm" placeholder="Rechercher un exercice..." oninput="render.exercices(this.value)" style="margin-bottom:12px" /></div>';
+  // Petites icônes par groupe musculaire pour aider à les distinguer d'un coup d'œil.
+  const catIcon={'Jambes':'🦵','Fessiers':'🍑','Pectoraux':'💪','Dos':'🔙','Épaules':'🤸','Biceps':'💪','Triceps':'💪','Abdominaux':'🧘','Full body':'🔥','Cardio':'🏃','Autre':'⭐'};
 
+  let html='';
   cats.forEach(cat=>{
     const catExos=list.filter(e=>e.cat===cat);
     if(!catExos.length) return;
-    html+='<div class="section-label">'+cat+'</div>';
+    html+='<div class="exo-cat-header">'+(catIcon[cat]||'')+' '+cat+' <span class="exo-cat-count">'+catExos.length+'</span></div>';
     catExos.forEach(exo=>{
       const isCustom=exo.id.startsWith('c');
       const videoBtn=exo.video?'<a href="'+exo.video+'" target="_blank" class="icon-btn" style="text-decoration:none;font-size:16px">🎬</a>':'';
@@ -5120,8 +5158,8 @@ render.exercices=function(filter=''){
 
   if(!list.length) html+='<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Aucun exercice trouvé</div></div>';
   html+='<div style="padding:16px"><button class="btn btn-primary" onclick="showNewExoModal()">+ Créer un exercice</button></div>';
-  el.innerHTML=html;
-};
+  box.innerHTML=html;
+}
 
 
 render.bilanHebdo=function(){
