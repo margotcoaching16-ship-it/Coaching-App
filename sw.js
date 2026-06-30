@@ -6,7 +6,7 @@
 //    Change le numéro ci-dessous (v1 -> v2 -> v3…) avant d'uploader sur GitHub.
 //    Ça force l'appli à jeter l'ancien cache et à prendre la nouvelle version.
 
-const CACHE_NAME = 'coaching-app-v2';
+const CACHE_NAME = 'coaching-app-v3';
 
 self.addEventListener('install', event => {
   self.skipWaiting(); // Active immédiatement sans attendre la fermeture des onglets
