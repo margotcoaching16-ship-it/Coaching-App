@@ -7956,19 +7956,81 @@ async function syncClients(){
   if(archives){const a=archives.map(normalize);S.archivedClients=a;lsSet('c_archivedClients',a);}
 }
 
+// Restaure sur la base d'exercices les liens vidéo encore présents dans les
+// séances des clientes. Utile pour récupérer les vidéos des exos par défaut
+// qui n'étaient stockées que localement et qui ont été effacées par une synchro.
+function recoverExoVideosFromSeances(){
+  // Map exo_id -> vidéo trouvée dans une séance (la première non vide gagne)
+  const videoByExoId={};
+  (S.seancesType||[]).forEach(s=>{
+    (s.exercices||[]).forEach(ex=>{
+      if(ex&&ex.exo_id&&ex.video&&!videoByExoId[ex.exo_id]){
+        videoByExoId[ex.exo_id]=ex.video;
+      }
+    });
+  });
+  let restored=0;
+  (S.exercices||[]).forEach(exo=>{
+    if(!exo.video && videoByExoId[exo.id]){
+      exo.video=videoByExoId[exo.id];
+      restored++;
+      // On re-sauvegarde côté serveur pour que ce soit définitif (upsert)
+      saveExoVideoUpsert(exo);
+    }
+  });
+  if(restored>0){
+    lsSet('c_exercices',S.exercices);
+    if(S.screen==='exercices') render.exercices();
+    toast(`🎬 ${restored} vidéo${restored>1?'s':''} récupérée${restored>1?'s':''}`);
+  }
+}
+
+// Upsert d'un exercice (crée la ligne si elle n'existe pas, sinon met à jour).
+async function saveExoVideoUpsert(exo){
+  try{
+    const existing=await supa('GET','exercices','',`?id=eq.${exo.id}`);
+    const data={nom:exo.nom,cat:exo.cat,desc_exercice:exo.desc||'',video:exo.video||'',image:exo.image||null};
+    if(existing&&existing.length){
+      await supa('PATCH','exercices',data,'?id=eq.'+exo.id);
+    }else{
+      await supa('POST','exercices',{id:exo.id,is_custom:exo.id.startsWith('c'),...data});
+    }
+  }catch(e){/* hors-ligne : reste sauvé localement */}
+}
+
 async function syncExercices(){
   const res=await supa('GET','exercices','','?order=cat.asc,nom.asc');
   const defaults=defaultExos();
   // Exercices custom locaux (créés sur cet appareil, id commence par 'c')
   const localCustom=S.exercices.filter(e=>e.id.startsWith('c'));
   if(res&&res.length){
-    const remoteCustom=res.filter(e=>e.is_custom);
-    const remoteIds=new Set(remoteCustom.map(e=>e.id));
-    // Garder les exercices custom locaux pas encore arrivés sur Supabase
+    // Index des exos présents côté serveur, par id (custom OU défaut enrichi)
+    const remoteById={};
+    res.forEach(e=>{remoteById[e.id]={id:e.id,nom:e.nom,cat:e.cat,desc:e.desc_exercice||'',video:e.video||'',image:e.image||null,is_custom:!!e.is_custom};});
+    // Index des vidéos/images déjà présentes localement, par id
+    const localById={};
+    S.exercices.forEach(e=>{localById[e.id]=e;});
+
+    // 1) Exos par défaut : on garde le défaut MAIS on récupère la vidéo/image
+    //    depuis le serveur OU depuis le local (sans jamais les écraser par du vide).
+    const mergedDefaults=defaults.map(d=>{
+      const r=remoteById[d.id];const l=localById[d.id];
+      const video=(r&&r.video)||(l&&l.video)||d.video||'';
+      const image=(r&&r.image)||(l&&l.image)||d.image||null;
+      const out={...d};
+      if(video) out.video=video;
+      if(image) out.image=image;
+      return out;
+    });
+
+    // 2) Exos custom du serveur
+    const remoteCustom=res.filter(e=>e.is_custom).map(e=>({id:e.id,nom:e.nom,cat:e.cat,desc:e.desc_exercice||'',video:e.video||'',image:e.image||null}));
+    const remoteIds=new Set(res.map(e=>e.id));
+    // 3) Custom locaux pas encore arrivés sur le serveur → on retente l'envoi
     const pendingLocal=localCustom.filter(e=>!remoteIds.has(e.id));
-    // Retenter la sauvegarde des exercices en attente
     pendingLocal.forEach(e=>saveExoCustomToSupa(e));
-    const merged=[...defaults,...remoteCustom.map(e=>({id:e.id,nom:e.nom,cat:e.cat,desc:e.desc_exercice||'',video:e.video||''})),...pendingLocal];
+
+    const merged=[...mergedDefaults,...remoteCustom,...pendingLocal];
     S.exercices=merged;lsSet('c_exercices',merged);
   }
   // Si Supabase ne répond pas, on garde les données locales telles quelles
@@ -8034,6 +8096,9 @@ async function syncClientData(clientId){
     const clientSeances=seances.filter(s=>progIds.has(s.programme_id));
     S.seancesType=S.seancesType.filter(s=>!allProgIds.has(s.programme_id));
     S.seancesType.push(...clientSeances,...pendingSeances);
+    // Récupération : les séances gardent une copie du lien vidéo de chaque
+    // exercice. Si un exo de la base a perdu sa vidéo, on la restaure depuis là.
+    recoverExoVideosFromSeances();
   }
   if(logs){
     const supaLogIds=new Set(logs.map(l=>l.id));
@@ -8588,19 +8653,31 @@ function createExo(){
   toast('✓ '+nom+' créé');
 }
 
-function saveExo(id){
+async function saveExo(id){
   const exo=S.exercices.find(e=>e.id===id);if(!exo)return;
   exo.nom=document.getElementById('ef-nom').value.trim()||exo.nom;
   exo.cat=document.getElementById('ef-cat').value;
   exo.desc=document.getElementById('ef-desc').value.trim()||'';
   exo.video=document.getElementById('ef-video').value.trim()||'';
   persist();
-  const updateData={nom:exo.nom,cat:exo.cat,desc_exercice:exo.desc,video:exo.video};
-  if(exo.image) updateData.image=exo.image;
-  supa('PATCH','exercices',updateData,'?id=eq.'+id);
   closeModal();
   if(S.screen==='exercices') render.exercices();
   toast('✓ Modifié');
+  // Upsert : un exercice par défaut (id 'e…') n'existe pas forcément encore
+  // sur Supabase. Un simple PATCH ne modifierait alors aucune ligne et la
+  // vidéo ne serait jamais sauvegardée côté serveur → on la perdrait à la
+  // prochaine synchro. On crée donc la ligne si elle n'existe pas.
+  const updateData={nom:exo.nom,cat:exo.cat,desc_exercice:exo.desc,video:exo.video};
+  if(exo.image) updateData.image=exo.image;
+  try{
+    const existing=await supa('GET','exercices','',`?id=eq.${id}`);
+    if(existing&&existing.length){
+      await supa('PATCH','exercices',updateData,'?id=eq.'+id);
+    }else{
+      // is_custom:false pour bien distinguer un exo par défaut enrichi
+      await supa('POST','exercices',{id:exo.id,is_custom:false,image:exo.image||null,...updateData});
+    }
+  }catch(e){/* hors-ligne : la vidéo reste sauvée localement, resync plus tard */}
 }
 
 function triggerExoImageUpload(exoId){
