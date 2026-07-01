@@ -1869,7 +1869,11 @@ function loadExercices(){
   const EXO_VERSION=2; // bump this when default exos change
   const saved=lsGet('c_exercices')||[];
   const savedVersion=lsGet('c_exo_version')||0;
-  const defaults=defaultExos();
+  // Exos "de base" que la coach a supprimés : on les enlève tout de suite au
+  // démarrage, même avant d'avoir reparlé à Supabase (syncExercices s'en resservira
+  // pour confirmer/actualiser cette liste juste après).
+  const deletedDefaultIds=new Set(lsGet('c_deleted_defaults')||[]);
+  const defaults=defaultExos().filter(e=>!deletedDefaultIds.has(e.id));
   if(savedVersion<EXO_VERSION){
     // Keep custom exos (ids starting with 'c'), replace defaults with new ones
     const custom=saved.filter(e=>e.id.startsWith('c'));
@@ -1881,7 +1885,7 @@ function loadExercices(){
   // Merge: keep saved custom, ensure all defaults exist
   const custom=saved.filter(e=>e.id.startsWith('c'));
   const defaultIds=new Set(defaults.map(e=>e.id));
-  const savedDefaults=saved.filter(e=>!e.id.startsWith('c'));
+  const savedDefaults=saved.filter(e=>!e.id.startsWith('c')&&!deletedDefaultIds.has(e.id));
   // Add any new defaults not in saved
   const savedDefaultIds=new Set(savedDefaults.map(e=>e.id));
   const newDefaults=defaults.filter(e=>!savedDefaultIds.has(e.id));
@@ -5222,8 +5226,12 @@ function renderExoListResults(filter=''){
     html+='<div class="exo-cat-header">'+(catIcon[cat]||'')+' '+cat+' <span class="exo-cat-count">'+catExos.length+'</span></div>';
     catExos.forEach(exo=>{
       const isCustom=exo.id.startsWith('c');
+      // Poubelle visible pour tous les exercices, y compris ceux de la liste de
+      // base : _deleteExo() sait maintenant "cacher" définitivement ces derniers
+      // (ils sont codés dans l'appli, donc on les marque supprimés côté Supabase
+      // plutôt que de les effacer pour de vrai).
       const videoBtn=exo.video?'<a href="'+exo.video+'" target="_blank" class="icon-btn" style="text-decoration:none;font-size:16px">🎬</a>':'';
-      const deleteBtn=isCustom?'<button class="icon-btn" onclick="_deleteExo(\''+exo.id+'\')">🗑</button>':'';
+      const deleteBtn='<button class="icon-btn" onclick="_deleteExo(\''+exo.id+'\')">🗑</button>';
       const imgThumb=exo.image?'<div style="width:40px;height:40px;border-radius:6px;overflow:hidden;flex-shrink:0;margin-right:8px"><img src="'+exo.image+'" style="width:100%;height:100%;object-fit:cover" /></div>':'';
       html+='<div class="exo-list-row">'+
         imgThumb+
@@ -8045,14 +8053,20 @@ async function syncExercices(){
   if(res&&res.length){
     // Index des exos présents côté serveur, par id (custom OU défaut enrichi)
     const remoteById={};
-    res.forEach(e=>{remoteById[e.id]={id:e.id,nom:e.nom,cat:e.cat,desc:e.desc_exercice||'',video:e.video||'',image:e.image||null,is_custom:!!e.is_custom};});
+    res.forEach(e=>{remoteById[e.id]={id:e.id,nom:e.nom,cat:e.cat,desc:e.desc_exercice||'',video:e.video||'',image:e.image||null,is_custom:!!e.is_custom,deleted:!!e.deleted};});
     // Index des vidéos/images déjà présentes localement, par id
     const localById={};
     S.exercices.forEach(e=>{localById[e.id]=e;});
+    // Mémorise localement les exos "de base" supprimés par la coach, pour que
+    // l'appli puisse les cacher tout de suite au prochain démarrage (avant même
+    // d'avoir reparlé à Supabase), sur cet appareil comme sur les autres.
+    const deletedDefaultIds=new Set(res.filter(e=>e.deleted).map(e=>e.id));
+    lsSet('c_deleted_defaults',[...deletedDefaultIds]);
 
     // 1) Exos par défaut : on garde le défaut MAIS on récupère la vidéo/image
     //    depuis le serveur OU depuis le local (sans jamais les écraser par du vide).
-    const mergedDefaults=defaults.map(d=>{
+    //    On retire ceux que la coach a explicitement supprimés (marqués "deleted" côté Supabase).
+    const mergedDefaults=defaults.filter(d=>!deletedDefaultIds.has(d.id)).map(d=>{
       const r=remoteById[d.id];const l=localById[d.id];
       const video=(r&&r.video)||(l&&l.video)||d.video||'';
       const image=(r&&r.image)||(l&&l.image)||d.image||null;
@@ -8066,7 +8080,7 @@ async function syncExercices(){
     //    (préfixe 'c') : certains exercices custom ont pu être mal étiquetés par le
     //    passé (bug corrigé) et rester coincés avec is_custom=false sur Supabase.
     //    Sans ce filet de sécurité, ils disparaîtraient définitivement de la liste.
-    const remoteCustom=res.filter(e=>e.is_custom||e.id.startsWith('c')).map(e=>({id:e.id,nom:e.nom,cat:e.cat,desc:e.desc_exercice||'',video:e.video||'',image:e.image||null}));
+    const remoteCustom=res.filter(e=>!e.deleted&&(e.is_custom||e.id.startsWith('c'))).map(e=>({id:e.id,nom:e.nom,cat:e.cat,desc:e.desc_exercice||'',video:e.video||'',image:e.image||null}));
     const remoteIds=new Set(res.map(e=>e.id));
     // 3) Custom locaux pas encore arrivés sur le serveur → on retente l'envoi
     const pendingLocal=localCustom.filter(e=>!remoteIds.has(e.id));
@@ -8477,10 +8491,29 @@ async function deleteClientFromSupa(id){
 
 async function _deleteExo(id){
   if(!confirm('Supprimer cet exercice ?')) return;
+  const defaut=defaultExos().find(d=>d.id===id);
   S.exercices=S.exercices.filter(e=>e.id!==id);
   lsSet('c_exercices',S.exercices);
   persist();
-  await supa('DELETE','exercices','',`?id=eq.${id}`);
+  if(defaut){
+    // Un exercice "de base" est codé dans l'appli : on ne peut pas vraiment le
+    // supprimer, sinon il reviendrait tout seul. On le marque "supprimé" sur
+    // Supabase à la place, pour qu'il reste caché partout (autres appareils,
+    // prochaines synchros) — même logique que pour un exo perso, juste en coulisses.
+    const deletedIds=new Set(lsGet('c_deleted_defaults')||[]);
+    deletedIds.add(id);
+    lsSet('c_deleted_defaults',[...deletedIds]);
+    try{
+      const existing=await supa('GET','exercices','',`?id=eq.${id}`);
+      if(existing&&existing.length){
+        await supa('PATCH','exercices',{deleted:true},`?id=eq.${id}`);
+      }else{
+        await supa('POST','exercices',{id,nom:defaut.nom,cat:defaut.cat,is_custom:false,deleted:true});
+      }
+    }catch(e){/* hors-ligne : reste caché localement, se confirmera au prochain réseau */}
+  }else{
+    await supa('DELETE','exercices','',`?id=eq.${id}`);
+  }
   closeModal();
   navigate('exercices');
   toast('Exercice supprimé');
@@ -8660,10 +8693,8 @@ function showExoForm(exo){
   const cats=['Jambes','Fessiers','Pectoraux','Dos','Épaules','Biceps','Triceps','Abdominaux','Full body','Cardio','Autre'];
   const catOptions=cats.map(c=>'<option value="'+c+'"'+(exo&&exo.cat===c?' selected':'')+'>'+c+'</option>').join('');
   const title=exo?'Modifier':'Créer un exercice';
-  // On peut supprimer n'importe quel exercice, SAUF ceux qui font partie de la liste
-  // par défaut codée dans l'appli (sinon ils réapparaîtraient tout seuls à la prochaine synchro).
-  const estExoParDefaut=exo&&defaultExos().some(d=>d.id===exo.id);
-  const deleteBtn=exo&&!estExoParDefaut?'<button class="btn btn-danger" style="margin-top:8px" onclick="_deleteExo(\''+exo.id+'\')">Supprimer</button>':'';
+  // On peut supprimer n'importe quel exercice, y compris ceux de la liste de base.
+  const deleteBtn=exo?'<button class="btn btn-danger" style="margin-top:8px" onclick="_deleteExo(\''+exo.id+'\')">Supprimer</button>':'';
   const imgPreview=exo&&exo.image?'<img id="ef-img-preview" src="'+exo.image+'" style="width:100%;height:auto;border-radius:8px;margin-top:8px" />':'';
   const imgBtn=exo&&exo.id?'<button class="btn btn-secondary" style="margin-top:8px" onclick="triggerExoImageUpload(\''+exo.id+'\')">📸 '+((exo&&exo.image)?'Changer':'Ajouter')+' une photo/gif</button>':'<button class="btn btn-secondary" style="margin-top:8px;opacity:0.5" disabled>📸 Ajouter une photo/gif (d\'abord créer l\'exercice)</button>';
   openModal(
