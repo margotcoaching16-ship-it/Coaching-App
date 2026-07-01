@@ -8660,7 +8660,10 @@ function showExoForm(exo){
   const cats=['Jambes','Fessiers','Pectoraux','Dos','Épaules','Biceps','Triceps','Abdominaux','Full body','Cardio','Autre'];
   const catOptions=cats.map(c=>'<option value="'+c+'"'+(exo&&exo.cat===c?' selected':'')+'>'+c+'</option>').join('');
   const title=exo?'Modifier':'Créer un exercice';
-  const deleteBtn=exo&&exo.id.startsWith('c')?'<button class="btn btn-danger" style="margin-top:8px" onclick="_deleteExo(\''+exo.id+'\')">Supprimer</button>':'';
+  // On peut supprimer n'importe quel exercice, SAUF ceux qui font partie de la liste
+  // par défaut codée dans l'appli (sinon ils réapparaîtraient tout seuls à la prochaine synchro).
+  const estExoParDefaut=exo&&defaultExos().some(d=>d.id===exo.id);
+  const deleteBtn=exo&&!estExoParDefaut?'<button class="btn btn-danger" style="margin-top:8px" onclick="_deleteExo(\''+exo.id+'\')">Supprimer</button>':'';
   const imgPreview=exo&&exo.image?'<img id="ef-img-preview" src="'+exo.image+'" style="width:100%;height:auto;border-radius:8px;margin-top:8px" />':'';
   const imgBtn=exo&&exo.id?'<button class="btn btn-secondary" style="margin-top:8px" onclick="triggerExoImageUpload(\''+exo.id+'\')">📸 '+((exo&&exo.image)?'Changer':'Ajouter')+' une photo/gif</button>':'<button class="btn btn-secondary" style="margin-top:8px;opacity:0.5" disabled>📸 Ajouter une photo/gif (d\'abord créer l\'exercice)</button>';
   openModal(
