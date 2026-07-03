@@ -4989,6 +4989,25 @@ async function restoreActiveSession(){
 
   if(!activeLog || !activeLog.seance_type_id || !activeLog.client_id) return false;
 
+  // Sécurité anti-"brouillon fantôme" : si cette séance a en réalité déjà été
+  // enregistrée comme terminée (ex : l'appli a été fermée/mise en arrière-plan
+  // juste après avoir appuyé sur "Terminer", avant que le nettoyage du brouillon
+  // en cours ait pu se faire côté serveur), on n'affiche pas ce vieux brouillon :
+  // on l'efface silencieusement au lieu de faire recommencer la cliente.
+  const alreadySavedLocally = !!(activeLog.id && S.logsSeances.some(l=>l.id===activeLog.id));
+  let alreadySavedRemotely = false;
+  if(!alreadySavedLocally && activeLog.id){
+    try{
+      const rows = await supa('GET','logs_seances','',`?id=eq.${activeLog.id}&select=id`);
+      alreadySavedRemotely = !!(rows && rows.length);
+    }catch(e){/* hors-ligne : on se fie seulement au cache local ci-dessus */}
+  }
+  if(alreadySavedLocally || alreadySavedRemotely){
+    localStorage.removeItem('c_activeLog');
+    clearActiveLogServer(activeLog.client_id);
+    return false;
+  }
+
   // Mode client : un seul client, doit matcher
   // Mode coach : chercher le client dans la liste
   let client = null;
