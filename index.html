@@ -156,6 +156,19 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 /* ── SCREENS ── */
 .screen{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none}
 .screen.active{display:block}
+/* ── GLISSEMENT ENTRE ÉCRANS ── */
+.screen-leaving{display:block !important;position:absolute;left:0;right:0;bottom:0;z-index:50;pointer-events:none;background:var(--bg)}
+.slide-in-right{animation:slideInRight .3s cubic-bezier(.25,.8,.35,1)}
+.slide-in-left{animation:slideInLeft .3s cubic-bezier(.25,.8,.35,1)}
+.slide-out-left{animation:slideOutLeft .3s cubic-bezier(.25,.8,.35,1) forwards}
+.slide-out-right{animation:slideOutRight .3s cubic-bezier(.25,.8,.35,1) forwards}
+@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@keyframes slideInLeft{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+@keyframes slideOutLeft{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@keyframes slideOutRight{from{transform:translateX(0)}to{transform:translateX(100%)}}
+@media (prefers-reduced-motion: reduce){
+  .slide-in-right,.slide-in-left,.slide-out-left,.slide-out-right{animation:none}
+}
 
 /* ── CLIENT LIST ── */
 .search-bar{padding:8px 16px;border-bottom:.5px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:10}
@@ -237,6 +250,15 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .video-pill{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 11px;border-radius:999px;border:none;background:var(--green-light);color:var(--green-dark);font-size:12px;font-weight:700;font-family:inherit;text-decoration:none;cursor:pointer;flex-shrink:0;transition:transform .15s ease}
 .video-pill svg{flex-shrink:0}
 .video-pill:active{transform:scale(.93)}
+.vp-ico{position:relative;width:11px;height:11px;flex-shrink:0;transition:transform .35s ease}
+.video-pill.open .vp-ico{transform:rotate(180deg)}
+.vp-ico .i-play,.vp-ico .i-close{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:opacity .18s ease}
+.vp-ico .i-close{opacity:0;font-size:11px;font-weight:800;line-height:1}
+.video-pill.open .i-play{opacity:0}
+.video-pill.open .i-close{opacity:1}
+.video-embed-box{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s ease,margin-bottom .35s ease;margin-bottom:0}
+.video-embed-box.open{grid-template-rows:1fr;margin-bottom:8px}
+.video-embed-inner{overflow:hidden;min-height:0}
 
 .exo-card-body{padding:0 12px 12px;border-top:.5px solid var(--border)}
 .last-perf{display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--amber-light);border-radius:6px;margin:8px 0;font-size:11px;color:var(--amber)}
@@ -414,6 +436,9 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .checkin-saved-sub{font-size:13px;color:var(--green-dark);opacity:.8}
 
 /* ── SUIVI TABLE ── */
+.suivi-seg{position:relative;display:flex;gap:4px;background:var(--bg2);border-radius:999px;padding:2px}
+.suivi-seg-thumb{position:absolute;top:2px;bottom:2px;left:2px;width:0;background:var(--bg);border-radius:999px;box-shadow:0 1px 2px rgba(0,0,0,.08);transition:left .3s cubic-bezier(.34,1.3,.64,1),width .3s cubic-bezier(.34,1.3,.64,1);z-index:0;pointer-events:none}
+.suivi-seg button{position:relative;z-index:1;padding:5px 12px;border-radius:999px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:transparent;transition:color .25s ease}
 .suivi-week{margin:0 16px 12px}
 .suivi-week-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;padding:0 2px}
 .suivi-table-wrap{overflow-x:auto;border-radius:var(--radius-lg);border:.5px solid var(--border);box-shadow:var(--shadow)}
@@ -2312,19 +2337,32 @@ function initials(c){return(c.prenom[0]+(c.nom[0]||'')).toUpperCase();}
 function navigate(screen,opts={}){
   S.history.push({screen:S.screen,client:S.client,programme:S.programme,seanceType:S.seanceType});
   if(!opts.noTransition&&typeof playScreenTransition==='function')playScreenTransition(screen);
-  showScreen(screen,opts);
+  showScreen(screen,Object.assign({slide:'fwd'},opts));
 }
 function goBack(){
   if(!S.history.length){return;}
   const prev=S.history.pop();
   S.client=prev.client;S.programme=prev.programme;S.seanceType=prev.seanceType;
-  showScreen(prev.screen,{noHistory:true});
+  showScreen(prev.screen,{noHistory:true,slide:'back'});
 }
 function showScreen(screen,opts={}){
   if(!currentIsCoach && screen==='clients') screen='menu';
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  // Nettoie une éventuelle transition encore en cours
+  document.querySelectorAll('.screen-leaving').forEach(s=>{s.classList.remove('screen-leaving','slide-out-left','slide-out-right');s.style.top='';});
+  const prevEl=document.querySelector('.screen.active');
+  const prevTop=prevEl?prevEl.offsetTop:0;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active','slide-in-right','slide-in-left'));
   const el=document.getElementById('screen-'+screen);
   if(el){el.classList.add('active');el.scrollTop=0;}
+  // Glissement : l'ancien écran sort d'un côté pendant que le nouveau entre de l'autre
+  const dir=opts.noTransition?null:opts.slide;
+  if(dir&&el&&prevEl&&prevEl!==el){
+    prevEl.style.top=prevTop+'px';
+    prevEl.classList.add('screen-leaving',dir==='fwd'?'slide-out-left':'slide-out-right');
+    prevEl.addEventListener('animationend',()=>{prevEl.classList.remove('screen-leaving','slide-out-left','slide-out-right');prevEl.style.top='';},{once:true});
+    el.classList.add(dir==='fwd'?'slide-in-right':'slide-in-left');
+    el.addEventListener('animationend',()=>el.classList.remove('slide-in-right','slide-in-left'),{once:true});
+  }
   S.screen=screen;
   const backBtn=document.getElementById('back-btn');
   backBtn.style.display=S.history.length?'block':'none';
@@ -4012,14 +4050,14 @@ render.log=function(){
                 ${e._replacedFrom?`<div style="font-size:10px;color:var(--text3);margin-bottom:1px">Remplace : ${e._replacedFrom}</div>`:''}
                 <div class="exo-card-cat" style="${isCardio?'color:var(--amber)':''}">${isCardio?(e.cat+' · '+(e.duree_min||'?')+' min'):(e.cat?e.cat+' · ':'')+e.nb_series+' séries · '+e.reps_min+'-'+e.reps_max+' reps'}</div>
               </div>
-              ${videoUrl?`<button class="video-pill" data-url="${videoUrl}" onclick="toggleVideoEmbed(this,'vid-embed-${i}')" title="Vidéo">${VIDEO_PILL_ICON}Vidéo</button>`:''}
+              ${videoUrl?`<button class="video-pill" data-url="${videoUrl}" onclick="toggleVideoEmbed(this,'vid-embed-${i}')" title="Vidéo"><span class="vp-ico"><span class="i-play">${VIDEO_PILL_ICON}</span><span class="i-close">✕</span></span><span class="vp-txt">Vidéo</span></button>`:''}
               <button class="exo-mini-btn" onclick="openHistorique('${e.exo_id}')" title="Historique">📈</button>
               ${!isCardio&&e.repos?`<button class="exo-mini-btn" onclick="startRestTimer(${e.repos})" title="Lancer le chrono (${e.repos}s)" style="font-size:15px">⏱</button>`:''}
               <button class="exo-mini-btn" onclick="showSwapExoModal(${i})" title="Remplacer pour cette séance" style="${e._replacedFrom?'color:var(--amber)':''}">🔄</button>
               <button class="intens-picker-btn" onclick="showIntensificationPicker(${i},'log')" title="Méthode d'intensification">···</button>
             </div>
             <div class="exo-card-body">
-              <div id="vid-embed-${i}" class="video-embed-box" style="display:none;margin-bottom:8px"></div>
+              <div id="vid-embed-${i}" class="video-embed-box"></div>
               ${e.notes?`<div class="last-perf" style="background:var(--bg2);color:var(--text2);border:none">📝 ${e.notes}</div>`:''}
               ${lastLog?`<div class="last-perf">⏱ Dernière fois : ${lastLog.series.map(s=>'duree' in s?(s.duree?s.duree+'min':'—'):`${s.poids?s.poids+'kg':'—'} × ${s.reps||'—'}`).join(' / ')}</div>`:''}
               <div class="series-table">
@@ -4156,13 +4194,18 @@ function buildVideoEmbed(url){
 function toggleVideoEmbed(btn,boxId){
   const box=document.getElementById(boxId);
   if(!box||!btn) return;
-  if(box.dataset.open==='1'){
-    box.style.display='none';box.innerHTML='';box.dataset.open='0';
-    btn.innerHTML=VIDEO_PILL_ICON+'Vidéo';
+  const txt=btn.querySelector('.vp-txt');
+  if(box.classList.contains('open')){
+    box.classList.remove('open');
+    btn.classList.remove('open');
+    if(txt)txt.textContent='Vidéo';
+    // On vide le tiroir une fois refermé (stoppe la lecture)
+    setTimeout(()=>{if(!box.classList.contains('open'))box.innerHTML='';},380);
   }else{
-    box.innerHTML=buildVideoEmbed(btn.dataset.url||'');
-    box.style.display='block';box.dataset.open='1';
-    btn.innerHTML='<span style="font-size:10px;line-height:1">✕</span>Fermer';
+    box.innerHTML=`<div class="video-embed-inner">${buildVideoEmbed(btn.dataset.url||'')}</div>`;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>box.classList.add('open')));
+    btn.classList.add('open');
+    if(txt)txt.textContent='Fermer';
   }
 }
 
@@ -4999,10 +5042,36 @@ function showNewClientModal(){
     <div class="form-group"><label class="form-label">Nom</label><input class="form-inp" id="m-nom" placeholder="Dupont" /></div>
     <div class="form-group"><label class="form-label">Adresse mail</label><input class="form-inp" id="m-email" type="email" placeholder="marie.dupont@gmail.com" /></div>
     <div class="form-group"><label class="form-label">Objectif</label><input class="form-inp" id="m-obj" placeholder="Perte de poids, prise de masse…" /></div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">⚠ Après création, invite le client dans le dashboard Supabase (Auth → Invite user) avec ce même email.</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">📨 L'invitation sera envoyée automatiquement par mail à la création.</div>
     <button class="btn btn-primary" onclick="createClient()">Créer</button>
   `);
   setTimeout(()=>document.getElementById('m-prenom')?.focus(),300);
+}
+
+// Envoie (ou renvoie) l'invitation par mail via la fonction Supabase "invite-client".
+// Seul le compte coach est autorisé à le faire (vérifié côté serveur).
+async function sendClientInvitation(email){
+  try{
+    const r=await fetch(`${SUPA_URL}/functions/v1/invite-client`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+authToken},
+      body:JSON.stringify({email})
+    });
+    const data=await r.json().catch(()=>({}));
+    if(r.ok&&data.ok) return data;
+    return {error:data.error||('Erreur '+r.status)};
+  }catch(e){
+    return {error:e.message||'Erreur réseau'};
+  }
+}
+
+async function resendClientInvitation(clientId){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c||!c.email){toast('⚠ Pas d\'adresse mail enregistrée');return;}
+  toast('📨 Envoi en cours…');
+  const inv=await sendClientInvitation(c.email);
+  if(inv.error) toast('⚠ Échec : '+inv.error);
+  else toast(inv.mode==='recovery'?('📨 Mail de reconnexion envoyé à '+c.email):('📨 Invitation envoyée à '+c.email));
 }
 
 async function createClient(){
@@ -5062,6 +5131,11 @@ async function createClient(){
 
   await syncClients();
   render.clients();
+
+  // Envoi automatique de l'invitation par mail
+  const inv=await sendClientInvitation(newClient.email);
+  if(inv.error) toast('⚠ Invitation non envoyée : '+inv.error);
+  else toast('📨 Invitation envoyée à '+newClient.email);
 }
 
 // ─────────────────────────────────────────
@@ -6408,6 +6482,28 @@ function setSuiviWeekMode(mode){
   render.suivi();
 }
 
+// Place la pastille glissante du toggle Suivi sous le bouton actif.
+// Si le mode vient de changer, elle part de l'ancien bouton et glisse vers le nouveau.
+function positionSuiviThumb(){
+  const seg=document.getElementById('suivi-seg');
+  if(!seg) return;
+  const thumb=seg.querySelector('.suivi-seg-thumb');
+  const cur=S.suiviWeekMode||'standard';
+  const target=seg.querySelector('button[data-mode="'+cur+'"]');
+  if(!thumb||!target) return;
+  const prev=positionSuiviThumb._last;
+  const from=(prev&&prev!==cur)?seg.querySelector('button[data-mode="'+prev+'"]'):null;
+  thumb.style.transition='none';
+  const start=from||target;
+  thumb.style.left=start.offsetLeft+'px';
+  thumb.style.width=start.offsetWidth+'px';
+  void thumb.offsetWidth; // force le navigateur à enregistrer la position de départ
+  thumb.style.transition='';
+  thumb.style.left=target.offsetLeft+'px';
+  thumb.style.width=target.offsetWidth+'px';
+  positionSuiviThumb._last=cur;
+}
+
 function getClientBilanDates(clientId){
   return (S.bilansHebdo||[])
     .filter(b=>b.client_id===clientId && b.date)
@@ -6549,14 +6645,16 @@ render.suivi=function(){
   const tooltipText=bilanDisabled?'Définis un jour de bilan via le calendrier 📅':bilanLabel;
   const toggleHtml=`<div style="display:flex;gap:6px;padding:10px 16px 6px;align-items:center;flex-wrap:wrap">
     <span style="font-size:11px;color:var(--text3);font-weight:600">Découpage :</span>
-    <div style="display:flex;gap:4px;background:var(--bg2);border-radius:999px;padding:2px">
-      <button onclick="setSuiviWeekMode('standard')" style="padding:5px 12px;border-radius:999px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:${mode==='standard'?'var(--bg)':'transparent'};color:${mode==='standard'?'var(--text)':'var(--text3)'};box-shadow:${mode==='standard'?'0 1px 2px rgba(0,0,0,.08)':'none'}">Dim → Sam</button>
-      <button ${bilanDisabled?'disabled':''} onclick="setSuiviWeekMode('bilan')" style="padding:5px 12px;border-radius:999px;border:none;font-size:11px;font-weight:600;cursor:${bilanDisabled?'not-allowed':'pointer'};background:${mode==='bilan'?'var(--bg)':'transparent'};color:${mode==='bilan'&&!bilanDisabled?'var(--text)':bilanDisabled?'var(--border)':'var(--text3)'};box-shadow:${mode==='bilan'?'0 1px 2px rgba(0,0,0,.08)':'none'};opacity:${bilanDisabled?.5:1}" title="${tooltipText}">📅 ${bilanLabel}</button>
+    <div class="suivi-seg" id="suivi-seg">
+      <div class="suivi-seg-thumb"></div>
+      <button data-mode="standard" onclick="setSuiviWeekMode('standard')" style="color:${mode==='standard'?'var(--text)':'var(--text3)'}">Dim → Sam</button>
+      <button data-mode="bilan" ${bilanDisabled?'disabled':''} onclick="setSuiviWeekMode('bilan')" style="cursor:${bilanDisabled?'not-allowed':'pointer'};color:${mode==='bilan'&&!bilanDisabled?'var(--text)':bilanDisabled?'var(--border)':'var(--text3)'};opacity:${bilanDisabled?.5:1}" title="${tooltipText}">📅 ${bilanLabel}</button>
     </div>
   </div>`;
 
   if(!rows.length){
     el.innerHTML=toggleHtml+'<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Aucun check-in</div><div class="empty-sub">Commence par enregistrer un check-in quotidien</div></div>';
+    positionSuiviThumb();
     return;
   }
 
@@ -6705,6 +6803,7 @@ render.suivi=function(){
   }).join('');
 
   el.innerHTML=toggleHtml+weekHtml;
+  positionSuiviThumb();
 };
 
 // ─────────────────────────────────────────
@@ -9261,7 +9360,8 @@ function showClientOptionsModal(clientId){
         <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Adresse mail</div>
         <input class="form-inp" id="edit-client-email" type="email" placeholder="client@email.com" value="${(c.email||'').replace(/"/g,'&quot;')}" />
         <button class="btn btn-primary" style="font-size:13px;padding:8px" onclick="saveClientEmail('${clientId}')">💾 Enregistrer le mail</button>
-        <div style="font-size:11px;color:var(--text3);line-height:1.35">⚠ Modifier le mail ici ne renvoie pas l'invitation. Après correction, retourne dans Supabase (Auth → Invite user) pour réinviter le client avec cette nouvelle adresse.</div>
+        <button class="btn" style="font-size:13px;padding:8px;border:1px solid var(--border);background:transparent;color:var(--text)" onclick="resendClientInvitation('${clientId}')">📨 Renvoyer l'invitation</button>
+        <div style="font-size:11px;color:var(--text3);line-height:1.35">Si tu corriges le mail, enregistre-le d'abord puis appuie sur « Renvoyer l'invitation ».</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
         <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Formule</div>
