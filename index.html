@@ -234,6 +234,9 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .exo-order-actions{display:flex;flex-direction:column;gap:4px;flex-shrink:0;margin-right:2px}
 .exo-order-actions .exo-mini-btn{width:24px;height:24px;font-size:12px}
 .exo-mini-btn{width:28px;height:28px;border-radius:50%;border:.5px solid var(--border2);background:transparent;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.video-pill{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 11px;border-radius:999px;border:none;background:var(--green-light);color:var(--green-dark);font-size:12px;font-weight:700;font-family:inherit;text-decoration:none;cursor:pointer;flex-shrink:0;transition:transform .15s ease}
+.video-pill svg{flex-shrink:0}
+.video-pill:active{transform:scale(.93)}
 
 .exo-card-body{padding:0 12px 12px;border-top:.5px solid var(--border)}
 .last-perf{display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--amber-light);border-radius:6px;margin:8px 0;font-size:11px;color:var(--amber)}
@@ -2759,7 +2762,7 @@ function renderBlockPlannerSection(client, calcResults){
         <div class="bp-grid-3">
           <div class="form-group">
             <label class="form-label">Durée (semaines)</label>
-            <input class="form-inp" id="bp-weeks-${i}" type="number" min="1" value="${phase.weeks}" oninput="updateBlockPlan()" />
+            <input class="form-inp" id="bp-weeks-${i}" type="number" inputmode="decimal" min="1" value="${phase.weeks}" oninput="updateBlockPlan()" />
           </div>
           <div class="form-group">
             <label class="form-label">Mode</label>
@@ -2770,7 +2773,7 @@ function renderBlockPlannerSection(client, calcResults){
           </div>
           <div class="form-group">
             <label class="form-label" id="bp-label-${i}">${label}</label>
-            <input class="form-inp" id="bp-pct-${i}" type="number" min="0" max="60" value="${phase.pct}" oninput="updateBlockPlan()" />
+            <input class="form-inp" id="bp-pct-${i}" type="number" inputmode="decimal" min="0" max="60" value="${phase.pct}" oninput="updateBlockPlan()" />
           </div>
         </div>
         <div class="bp-phase-out">
@@ -2807,11 +2810,11 @@ function renderBlockPlannerSection(client, calcResults){
           </div>
           <div class="form-group">
             <label class="form-label">Durée totale du bloc (semaines)</label>
-            <input class="form-inp" id="bp-block-weeks" type="number" min="1" value="${bp.blockWeeks}" oninput="updateBlockPlan(true)" />
+            <input class="form-inp" id="bp-block-weeks" type="number" inputmode="decimal" min="1" value="${bp.blockWeeks}" oninput="updateBlockPlan(true)" />
           </div>
           <div class="form-group">
             <label class="form-label">Nombre de phases</label>
-            <input class="form-inp" id="bp-phase-count" type="number" min="1" max="8" value="${bp.phaseCount}" oninput="updateBlockPlan(true)" />
+            <input class="form-inp" id="bp-phase-count" type="number" inputmode="decimal" min="1" max="8" value="${bp.phaseCount}" oninput="updateBlockPlan(true)" />
           </div>
         </div>
         <div id="bp-current-meta" style="margin:2px 0 8px;${current?'':'display:none'}">${current?`<span class="bp-obj-chip" style="background:${current.color}22;color:${current.color}">${current.objective}</span><span style="margin-left:8px;font-weight:700">Semaine ${current.week}</span><span style="margin-left:8px;color:var(--text2)">Phase ${current.phaseIndex}</span>`:''}</div>
@@ -2969,15 +2972,15 @@ render.calculsPerte=function(){
               </div>
               <div class="form-group">
                 <label class="form-label">Poids (kg)</label>
-                <input class="form-inp" id="cp-poids" type="number" step="0.1" value="${d.poids}" oninput="updateCalculsPerte()" />
+                <input class="form-inp" id="cp-poids" type="number" inputmode="decimal" step="0.1" value="${d.poids}" oninput="updateCalculsPerte()" />
               </div>
               <div class="form-group">
                 <label class="form-label">Taux de masse grasse (%)</label>
-                <input class="form-inp" id="cp-tauxMg" type="number" step="0.1" value="${d.tauxMg}" oninput="updateCalculsPerte()" />
+                <input class="form-inp" id="cp-tauxMg" type="number" inputmode="decimal" step="0.1" value="${d.tauxMg}" oninput="updateCalculsPerte()" />
               </div>
               <div class="form-group">
                 <label class="form-label">Objectif de % de mg</label>
-                <input class="form-inp" id="cp-objectifMg" type="number" step="0.1" value="${d.objectifMg}" oninput="updateCalculsPerte()" />
+                <input class="form-inp" id="cp-objectifMg" type="number" inputmode="decimal" step="0.1" value="${d.objectifMg}" oninput="updateCalculsPerte()" />
               </div>
               <div class="form-group" style="grid-column:1/3">
                 <label class="form-label">Protéines : <b id="cp-protVal">${(d.protGParKg||2).toFixed(1).replace('.',',')}</b> g / kg de masse maigre</label>
@@ -3018,7 +3021,7 @@ render.calculsPerte=function(){
               </div>
               <div class="form-group">
                 <label class="form-label">Séances / semaine</label>
-                <input class="form-inp" id="cp-seances" type="number" step="1" min="0" value="${d.seances}" oninput="updateCalculsPerte()" />
+                <input class="form-inp" id="cp-seances" type="number" inputmode="decimal" step="1" min="0" value="${d.seances}" oninput="updateCalculsPerte()" />
               </div>
               <div class="form-group">
                 <label class="form-label">Intensité cardio</label>
@@ -3028,7 +3031,7 @@ render.calculsPerte=function(){
               </div>
               <div class="form-group">
                 <label class="form-label">Cardio / semaine</label>
-                <input class="form-inp" id="cp-cardios" type="number" step="1" min="0" value="${d.cardios}" oninput="updateCalculsPerte()" />
+                <input class="form-inp" id="cp-cardios" type="number" inputmode="decimal" step="1" min="0" value="${d.cardios}" oninput="updateCalculsPerte()" />
               </div>
             </div>
           </div>
@@ -3046,7 +3049,7 @@ render.calculsPerte=function(){
               </div>
               <div class="form-group">
                 <label class="form-label">Durée du cardio (min)</label>
-                <input class="form-inp" id="cp-cardioDuree" type="number" step="1" min="1" value="${d.dureeCardio||20}" oninput="updateCalculsPerte()" />
+                <input class="form-inp" id="cp-cardioDuree" type="number" inputmode="decimal" step="1" min="1" value="${d.dureeCardio||20}" oninput="updateCalculsPerte()" />
               </div>
             </div>
             <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.4">Ce cardio sera ajouté automatiquement à la fin de toutes les séances de musculation du client.</div>
@@ -3652,7 +3655,7 @@ render.seance=function(){
           <div class="exo-card-cat" style="${catStyle}">${isCardio?exo.cat+' · '+(exo.duree_min||'?')+' min':(exo.repsPerSeries && exo.repsPerSeries.length > 0)?exo.cat+' · '+exo.nb_series+' séries':exo.cat+' · '+exo.nb_series+' séries · '+exo.reps_min+'-'+exo.reps_max+' reps'}</div>
         </div>
         <div class="exo-card-actions">
-          ${videoUrl?`<a class="exo-mini-btn" href="${videoUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration:none">▶️</a>`:''}
+          ${videoUrl?`<a class="video-pill" href="${videoUrl}" target="_blank" rel="noopener noreferrer" title="Vidéo" style="width:28px;padding:0;justify-content:center"><svg width="9" height="11" viewBox="0 0 10 12" fill="currentColor" aria-hidden="true"><path d="M1.2.3A1 1 0 0 0 0 1.28v9.44a1 1 0 0 0 1.55.84l7.62-4.72a1 1 0 0 0 0-1.68L1.55.44A1 1 0 0 0 1.2.3Z"/></svg></a>`:''}
           <button class="exo-mini-btn" onclick="openHistorique('${exo.exo_id}')">📈</button>
           <button class="exo-mini-btn" onclick="showSwapExoSeanceModal(${ei})" title="Remplacer">🔄</button>
           <button class="exo-mini-btn" onclick="editExoConfig(${ei})">✏️</button>
@@ -3868,8 +3871,8 @@ function showRepsPerSeriesModal(ei){
     const rps=rpsData[i]||{min:exo.reps_min,max:exo.reps_max};
     html+=`<div class="form-grid-2" style="margin-bottom:10px">
       <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;grid-column:1/-1">Série ${i+1}</div>
-      <div class="form-group"><label class="form-label" style="font-size:11px">Min</label><input class="form-inp form-inp-sm" id="rps-min-${i}" type="number" min="1" value="${rps.min}" /></div>
-      <div class="form-group"><label class="form-label" style="font-size:11px">Max</label><input class="form-inp form-inp-sm" id="rps-max-${i}" type="number" min="1" value="${rps.max}" /></div>
+      <div class="form-group"><label class="form-label" style="font-size:11px">Min</label><input class="form-inp form-inp-sm" id="rps-min-${i}" type="number" inputmode="decimal" min="1" value="${rps.min}" /></div>
+      <div class="form-group"><label class="form-label" style="font-size:11px">Max</label><input class="form-inp form-inp-sm" id="rps-max-${i}" type="number" inputmode="decimal" min="1" value="${rps.max}" /></div>
     </div>`;
   }
   html+=`<button class="btn btn-primary" onclick="saveRepsPerSeries(${ei})">Enregistrer</button>`;
@@ -3899,14 +3902,14 @@ function editExoConfig(ei){
   openModal(`
     <div class="modal-title">Modifier "${exo.nom}"</div>
     ${isCardio
-      ?`<div class="form-group"><label class="form-label">Durée (min)</label><input class="form-inp form-inp-sm" id="ec-duree" type="number" min="1" value="${exo.duree_min||20}" /></div>`
+      ?`<div class="form-group"><label class="form-label">Durée (min)</label><input class="form-inp form-inp-sm" id="ec-duree" type="number" inputmode="decimal" min="1" value="${exo.duree_min||20}" /></div>`
       :`<div class="form-grid-2">
-      <div class="form-group"><label class="form-label">Séries</label><input class="form-inp form-inp-sm" id="ec-series" type="number" min="1" max="10" value="${exo.nb_series||3}" /></div>
-      <div class="form-group"><label class="form-label">Repos (sec)</label><input class="form-inp form-inp-sm" id="ec-repos" type="number" min="0" step="15" value="${exo.repos||90}" /></div>
+      <div class="form-group"><label class="form-label">Séries</label><input class="form-inp form-inp-sm" id="ec-series" type="number" inputmode="decimal" min="1" max="10" value="${exo.nb_series||3}" /></div>
+      <div class="form-group"><label class="form-label">Repos (sec)</label><input class="form-inp form-inp-sm" id="ec-repos" type="number" inputmode="decimal" min="0" step="15" value="${exo.repos||90}" /></div>
     </div>
     <div class="form-grid-2">
-      <div class="form-group"><label class="form-label">Reps min</label><input class="form-inp form-inp-sm" id="ec-rmin" type="number" min="1" value="${exo.reps_min||8}" /></div>
-      <div class="form-group"><label class="form-label">Reps max</label><input class="form-inp form-inp-sm" id="ec-rmax" type="number" min="1" value="${exo.reps_max||12}" /></div>
+      <div class="form-group"><label class="form-label">Reps min</label><input class="form-inp form-inp-sm" id="ec-rmin" type="number" inputmode="decimal" min="1" value="${exo.reps_min||8}" /></div>
+      <div class="form-group"><label class="form-label">Reps max</label><input class="form-inp form-inp-sm" id="ec-rmax" type="number" inputmode="decimal" min="1" value="${exo.reps_max||12}" /></div>
     </div>`}
     <div class="form-group"><label class="form-label">Notes (optionnel)</label><input class="form-inp form-inp-sm" id="ec-notes" value="${exo.notes||''}" placeholder="Technique, tempo…" /></div>
     <div class="form-group"><label class="form-label">Lien vidéo spécifique à cette séance (optionnel)</label><input class="form-inp form-inp-sm" id="ec-video" value="${exo.videoCustom?(exo.video||''):''}" placeholder="https://youtube.com/... (laisser vide = vidéo de la bibliothèque)" /><div style="font-size:11px;color:var(--text3);margin-top:4px">Vide = la séance utilise la vidéo de ta bibliothèque d'exercices. Si tu mets un lien ici, il remplace la vidéo uniquement pour cette séance.</div></div>
@@ -3990,8 +3993,8 @@ render.log=function(){
           if(e.methode==='dropset'&&!isCardio){
             extraSeries=`<div class="serie-row" style="border-top:1px dashed var(--border);margin-top:4px;opacity:.85">
               <span class="serie-label" style="color:var(--amber);font-size:10px">↓</span>
-              <input class="serie-inp" type="number" min="0" step="0.5" placeholder="poids ↓" value="${e._dropPoids||''}" oninput="updateLogDrop(${i},'poids',this.value)" style="border-color:rgba(255,140,0,.4)"/>
-              <input class="serie-inp" type="number" min="0" placeholder="reps" value="${e._dropReps||''}" oninput="updateLogDrop(${i},'reps',this.value)" style="border-color:rgba(255,140,0,.4)"/>
+              <input class="serie-inp" type="number" inputmode="decimal" min="0" step="0.5" placeholder="poids ↓" value="${e._dropPoids||''}" oninput="updateLogDrop(${i},'poids',this.value)" style="border-color:rgba(255,140,0,.4)"/>
+              <input class="serie-inp" type="number" inputmode="decimal" min="0" placeholder="reps" value="${e._dropReps||''}" oninput="updateLogDrop(${i},'reps',this.value)" style="border-color:rgba(255,140,0,.4)"/>
               <div class="serie-done${e._dropDone?' on':''}" onclick="toggleLogDrop(${i})" style="cursor:pointer"></div>
             </div>`;
           }
@@ -4009,13 +4012,14 @@ render.log=function(){
                 ${e._replacedFrom?`<div style="font-size:10px;color:var(--text3);margin-bottom:1px">Remplace : ${e._replacedFrom}</div>`:''}
                 <div class="exo-card-cat" style="${isCardio?'color:var(--amber)':''}">${isCardio?(e.cat+' · '+(e.duree_min||'?')+' min'):(e.cat?e.cat+' · ':'')+e.nb_series+' séries · '+e.reps_min+'-'+e.reps_max+' reps'}</div>
               </div>
-              ${videoUrl?`<a class="exo-mini-btn" href="${videoUrl}" target="_blank" rel="noopener noreferrer" title="Vidéo" style="text-decoration:none;width:auto;padding:0 8px;border-radius:999px">▶️ Vidéo</a>`:''}
+              ${videoUrl?`<button class="video-pill" data-url="${videoUrl}" onclick="toggleVideoEmbed(this,'vid-embed-${i}')" title="Vidéo">${VIDEO_PILL_ICON}Vidéo</button>`:''}
               <button class="exo-mini-btn" onclick="openHistorique('${e.exo_id}')" title="Historique">📈</button>
               ${!isCardio&&e.repos?`<button class="exo-mini-btn" onclick="startRestTimer(${e.repos})" title="Lancer le chrono (${e.repos}s)" style="font-size:15px">⏱</button>`:''}
               <button class="exo-mini-btn" onclick="showSwapExoModal(${i})" title="Remplacer pour cette séance" style="${e._replacedFrom?'color:var(--amber)':''}">🔄</button>
               <button class="intens-picker-btn" onclick="showIntensificationPicker(${i},'log')" title="Méthode d'intensification">···</button>
             </div>
             <div class="exo-card-body">
+              <div id="vid-embed-${i}" class="video-embed-box" style="display:none;margin-bottom:8px"></div>
               ${e.notes?`<div class="last-perf" style="background:var(--bg2);color:var(--text2);border:none">📝 ${e.notes}</div>`:''}
               ${lastLog?`<div class="last-perf">⏱ Dernière fois : ${lastLog.series.map(s=>'duree' in s?(s.duree?s.duree+'min':'—'):`${s.poids?s.poids+'kg':'—'} × ${s.reps||'—'}`).join(' / ')}</div>`:''}
               <div class="series-table">
@@ -4026,10 +4030,10 @@ render.log=function(){
                     ${isCardio
                       ?`<div style="grid-column:span 2;display:flex;align-items:center;gap:8px">
                           ${e.duree_min?`<span style="font-size:12px;color:var(--amber);font-weight:600;white-space:nowrap">/ ${e.duree_min} min</span>`:''}
-                          <input class="serie-inp" type="number" min="0" step="1" placeholder="min" value="${serie.duree||''}" style="flex:1" oninput="updateLogSerie(${i},${si},'duree',this.value,this)" />
+                          <input class="serie-inp" type="number" inputmode="decimal" min="0" step="1" placeholder="min" value="${serie.duree||''}" style="flex:1" oninput="updateLogSerie(${i},${si},'duree',this.value,this)" />
                         </div>`
-                      :`<input class="serie-inp" type="number" min="0" step="0.5" placeholder="kg" value="${serie.poids||''}" oninput="updateLogSerie(${i},${si},'poids',this.value,this)" />
-                    <input class="serie-inp" type="number" min="0" placeholder="reps" value="${serie.reps||''}" oninput="updateLogSerie(${i},${si},'reps',this.value,this)" />`}
+                      :`<input class="serie-inp" type="number" inputmode="decimal" min="0" step="0.5" placeholder="kg" value="${serie.poids||''}" oninput="updateLogSerie(${i},${si},'poids',this.value,this)" />
+                    <input class="serie-inp" type="number" inputmode="decimal" min="0" placeholder="reps" value="${serie.reps||''}" oninput="updateLogSerie(${i},${si},'reps',this.value,this)" />`}
                     <div class="serie-done${isSerieDone(serie)?' on':''}"></div>
                   </div>`).join('')}
                 ${extraSeries}
@@ -4139,6 +4143,29 @@ render.videos=function(){
 };
 
 // ─────────────────────────────────────────
+// VIDÉO INLINE — lecteur déroulant pendant la séance
+const VIDEO_PILL_ICON='<svg width="9" height="11" viewBox="0 0 10 12" fill="currentColor" aria-hidden="true"><path d="M1.2.3A1 1 0 0 0 0 1.28v9.44a1 1 0 0 0 1.55.84l7.62-4.72a1 1 0 0 0 0-1.68L1.55.44A1 1 0 0 0 1.2.3Z"/></svg>';
+function buildVideoEmbed(url){
+  const yt=url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/);
+  if(yt) return `<iframe src="https://www.youtube.com/embed/${yt[1]}?rel=0&playsinline=1" referrerpolicy="origin" style="width:100%;aspect-ratio:16/9;border:none;border-radius:12px;background:#000;display:block" allow="autoplay;encrypted-media;picture-in-picture" allowfullscreen></iframe>`;
+  const vm=url.match(/vimeo\.com\/(\d+)/);
+  if(vm) return `<iframe src="https://player.vimeo.com/video/${vm[1]}" style="width:100%;aspect-ratio:16/9;border:none;border-radius:12px;background:#000;display:block" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen></iframe>`;
+  if(/\.(mp4|webm|mov|m4v)(\?|$)/i.test(url)||url.includes('/storage/v1/object/')) return `<video controls playsinline preload="metadata" src="${url}" style="width:100%;max-height:320px;border-radius:12px;background:#000;display:block"></video>`;
+  return `<div style="padding:8px 0;font-size:13px"><a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--green);font-weight:600">Ouvrir la vidéo ↗</a></div>`;
+}
+function toggleVideoEmbed(btn,boxId){
+  const box=document.getElementById(boxId);
+  if(!box||!btn) return;
+  if(box.dataset.open==='1'){
+    box.style.display='none';box.innerHTML='';box.dataset.open='0';
+    btn.innerHTML=VIDEO_PILL_ICON+'Vidéo';
+  }else{
+    box.innerHTML=buildVideoEmbed(btn.dataset.url||'');
+    box.style.display='block';box.dataset.open='1';
+    btn.innerHTML='<span style="font-size:10px;line-height:1">✕</span>Fermer';
+  }
+}
+
 // VIDÉOS — Upload, affichage, correction
 // ─────────────────────────────────────────
 // context : 'log' (séance en cours, upload possible) ou 'config' (vue séance type, lecture)
@@ -5187,11 +5214,11 @@ function showExoConfigModal(exo){
     '<div class="modal-title">'+exo.nom+'</div>'+
     '<div class="badge '+(isCardio?'badge-amber':'badge-green')+'" style="margin-bottom:14px">'+exo.cat+'</div>'+
     (isCardio
-      ?'<div class="form-group"><label class="form-label">Durée (min)</label><input class="form-inp form-inp-sm" id="nc-duree" type="number" min="1" value="20" /></div>'
-      :'<div class="form-grid-2"><div class="form-group"><label class="form-label">Séries</label><input class="form-inp form-inp-sm" id="nc-series" type="number" min="1" max="10" value="3" /></div>'+
-       '<div class="form-group"><label class="form-label">Repos (sec)</label><input class="form-inp form-inp-sm" id="nc-repos" type="number" min="0" step="15" value="90" /></div></div>'+
-       '<div class="form-grid-2"><div class="form-group"><label class="form-label">Reps min</label><input class="form-inp form-inp-sm" id="nc-rmin" type="number" min="1" value="8" /></div>'+
-       '<div class="form-group"><label class="form-label">Reps max</label><input class="form-inp form-inp-sm" id="nc-rmax" type="number" min="1" value="12" /></div></div>')+
+      ?'<div class="form-group"><label class="form-label">Durée (min)</label><input class="form-inp form-inp-sm" id="nc-duree" type="number" inputmode="decimal" min="1" value="20" /></div>'
+      :'<div class="form-grid-2"><div class="form-group"><label class="form-label">Séries</label><input class="form-inp form-inp-sm" id="nc-series" type="number" inputmode="decimal" min="1" max="10" value="3" /></div>'+
+       '<div class="form-group"><label class="form-label">Repos (sec)</label><input class="form-inp form-inp-sm" id="nc-repos" type="number" inputmode="decimal" min="0" step="15" value="90" /></div></div>'+
+       '<div class="form-grid-2"><div class="form-group"><label class="form-label">Reps min</label><input class="form-inp form-inp-sm" id="nc-rmin" type="number" inputmode="decimal" min="1" value="8" /></div>'+
+       '<div class="form-group"><label class="form-label">Reps max</label><input class="form-inp form-inp-sm" id="nc-rmax" type="number" inputmode="decimal" min="1" value="12" /></div></div>')+
     '<div class="form-group"><label class="form-label">Notes (optionnel)</label><input class="form-inp form-inp-sm" id="nc-notes" placeholder="Technique, tempo..." /></div>'+
     '<button class="btn btn-primary" onclick="confirmAddExo(\''+exo.id+'\')">Ajouter à la séance</button>'
   );
@@ -5789,7 +5816,7 @@ function renderBhDetailMensu(bilan,allWeeks){
     html+='<div class="mensu-item">'
       +'<div class="mensu-label">'+f.label+'</div>'
       +'<div style="display:flex;align-items:center;gap:4px">'
-      +'<input class="mensu-inp" type="number" step="0.5" min="0" placeholder="—" value="'+(bilan.mensurations[f.key]||'')+'" oninput="updateMensuration(\''+bilan.id+'\',\''+f.key+'\',this.value)" />'
+      +'<input class="mensu-inp" type="number" inputmode="decimal" step="0.5" min="0" placeholder="—" value="'+(bilan.mensurations[f.key]||'')+'" oninput="updateMensuration(\''+bilan.id+'\',\''+f.key+'\',this.value)" />'
       +'<span style="font-size:12px;color:var(--text3)">cm</span></div>'
       +'<div class="mensu-prev">'+prevVal+'</div></div>';
   });
@@ -6004,7 +6031,7 @@ function renderBhPhotos(bilan, allWeeks){
     html+='<div class="mensu-item">'+
       '<div class="mensu-label">'+f.label+'</div>'+
       '<div style="display:flex;align-items:center;gap:4px">'+
-      '<input class="mensu-inp" type="number" step="0.5" min="0" placeholder="—" value="'+(bilan.mensurations[f.key]||'')+'" oninput="updateMensuration(\''+bilan.id+'\',\''+f.key+'\',this.value)" />'+
+      '<input class="mensu-inp" type="number" inputmode="decimal" step="0.5" min="0" placeholder="—" value="'+(bilan.mensurations[f.key]||'')+'" oninput="updateMensuration(\''+bilan.id+'\',\''+f.key+'\',this.value)" />'+
       '<span style="font-size:12px;color:var(--text3)">cm</span></div>'+
       '<div class="mensu-prev">'+prevVal+'</div></div>';
   });
@@ -6046,7 +6073,7 @@ function renderBhMensurations(bilan, allWeeks){
     html+='<div class="mensu-item">'+
       '<div class="mensu-label">'+f.label+'</div>'+
       '<div style="display:flex;align-items:center;gap:4px">'+
-      '<input class="mensu-inp" type="number" step="0.5" min="0" placeholder="—" value="'+(bilan.mensurations[f.key]||'')+'" oninput="updateMensuration(\''+bilan.id+'\',\''+f.key+'\',this.value)" />'+
+      '<input class="mensu-inp" type="number" inputmode="decimal" step="0.5" min="0" placeholder="—" value="'+(bilan.mensurations[f.key]||'')+'" oninput="updateMensuration(\''+bilan.id+'\',\''+f.key+'\',this.value)" />'+
       '<span style="font-size:12px;color:var(--text3)">'+f.unit+'</span></div>'+
       '<div class="mensu-prev">'+prevVal+'</div></div>';
   });
@@ -6451,7 +6478,7 @@ render.checkin=function(){
   document.getElementById('checkin-content').innerHTML=
     '<div class="checkin-section">'+
       '<div class="form-group"><label class="form-label">Date</label><input class="checkin-inp" type="date" value="'+safe(d.date)+'" onchange="setCheckinField(\'date\',this.value)" /></div>'+
-      '<div class="form-group"><label class="form-label">Poids (à jeun, après passage aux toilettes)</label><input class="checkin-inp" type="number" step="0.1" placeholder="ex : 68.4" value="'+safe(d.poids)+'" oninput="setCheckinField(\'poids\',this.value)" /></div>'+
+      '<div class="form-group"><label class="form-label">Poids (à jeun, après passage aux toilettes)</label><input class="checkin-inp" type="number" inputmode="decimal" step="0.1" placeholder="ex : 68.4" value="'+safe(d.poids)+'" oninput="setCheckinField(\'poids\',this.value)" /></div>'+
       '<div class="checkin-section-title">🍫 As tu fais des écarts sur la diète ?</div><div class="radio-group">'+yn('ecarts','oui','Oui')+yn('ecarts','non','Non')+'</div>'+
       '<div class="form-group" style="margin-top:8px"><label class="form-label">Si oui, quoi ?</label><input class="checkin-inp" placeholder="Ex : resto, chocolat, apéro..." value="'+safe(d.ecarts_detail)+'" oninput="setCheckinField(\'ecarts_detail\',this.value)" /></div>'+
       '<div class="form-group"><label class="form-label">As tu eu des problèmes de digestion ? Si oui, quoi ?</label><input class="checkin-inp" value="'+safe(d.digestion)+'" oninput="setCheckinField(\'digestion\',this.value)" /></div>'+
@@ -6461,8 +6488,8 @@ render.checkin=function(){
       '<div class="form-group"><label class="form-label">As tu fais tout ton cardio ?</label><input class="checkin-inp" placeholder="Ex : oui, non, 20 min sur 30..." value="'+safe(d.cardio)+'" oninput="setCheckinField(\'cardio\',this.value)" /></div>'+
       '<div class="checkin-section-title">😴 Qualité du sommeil (de très mal à super bien)</div>'+scale('sommeil')+
       '<div class="checkin-section-title">😵‍💫 Niveau de stress (de zen à ultra stressée)</div>'+scale('stress',true)+
-      '<div class="form-group"><label class="form-label">Nombre de pas</label><input class="checkin-inp" type="number" value="'+safe(d.pas)+'" oninput="setCheckinField(\'pas\',this.value)" /></div>'+
-      '<div class="form-group"><label class="form-label">Combien de litres d\'eau as tu bu ?</label><input class="checkin-inp" type="number" step="0.1" value="'+safe(d.eau)+'" oninput="setCheckinField(\'eau\',this.value)" /></div>'+
+      '<div class="form-group"><label class="form-label">Nombre de pas</label><input class="checkin-inp" type="number" inputmode="decimal" value="'+safe(d.pas)+'" oninput="setCheckinField(\'pas\',this.value)" /></div>'+
+      '<div class="form-group"><label class="form-label">Combien de litres d\'eau as tu bu ?</label><input class="checkin-inp" type="number" inputmode="decimal" step="0.1" value="'+safe(d.eau)+'" oninput="setCheckinField(\'eau\',this.value)" /></div>'+
       '<div class="checkin-section-title">🩸 As tu eu tes règles ?</div><div class="radio-group">'+yn('regles','oui','Oui')+yn('regles','non','Non')+'</div>'+
       '<div class="form-group" style="margin-top:8px"><label class="form-label">As tu eu des SPM ? Si oui, quoi ?</label><input class="checkin-inp" value="'+safe(d.spm)+'" oninput="setCheckinField(\'spm\',this.value)" /></div>'+
       '<div class="form-group"><label class="form-label">Autres précisions</label><textarea class="checkin-textarea" rows="4" placeholder="Tout ce que tu veux ajouter" oninput="setCheckinField(\'autres\',this.value)">'+safe(d.autres)+'</textarea></div>'+
@@ -7076,7 +7103,7 @@ render.diete=function(){
             </div>`:''}
             <div class="food-row2">
               <button class="qbtn" onclick="dAdjQty(${mi},${ii},${-step})">−</button>
-              <input class="qinp" type="number" min="0" step="${step}" value="${item.qty}" oninput="dSetQtyLive(${mi},${ii},this.value)" onblur="dSetQty(${mi},${ii},this.value)" />
+              <input class="qinp" type="number" inputmode="decimal" min="0" step="${step}" value="${item.qty}" oninput="dSetQtyLive(${mi},${ii},this.value)" onblur="dSetQty(${mi},${ii},this.value)" />
               <span class="qunit">${isUnit?'u':'g'}</span>
               <button class="qbtn" onclick="dAdjQty(${mi},${ii},${step})">+</button>
             </div>
@@ -7379,10 +7406,10 @@ async function _processMealBarcodeScan(input,mi){
         <input class="form-inp" id="ms-nom" value="${vals.nom||''}" placeholder="Nom de l'aliment"/>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div><label class="form-label">kcal/100g</label><input class="form-inp form-inp-sm" id="ms-kcal" type="number" value="${vals.kcal||0}"/></div>
-        <div><label class="form-label">Protéines</label><input class="form-inp form-inp-sm" id="ms-prot" type="number" value="${vals.proteines||0}"/></div>
-        <div><label class="form-label">Glucides</label><input class="form-inp form-inp-sm" id="ms-gluc" type="number" value="${vals.glucides||0}"/></div>
-        <div><label class="form-label">Lipides</label><input class="form-inp form-inp-sm" id="ms-lip" type="number" value="${vals.lipides||0}"/></div>
+        <div><label class="form-label">kcal/100g</label><input class="form-inp form-inp-sm" id="ms-kcal" type="number" inputmode="decimal" value="${vals.kcal||0}"/></div>
+        <div><label class="form-label">Protéines</label><input class="form-inp form-inp-sm" id="ms-prot" type="number" inputmode="decimal" value="${vals.proteines||0}"/></div>
+        <div><label class="form-label">Glucides</label><input class="form-inp form-inp-sm" id="ms-gluc" type="number" inputmode="decimal" value="${vals.glucides||0}"/></div>
+        <div><label class="form-label">Lipides</label><input class="form-inp form-inp-sm" id="ms-lip" type="number" inputmode="decimal" value="${vals.lipides||0}"/></div>
       </div>
       <div class="form-group" style="margin-top:8px">
         <label class="form-label">Mode de saisie</label>
@@ -7391,7 +7418,7 @@ async function _processMealBarcodeScan(input,mi){
           ${vals.poids_unite?`<button class="sel-tab-d" id="ms-mode-unit" onclick="dSetMealScanMode('unit')" style="flex:1">Unité (${vals.poids_unite}g)</button>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <input class="form-inp form-inp-sm" id="ms-qty" type="number" value="100" style="width:80px"/>
+          <input class="form-inp form-inp-sm" id="ms-qty" type="number" inputmode="decimal" value="100" style="width:80px"/>
           <span style="font-size:13px;color:var(--text2)" id="ms-qty-label">grammes</span>
         </div>
       </div>
@@ -7778,10 +7805,10 @@ function showCiblesModal(){
   openModal(`
     <div class="modal-title">Modifier les cibles — Day ${S.dieteState.day.toUpperCase()}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="form-group"><label class="form-label">Kcal</label><input class="form-inp form-inp-sm" id="ct-kcal" type="number" value="${tgt.kcal}" /></div>
-      <div class="form-group"><label class="form-label">Protéines (g)</label><input class="form-inp form-inp-sm" id="ct-prot" type="number" value="${tgt.prot}" /></div>
-      <div class="form-group"><label class="form-label">Glucides (g)</label><input class="form-inp form-inp-sm" id="ct-gluc" type="number" value="${tgt.gluc}" /></div>
-      <div class="form-group"><label class="form-label">Lipides (g)</label><input class="form-inp form-inp-sm" id="ct-lip" type="number" value="${tgt.lip}" /></div>
+      <div class="form-group"><label class="form-label">Kcal</label><input class="form-inp form-inp-sm" id="ct-kcal" type="number" inputmode="decimal" value="${tgt.kcal}" /></div>
+      <div class="form-group"><label class="form-label">Protéines (g)</label><input class="form-inp form-inp-sm" id="ct-prot" type="number" inputmode="decimal" value="${tgt.prot}" /></div>
+      <div class="form-group"><label class="form-label">Glucides (g)</label><input class="form-inp form-inp-sm" id="ct-gluc" type="number" inputmode="decimal" value="${tgt.gluc}" /></div>
+      <div class="form-group"><label class="form-label">Lipides (g)</label><input class="form-inp form-inp-sm" id="ct-lip" type="number" inputmode="decimal" value="${tgt.lip}" /></div>
     </div>
     <button class="btn btn-primary" onclick="saveCibles()">Enregistrer</button>
   `);
@@ -8349,10 +8376,10 @@ render.aliments=function(){
     </div>
     <div class="form-group">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div><label class="form-label">kcal (100g)</label><input class="form-inp form-inp-sm" id="fa-kcal" type="number" min="0" placeholder="420"/></div>
-        <div><label class="form-label">Protéines (100g)</label><input class="form-inp form-inp-sm" id="fa-prot" type="number" min="0" step="0.1" placeholder="30"/></div>
-        <div><label class="form-label">Glucides (100g)</label><input class="form-inp form-inp-sm" id="fa-gluc" type="number" min="0" step="0.1" placeholder="40"/></div>
-        <div><label class="form-label">Lipides (100g)</label><input class="form-inp form-inp-sm" id="fa-lip" type="number" min="0" step="0.1" placeholder="12"/></div>
+        <div><label class="form-label">kcal (100g)</label><input class="form-inp form-inp-sm" id="fa-kcal" type="number" inputmode="decimal" min="0" placeholder="420"/></div>
+        <div><label class="form-label">Protéines (100g)</label><input class="form-inp form-inp-sm" id="fa-prot" type="number" inputmode="decimal" min="0" step="0.1" placeholder="30"/></div>
+        <div><label class="form-label">Glucides (100g)</label><input class="form-inp form-inp-sm" id="fa-gluc" type="number" inputmode="decimal" min="0" step="0.1" placeholder="40"/></div>
+        <div><label class="form-label">Lipides (100g)</label><input class="form-inp form-inp-sm" id="fa-lip" type="number" inputmode="decimal" min="0" step="0.1" placeholder="12"/></div>
       </div>
     </div>
     <div class="form-group">
@@ -8363,7 +8390,7 @@ render.aliments=function(){
       <div id="fa-gpu-row" style="display:none;margin-top:10px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:13px;color:var(--text2);white-space:nowrap">1 unité =</span>
-          <input class="form-inp form-inp-sm" id="fa-gpu" type="number" min="1" placeholder="ex : 60" style="width:90px"/>
+          <input class="form-inp form-inp-sm" id="fa-gpu" type="number" inputmode="decimal" min="1" placeholder="ex : 60" style="width:90px"/>
           <span style="font-size:13px;color:var(--text2)">grammes</span>
         </div>
       </div>
@@ -8500,7 +8527,7 @@ function renderRecetteModal(){
     <div class="form-group"><label class="form-label">Catégorie (pour la retrouver dans la diète)</label>
       <input class="form-inp form-inp-sm" id="rc-cat" value="${r.categorie||'Recettes'}" placeholder="ex : Recettes, Petit déj maison…" />
     </div>
-    <div class="form-group"><label class="form-label">Nombre de parts</label><input class="form-inp form-inp-sm" id="rc-parts" type="number" min="1" value="${r.nb_parts||1}" oninput="S.recetteEnCours.nb_parts=parseInt(this.value)||1;updateRecetteTotal()" /></div>
+    <div class="form-group"><label class="form-label">Nombre de parts</label><input class="form-inp form-inp-sm" id="rc-parts" type="number" inputmode="decimal" min="1" value="${r.nb_parts||1}" oninput="S.recetteEnCours.nb_parts=parseInt(this.value)||1;updateRecetteTotal()" /></div>
     <div class="form-group"><label class="form-label">Ingrédients</label>
       <div id="rc-ings">${renderRecetteIngs(r.ingredients)}</div>
       <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
@@ -8508,7 +8535,7 @@ function renderRecetteModal(){
           ${Object.keys(db).map(c=>`<option>${c}</option>`).join('')}
         </select>
         <select class="form-inp form-inp-sm form-select" id="rc-ali" style="flex:1;min-width:120px">${renderRcOptions(Object.keys(db)[0])}</select>
-        <input class="form-inp form-inp-sm" id="rc-qty" type="number" min="0" placeholder="g" style="width:60px" />
+        <input class="form-inp form-inp-sm" id="rc-qty" type="number" inputmode="decimal" min="0" placeholder="g" style="width:60px" />
         <button class="btn btn-secondary btn-sm" style="width:auto" onclick="addRcIng()">+</button>
       </div>
     </div>
@@ -8901,19 +8928,19 @@ function showEditGoalsModal(clientId){
     <div class="modal-title">Objectifs — ${c.prenom}</div>
     <div class="form-group">
       <label class="form-label">👟 Pas / jour</label>
-      <input class="form-inp" id="g-pas" type="number" placeholder="ex : 10000" value="${g.pas||''}" />
+      <input class="form-inp" id="g-pas" type="number" inputmode="decimal" placeholder="ex : 10000" value="${g.pas||''}" />
     </div>
     <div class="form-group">
       <label class="form-label">💧 Hydratation journalière (litres)</label>
-      <input class="form-inp" id="g-hydra-jour" type="number" step="0.1" placeholder="ex : 2" value="${g.hydra_jour||''}" />
+      <input class="form-inp" id="g-hydra-jour" type="number" inputmode="decimal" step="0.1" placeholder="ex : 2" value="${g.hydra_jour||''}" />
     </div>
     <div class="form-group">
       <label class="form-label">🏋️ Hydratation en séance (litres)</label>
-      <input class="form-inp" id="g-hydra-seance" type="number" step="0.1" placeholder="ex : 1" value="${g.hydra_seance||''}" />
+      <input class="form-inp" id="g-hydra-seance" type="number" inputmode="decimal" step="0.1" placeholder="ex : 1" value="${g.hydra_seance||''}" />
     </div>
     <div class="form-group">
       <label class="form-label">🗓️ Séances / semaine</label>
-      <input class="form-inp" id="g-seances" type="number" placeholder="ex : 4" value="${g.seances||''}" />
+      <input class="form-inp" id="g-seances" type="number" inputmode="decimal" placeholder="ex : 4" value="${g.seances||''}" />
     </div>
     <button class="btn btn-primary" onclick="saveGoals('${clientId}')">💾 Enregistrer</button>
   `);
