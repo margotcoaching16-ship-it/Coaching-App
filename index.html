@@ -270,6 +270,11 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .serie-label{font-size:12px;font-weight:600;color:var(--text3);text-align:center}
 .serie-inp{width:100%;padding:7px 4px;font-size:14px;font-weight:500;text-align:center;border:.5px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text)}
 .serie-inp:focus{outline:none;border-color:var(--green)}
+/* Apparition animée des chiffres tapés dans les cases de séries */
+.charpop-overlay{position:fixed;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;white-space:pre;z-index:60}
+.charpop-overlay span{display:inline-block}
+.charpop-overlay span.cp-new{animation:cpIn .24s cubic-bezier(.34,1.45,.64,1) both}
+@keyframes cpIn{from{opacity:0;transform:translateY(6px) scale(.6)}to{opacity:1;transform:none}}
 .serie-done{width:28px;height:28px;border-radius:50%;border:1.5px solid transparent;display:flex;align-items:center;justify-content:center;background:transparent;transition:all .15s;opacity:0;pointer-events:none}
 .serie-done.on{background:var(--green);border-color:var(--green);opacity:1}
 .serie-done.on::after{content:'';display:block;width:5px;height:8px;border:2px solid #fff;border-top:none;border-left:none;transform:rotate(42deg) translateY(-1px)}
@@ -2446,11 +2451,13 @@ render.clients=function(filter=''){
     });
   }
   const sortMode=S.clientsSort||'alpha';
-  const sortBtn=`<div style="display:flex;gap:4px;background:var(--bg2);border-radius:999px;padding:2px;margin-left:8px">
-    <button onclick="setClientsSort('alpha')" style="padding:4px 10px;border-radius:999px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:${sortMode==='alpha'?'var(--bg)':'transparent'};color:${sortMode==='alpha'?'var(--text)':'var(--text3)'};box-shadow:${sortMode==='alpha'?'0 1px 2px rgba(0,0,0,.08)':'none'}">A→Z</button>
-    <button onclick="setClientsSort('jour')" style="padding:4px 10px;border-radius:999px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:${sortMode==='jour'?'var(--bg)':'transparent'};color:${sortMode==='jour'?'var(--text)':'var(--text3)'};box-shadow:${sortMode==='jour'?'0 1px 2px rgba(0,0,0,.08)':'none'}">📅 Jour</button>
+  const sortBtn=`<div class="suivi-seg" id="clients-seg" style="margin-left:8px">
+    <div class="suivi-seg-thumb"></div>
+    <button data-sort="alpha" onclick="setClientsSort('alpha')" style="padding:4px 10px;color:${sortMode==='alpha'?'var(--text)':'var(--text3)'}">A→Z</button>
+    <button data-sort="jour" onclick="setClientsSort('jour')" style="padding:4px 10px;color:${sortMode==='jour'?'var(--text)':'var(--text3)'}">📅 Jour</button>
   </div>`;
   setTopbar('Mes clients','',`<div style="display:flex;gap:6px;align-items:center">${sortBtn}<div class="icon-btn" onclick="showCalendrierBilanModal()" title="Calendrier bilans">📅</div><div class="icon-btn" onclick="navigate('archives')" title="Archives">🗂️</div><div class="icon-btn" onclick="showNewClientModal()">＋</div><div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div></div>`);
+  positionClientsSortThumb();
   const baseList=S.clients.filter(c=>`${c.prenom} ${c.nom}`.toLowerCase().includes(filter.toLowerCase()));
   const list=sortMode==='jour'
     ? sortClientsByJour(baseList)
@@ -3545,12 +3552,21 @@ function saveSeanceName(id){
   toast('✓ Séance renommée');
 }
 
+// Liste noire des éléments supprimés : empêche la synchro de les recréer
+function markDeleted(key,id){
+  const arr=lsGet('c_deleted_'+key)||[];
+  if(!arr.includes(id)){arr.push(id);lsSet('c_deleted_'+key,arr.slice(-300));}
+}
+function isDeleted(key,id){return (lsGet('c_deleted_'+key)||[]).includes(id);}
+
 function deleteProg(id){
   confirmDialog('Supprimer ce programme ?','Toutes les séances associées seront également supprimées.','Supprimer',()=>{
   _deleteProg(id);
   });
 }
 async function _deleteProg(id){
+  markDeleted('progs',id);
+  S.seancesType.filter(s=>s.programme_id===id).forEach(s=>markDeleted('seances',s.id));
   S.programmes=S.programmes.filter(p=>p.id!==id);
   S.seancesType=S.seancesType.filter(s=>s.programme_id!==id);
   persist();render.training();
@@ -3565,6 +3581,7 @@ function deleteSeance(id,progId){
   });
 }
 async function _deleteSeance(id,progId){
+  markDeleted('seances',id);
   S.seancesType=S.seancesType.filter(s=>s.id!==id);
   persist();render.training();
   await supa('DELETE','seances_type','',`?id=eq.${id}`);
@@ -3640,8 +3657,33 @@ render.seance=function(){
   const activeLog=lsGet('c_activeLog');
   const isActiveLog=activeLog&&activeLog.seance_type_id===s.id;
   if(isActiveLog) S.logSeance=activeLog;
+
+  // Encadré notes de séance (repliable) — visible coach + cliente, éditable coach uniquement
+  const escNote=t=>String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const hasNote=!!(s.notes&&s.notes.trim());
+  const notesHtml=(currentIsCoach||hasNote)?`<div style="padding:12px 16px 0">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <div onclick="toggleSeanceNotes()" style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer">
+        <span style="font-size:14px">📝</span>
+        <span style="flex:1;font-size:13px;font-weight:600">Notes de séance</span>
+        <span id="seance-notes-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;display:${hasNote&&!_seanceNotesOpen?'':'none'}"></span>
+        <span id="seance-notes-chevron" style="font-size:14px;color:var(--text3);display:inline-block;transform:rotate(${_seanceNotesOpen?'90deg':'0deg'});transition:transform .2s">›</span>
+      </div>
+      <div id="seance-notes-box" class="video-embed-box${_seanceNotesOpen?' open':''}" style="margin-bottom:0">
+        <div class="video-embed-inner">
+          <div style="padding:0 12px 12px">
+            ${currentIsCoach?`
+              <textarea id="seance-notes-input" class="form-inp" rows="3" placeholder="Écris tes notes ici…" style="width:100%;resize:vertical;font-size:13px;line-height:1.5">${escNote(s.notes)}</textarea>
+              <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="saveSeanceNotes()">Enregistrer</button>`
+            :`<div style="font-size:13px;color:var(--text2);white-space:pre-wrap;line-height:1.5">${escNote(s.notes)}</div>`}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`:'';
+
   if(!exos.length){
-    el.innerHTML=`<div class="empty" style="padding:40px 24px"><div class="empty-icon">📋</div><div class="empty-title">Séance vide</div><div class="empty-sub">Ajoute des exercices à cette séance</div><div style="padding:0 32px;margin-top:8px"><button class="btn btn-primary" onclick="showAddExoModal()">+ Ajouter un exercice</button></div></div>`;
+    el.innerHTML=notesHtml+`<div class="empty" style="padding:40px 24px"><div class="empty-icon">📋</div><div class="empty-title">Séance vide</div><div class="empty-sub">Ajoute des exercices à cette séance</div><div style="padding:0 32px;margin-top:8px"><button class="btn btn-primary" onclick="showAddExoModal()">+ Ajouter un exercice</button></div></div>`;
     return;
   }
 
@@ -3716,7 +3758,7 @@ render.seance=function(){
 
   const connector=`<div class="superset-connector"><div class="superset-connector-line"></div><span class="superset-connector-label">⚡ Superset</span><div class="superset-connector-line"></div></div>`;
 
-  el.innerHTML=`<div style="padding:12px 16px 10px">
+  el.innerHTML=notesHtml+`<div style="padding:12px 16px 10px">
     <button class="btn-start-block" onclick="${isActiveLog?`navigate('log')`:`startLog('${s.id}')`}">
       <span class="btn-icon">${isActiveLog?'▶️':'🏋️'}</span> ${isActiveLog?'Reprendre la séance':'Commencer la séance'}
     </button>
@@ -3740,7 +3782,29 @@ render.seance=function(){
 function openSeanceType(id){
   S.seanceType=S.seancesType.find(s=>s.id===id);
   if(!S.seanceType)return;
+  _seanceNotesOpen=false;
   navigate('seance');
+}
+
+// ── Notes de séance (encadré repliable en haut de l'aperçu) ──
+let _seanceNotesOpen=false;
+function toggleSeanceNotes(){
+  _seanceNotesOpen=!_seanceNotesOpen;
+  const box=document.getElementById('seance-notes-box');
+  if(box)box.classList.toggle('open',_seanceNotesOpen);
+  const chev=document.getElementById('seance-notes-chevron');
+  if(chev)chev.style.transform=_seanceNotesOpen?'rotate(90deg)':'rotate(0deg)';
+  const dot=document.getElementById('seance-notes-dot');
+  if(dot)dot.style.display=(_seanceNotesOpen||!(S.seanceType&&S.seanceType.notes&&S.seanceType.notes.trim()))?'none':'';
+}
+function saveSeanceNotes(){
+  if(!S.seanceType)return;
+  const val=(document.getElementById('seance-notes-input')?.value||'').trim();
+  S.seanceType.notes=val;
+  const idx=S.seancesType.findIndex(x=>x.id===S.seanceType.id);
+  if(idx>=0)S.seancesType[idx]=S.seanceType;
+  persist();saveSeanceTypeToSupa(S.seanceType);
+  render.seance();toast('✓ Note enregistrée');
 }
 
 function animateSwap(idA, idB, callback){
@@ -4762,6 +4826,66 @@ function updateLogSerie(ei,si,field,val,inputEl){
   saveActiveLog(S.logSeance);
   refreshLogProgress();
 }
+
+// ─────────────────────────────────────────
+// APPARITION ANIMÉE DES CHIFFRES (cases kg / reps / durée)
+// Principe : le texte réel de l'input devient invisible pendant la saisie,
+// et une copie exacte s'affiche par-dessus où chaque nouveau caractère
+// apparaît avec un petit fondu + rebond. Tout redevient normal à la sortie.
+// ─────────────────────────────────────────
+(function(){
+  let ov=null,inp=null,prev='';
+  function place(){
+    if(!ov||!inp)return;
+    const r=inp.getBoundingClientRect();
+    ov.style.left=r.left+'px';ov.style.top=r.top+'px';
+    ov.style.width=r.width+'px';ov.style.height=r.height+'px';
+  }
+  function renderChars(animate){
+    if(!ov||!inp)return;
+    // Si le navigateur ne peut pas lire la valeur en cours (saisie partielle), on montre le texte natif
+    if(inp.validity&&inp.validity.badInput){inp.style.color='';ov.style.display='none';prev=inp.value;return;}
+    inp.style.color='transparent';ov.style.display='flex';
+    const val=inp.value;
+    // Trouver les caractères nouveaux (préfixe/suffixe communs avec l'ancienne valeur)
+    let p=0;while(p<prev.length&&p<val.length&&prev[p]===val[p])p++;
+    let sfx=0;while(sfx<prev.length-p&&sfx<val.length-p&&prev[prev.length-1-sfx]===val[val.length-1-sfx])sfx++;
+    const endNew=val.length-sfx;
+    ov.textContent='';
+    for(let i=0;i<val.length;i++){
+      const sp=document.createElement('span');
+      sp.textContent=val[i];
+      if(animate&&i>=p&&i<endNew)sp.className='cp-new';
+      ov.appendChild(sp);
+    }
+    prev=val;
+  }
+  function detach(){
+    if(inp){inp.style.color='';inp.style.caretColor='';}
+    if(ov)ov.remove();
+    ov=null;inp=null;prev='';
+  }
+  function attach(t){
+    detach();
+    inp=t;prev=t.value;
+    const cs=getComputedStyle(t);
+    ov=document.createElement('div');
+    ov.className='charpop-overlay';
+    ov.style.fontFamily=cs.fontFamily;ov.style.fontSize=cs.fontSize;
+    ov.style.fontWeight=cs.fontWeight;ov.style.letterSpacing=cs.letterSpacing;
+    ov.style.color=cs.color;
+    t.style.caretColor=cs.color;
+    document.body.appendChild(ov);
+    place();renderChars(false);
+  }
+  document.addEventListener('focusin',e=>{
+    if(e.target&&e.target.classList&&e.target.classList.contains('serie-inp'))attach(e.target);
+  });
+  document.addEventListener('focusout',e=>{if(e.target===inp)detach();});
+  document.addEventListener('input',e=>{if(e.target===inp){place();renderChars(true);}});
+  window.addEventListener('scroll',()=>place(),true);
+  window.addEventListener('resize',()=>place());
+})();
 
 // ─────────────────────────────────────────
 // RÉCAP HEBDOMADAIRE COACH
@@ -8800,6 +8924,28 @@ function setClientsSort(mode){
   render.clients();
 }
 
+// Place la pastille glissante du toggle A→Z / Jour (même effet que le suivi check-in) :
+// au changement de tri, elle part de l'ancien bouton et glisse vers le nouveau.
+function positionClientsSortThumb(){
+  const seg=document.getElementById('clients-seg');
+  if(!seg) return;
+  const thumb=seg.querySelector('.suivi-seg-thumb');
+  const cur=S.clientsSort||'alpha';
+  const target=seg.querySelector('button[data-sort="'+cur+'"]');
+  if(!thumb||!target) return;
+  const prev=positionClientsSortThumb._last;
+  const from=(prev&&prev!==cur)?seg.querySelector('button[data-sort="'+prev+'"]'):null;
+  thumb.style.transition='none';
+  const start=from||target;
+  thumb.style.left=start.offsetLeft+'px';
+  thumb.style.width=start.offsetWidth+'px';
+  void thumb.offsetWidth; // force le navigateur à enregistrer la position de départ
+  thumb.style.transition='';
+  thumb.style.left=target.offsetLeft+'px';
+  thumb.style.width=target.offsetWidth+'px';
+  positionClientsSortThumb._last=cur;
+}
+
 async function syncPresets(){
   const res=await supa('GET','correction_presets','','?order=ordre.asc,created_at.asc');
   if(res){S.correctionPresets=res;lsSet('c_correctionPresets',res);}
@@ -8965,8 +9111,8 @@ async function syncClientData(clientId){
   }
   if(progs){
     const supaProgIds=new Set(progs.map(p=>p.id));
-    // Conserver les programmes locaux pas encore synchronisés
-    const pendingProgs=S.programmes.filter(p=>p.client_id===clientId&&!supaProgIds.has(p.id));
+    // Conserver les programmes locaux pas encore synchronisés (sauf ceux supprimés volontairement)
+    const pendingProgs=S.programmes.filter(p=>p.client_id===clientId&&!supaProgIds.has(p.id)&&!isDeleted('progs',p.id));
     pendingProgs.forEach(p=>supa('POST','programmes',{id:p.id,client_id:p.client_id,nom:p.nom,nb_seances:p.nb_seances}));
     S.programmes=S.programmes.filter(p=>p.client_id!==clientId);
     S.programmes.push(...progs,...pendingProgs);
@@ -8975,8 +9121,8 @@ async function syncClientData(clientId){
     const progIds=new Set((progs||[]).map(p=>p.id));
     const allProgIds=new Set([...progIds,...S.programmes.filter(p=>p.client_id===clientId).map(p=>p.id)]);
     const supaSeanceIds=new Set(seances.map(s=>s.id));
-    // Conserver les séances locales pas encore synchronisées
-    const pendingSeances=S.seancesType.filter(s=>allProgIds.has(s.programme_id)&&!supaSeanceIds.has(s.id));
+    // Conserver les séances locales pas encore synchronisées (sauf celles supprimées volontairement)
+    const pendingSeances=S.seancesType.filter(s=>allProgIds.has(s.programme_id)&&!supaSeanceIds.has(s.id)&&!isDeleted('seances',s.id)&&!isDeleted('progs',s.programme_id));
     pendingSeances.forEach(s=>supa('POST','seances_type',{id:s.id,programme_id:s.programme_id,nom:s.nom,ordre:s.ordre,exercices:s.exercices}));
     const clientSeances=seances.filter(s=>progIds.has(s.programme_id));
     S.seancesType=S.seancesType.filter(s=>!allProgIds.has(s.programme_id));
@@ -9112,7 +9258,7 @@ async function saveClientToSupa(client){
 }
 
 async function saveProgramToSupa(prog){
-  if(!prog.id) return;
+  if(!prog.id||isDeleted('progs',prog.id)) return;
   const existing=await supa('GET','programmes','',`?id=eq.${prog.id}`);
   if(existing&&existing.length){
     await supa('PATCH','programmes',{nom:prog.nom,nb_seances:prog.nb_seances},`?id=eq.${prog.id}`);
@@ -9122,12 +9268,12 @@ async function saveProgramToSupa(prog){
 }
 
 async function saveSeanceTypeToSupa(seance){
-  if(!seance.id) return;
+  if(!seance.id||isDeleted('seances',seance.id)||isDeleted('progs',seance.programme_id)) return;
   const existing=await supa('GET','seances_type','',`?id=eq.${seance.id}`);
   if(existing&&existing.length){
-    await supa('PATCH','seances_type',{nom:seance.nom,ordre:seance.ordre,exercices:seance.exercices},`?id=eq.${seance.id}`);
+    await supa('PATCH','seances_type',{nom:seance.nom,ordre:seance.ordre,exercices:seance.exercices,notes:seance.notes||null},`?id=eq.${seance.id}`);
   } else {
-    await supa('POST','seances_type',{id:seance.id,programme_id:seance.programme_id,nom:seance.nom,ordre:seance.ordre,exercices:seance.exercices});
+    await supa('POST','seances_type',{id:seance.id,programme_id:seance.programme_id,nom:seance.nom,ordre:seance.ordre,exercices:seance.exercices,notes:seance.notes||null});
   }
 }
 
