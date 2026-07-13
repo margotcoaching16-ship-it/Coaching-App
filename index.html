@@ -2048,12 +2048,40 @@ async function doSetPassword(){
   }
 }
 
+// ─── Renouvellement automatique du badge d'accès (token) expiré ───
+// Sur téléphone, l'app reste en veille des jours entiers : le badge expire et
+// tous les envois échouaient en silence (erreur 401). Ici, on renouvelle le
+// badge dès qu'un envoi est refusé, puis on réessaie une fois.
+let _tokenRefreshPromise=null;
+async function trySupaTokenRefresh(){
+  // Un seul renouvellement à la fois : si plusieurs envois échouent ensemble,
+  // ils attendent tous le même renouvellement (sinon Supabase invalide la session).
+  if(_tokenRefreshPromise) return _tokenRefreshPromise;
+  _tokenRefreshPromise=(async()=>{
+    try{
+      const saved=localStorage.getItem('supa_session');
+      const s=saved?JSON.parse(saved):null;
+      if(!s||!s.refresh_token) return false;
+      const refreshed=await supaRefreshToken(s.refresh_token);
+      if(!refreshed||!refreshed.access_token) return false;
+      saveSession(refreshed,s.email);
+      return true;
+    }catch(e){ return false; }
+  })();
+  const ok=await _tokenRefreshPromise;
+  _tokenRefreshPromise=null;
+  return ok;
+}
+
 async function supa(method,table,body,query='',opts){
   try{
     const url=`${SUPA_URL}/rest/v1/${table}${query}`;
-    const headers=getHeaders();
-    if(opts&&opts.prefer){headers['Prefer']=opts.prefer;}
-    const r=await fetch(url,{method,headers,body:body?JSON.stringify(body):undefined});
+    const buildHeaders=()=>{const h=getHeaders();if(opts&&opts.prefer){h['Prefer']=opts.prefer;}return h;};
+    let r=await fetch(url,{method,headers:buildHeaders(),body:body?JSON.stringify(body):undefined});
+    // Badge expiré : on le renouvelle et on réessaie une fois
+    if(r.status===401&&await trySupaTokenRefresh()){
+      r=await fetch(url,{method,headers:buildHeaders(),body:body?JSON.stringify(body):undefined});
+    }
     if(!r.ok){const e=await r.text();console.error('Supabase error:',e);return null;}
     if(method==='DELETE'||r.status===204)return true;
     return r.json();
@@ -5202,11 +5230,16 @@ function showNewClientModal(){
 // Seul le compte coach est autorisé à le faire (vérifié côté serveur).
 async function sendClientInvitation(email){
   try{
-    const r=await fetch(`${SUPA_URL}/functions/v1/invite-client`,{
+    const doSend=()=>fetch(`${SUPA_URL}/functions/v1/invite-client`,{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+authToken},
       body:JSON.stringify({email})
     });
+    let r=await doSend();
+    // Badge expiré : on le renouvelle et on réessaie une fois
+    if(r.status===401&&await trySupaTokenRefresh()){
+      r=await doSend();
+    }
     const data=await r.json().catch(()=>({}));
     if(r.ok&&data.ok) return data;
     return {error:data.error||('Erreur '+r.status)};
@@ -9035,7 +9068,18 @@ async function syncClients(){
     if(!row.dietMode){ row.dietMode='flexible'; }
     return row;
   };
-  if(actifs){const a=actifs.map(normalize);S.clients=a;lsSet('c_clients',a);}
+  if(actifs){
+    const a=actifs.map(normalize);
+    // Filet de sécurité : un client présent en local mais absent du serveur
+    // (créé pendant une panne réseau ou un badge d'accès expiré) est CONSERVÉ
+    // et renvoyé au serveur, au lieu d'être effacé par la liste serveur.
+    const serverIds=new Set([...a.map(c=>c.id),...((archives||[]).map(c=>c.id))]);
+    const deletedIds=new Set(lsGet('c_deletedClients')||[]);
+    const pending=(S.clients||[]).filter(c=>c&&c.id&&!serverIds.has(c.id)&&!deletedIds.has(c.id));
+    pending.forEach(c=>saveClientToSupa(c));
+    S.clients=[...a,...pending];
+    lsSet('c_clients',S.clients);
+  }
   if(archives){const a=archives.map(normalize);S.archivedClients=a;lsSet('c_archivedClients',a);}
 }
 
@@ -9663,6 +9707,11 @@ function confirmDeleteClient(id){
 }
 
 async function deleteClient(id){
+  // Mémoriser la suppression volontaire : sans ça, le filet de sécurité de
+  // syncClients ferait "revivre" ce client depuis le cache local.
+  const deletedIds=new Set(lsGet('c_deletedClients')||[]);
+  deletedIds.add(id);
+  lsSet('c_deletedClients',[...deletedIds]);
   S.clients=S.clients.filter(x=>x.id!==id);
   if(S.archivedClients)S.archivedClients=S.archivedClients.filter(x=>x.id!==id);
   lsSet('c_clients',S.clients);
