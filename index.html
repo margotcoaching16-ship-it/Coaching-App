@@ -5190,9 +5190,9 @@ function showNewClientModal(){
     <div class="modal-title">Nouveau client</div>
     <div class="form-group"><label class="form-label">Prénom</label><input class="form-inp" id="m-prenom" placeholder="Marie" /></div>
     <div class="form-group"><label class="form-label">Nom</label><input class="form-inp" id="m-nom" placeholder="Dupont" /></div>
-    <div class="form-group"><label class="form-label">Adresse mail</label><input class="form-inp" id="m-email" type="email" placeholder="marie.dupont@gmail.com" /></div>
+    <div class="form-group"><label class="form-label">Adresse mail (optionnel)</label><input class="form-inp" id="m-email" type="email" placeholder="marie.dupont@gmail.com" /></div>
     <div class="form-group"><label class="form-label">Objectif</label><input class="form-inp" id="m-obj" placeholder="Perte de poids, prise de masse…" /></div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">📨 L'invitation sera envoyée automatiquement par mail à la création.</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">📨 Avec un mail : l'invitation part automatiquement à la création.<br>Sans mail : tu peux préparer tout le plan, puis ajouter le mail et envoyer l'invitation plus tard via « Modifier ».</div>
     <button class="btn btn-primary" onclick="createClient()">Créer</button>
   `);
   setTimeout(()=>document.getElementById('m-prenom')?.focus(),300);
@@ -5236,8 +5236,10 @@ async function createClient(){
     if(!nom)shakeNo(document.getElementById('m-nom'));
     return;
   }
-  if(!email){
-    toast('⚠ Adresse mail obligatoire');
+  // L'adresse mail est optionnelle : sans mail, le client est créé sans invitation
+  // (on peut préparer son plan, puis ajouter le mail et inviter plus tard via « Modifier »).
+  if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    toast('⚠ Adresse mail invalide');
     shakeNo(document.getElementById('m-email'));
     return;
   }
@@ -5246,7 +5248,7 @@ async function createClient(){
     id:(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():uid(),
     prenom,
     nom,
-    email,
+    email:email||null,
     user_id:null,
     objectif,
     favori:false,
@@ -5282,10 +5284,12 @@ async function createClient(){
   await syncClients();
   render.clients();
 
-  // Envoi automatique de l'invitation par mail
-  const inv=await sendClientInvitation(newClient.email);
-  if(inv.error) toast('⚠ Invitation non envoyée : '+inv.error);
-  else toast('📨 Invitation envoyée à '+newClient.email);
+  // Envoi automatique de l'invitation par mail (seulement si un mail a été renseigné)
+  if(newClient.email){
+    const inv=await sendClientInvitation(newClient.email);
+    if(inv.error) toast('⚠ Invitation non envoyée : '+inv.error);
+    else toast('📨 Invitation envoyée à '+newClient.email);
+  }
 }
 
 // ─────────────────────────────────────────
@@ -9574,8 +9578,8 @@ function showClientOptionsModal(clientId){
         <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Adresse mail</div>
         <input class="form-inp" id="edit-client-email" type="email" placeholder="client@email.com" value="${(c.email||'').replace(/"/g,'&quot;')}" />
         <button class="btn btn-primary" style="font-size:13px;padding:8px" onclick="saveClientEmail('${clientId}')">💾 Enregistrer le mail</button>
-        <button class="btn" style="font-size:13px;padding:8px;border:1px solid var(--border);background:transparent;color:var(--text)" onclick="resendClientInvitation('${clientId}')">📨 Renvoyer l'invitation</button>
-        <div style="font-size:11px;color:var(--text3);line-height:1.35">Si tu corriges le mail, enregistre-le d'abord puis appuie sur « Renvoyer l'invitation ».</div>
+        <button class="btn" style="font-size:13px;padding:8px;border:1px solid var(--border);background:transparent;color:var(--text)" onclick="resendClientInvitation('${clientId}')">📨 ${c.email?'Renvoyer':'Envoyer'} l'invitation</button>
+        <div style="font-size:11px;color:var(--text3);line-height:1.35">${c.email?'Si tu corriges le mail, enregistre-le d\'abord puis appuie sur « Renvoyer l\'invitation ».':'Ajoute le mail, appuie sur « Enregistrer le mail », puis sur « Envoyer l\'invitation ».'}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
         <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Formule</div>
