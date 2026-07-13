@@ -2633,6 +2633,20 @@ async function toggleFavori(id,btn){
   await supa('PATCH','clients',{favori:c.favori},`?id=eq.${id}`);
 }
 
+// Écrans de consultation qu'on peut redessiner sans risque quand des données
+// fraîches arrivent (jamais 'log' : on effacerait ce que la cliente tape !)
+const SCREENS_REFRESH_OK=['menu','suivi','historique','training','seance','bilanHebdo','checkin','videos'];
+// Redessine l'écran affiché si on regarde toujours ce client et qu'aucune
+// fenêtre de saisie n'est ouverte. Corrige les tableaux vides (check-ins…)
+// affichés depuis le cache local avant la fin du téléchargement.
+function refreshScreenAfterSync(clientId){
+  if(!S.client||S.client.id!==clientId)return;
+  if(!SCREENS_REFRESH_OK.includes(S.screen))return;
+  const overlay=document.getElementById('overlay');
+  if(overlay&&overlay.classList.contains('open'))return; // modale ouverte : on ne touche à rien
+  try{ if(render[S.screen]) render[S.screen](); }catch(e){ console.warn('refreshScreenAfterSync:',e); }
+}
+
 async function openClient(id){
   S.client=S.clients.find(c=>c.id===id);
   if(!S.client)return;
@@ -2640,8 +2654,8 @@ async function openClient(id){
   sessionStorage.removeItem('c_calcsPerte_draft');
   sessionStorage.removeItem('c_blockPlan_draft');
   navigate('menu');
-  // Sync client data in background (sans re-render si on est encore sur le même écran)
-  syncClientData(id).catch(e=>console.warn('Sync error:',e));
+  // Sync des données du client en arrière-plan, puis mise à jour de l'écran affiché
+  syncClientData(id).then(()=>refreshScreenAfterSync(id)).catch(e=>console.warn('Sync error:',e));
 }
 
 function openClientById(id){
