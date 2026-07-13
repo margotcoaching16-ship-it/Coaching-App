@@ -5892,7 +5892,8 @@ render.bilanHebdo=function(){
 
   if(S.bhView==='detail'){
     if(!S.bhCurrentDate) S.bhCurrentDate=thisWeek;
-    setTopbar('Bilan du '+bhDateLongue(S.bhCurrentDate), c.prenom+' '+c.nom, '');
+    const bTitre=getBilanHebdo(c.id,S.bhCurrentDate);
+    setTopbar(bTitre&&bTitre.completed&&bTitre.dateFait?'Bilan fait le '+bhDateLongue(bTitre.dateFait):'Bilan du '+bhDateLongue(S.bhCurrentDate), c.prenom+' '+c.nom, '');
     el.innerHTML=bhBack()+renderBhDetail(c,allWeeks);
   } else if(S.bhView==='comparaison'){
     setTopbar('Comparaison', c.prenom+' '+c.nom, '');
@@ -5936,7 +5937,7 @@ function renderBhAccueil(c,thisWeek){
   let html=`<div class="bh2-hero">
     <div class="bh2-hero-top">
       <div class="bh2-hero-icon">📈</div>
-      <div><div class="bh2-hero-title">Bilan de cette semaine</div><div class="bh2-hero-sub">${bhDateLongue(thisWeek)}</div></div>
+      <div><div class="bh2-hero-title">Bilan de cette semaine</div><div class="bh2-hero-sub">${fait&&b.dateFait?'Fait le '+bhDateLongue(b.dateFait):bhDateLongue(thisWeek)}</div></div>
       <span class="bh2-badge ${fait?'done':'todo'}">${fait?'FAIT ✓':'À FAIRE'}</span>
     </div>
     <div class="bh2-progress">
@@ -5973,7 +5974,7 @@ function renderBhAccueil(c,thisWeek){
         const kk=bhCompteurs(bw);
         const thumbs=['face','gauche','droit','dos'].map(s=>bw.photos&&bw.photos[s]?`<div class="bh2-th"><img src="${bw.photos[s]}" alt=""/></div>`:`<div class="bh2-th">·</div>`).join('');
         return `<div class="bh2-card" onclick="bhOuvreBilan('${w}')">
-          <div class="bh2-card-date"><b>Bilan du ${bhDateLongue(w)}</b><span>${bw.completed?'sauvegardé':'en cours'}</span></div>
+          <div class="bh2-card-date"><b>${bw.completed&&bw.dateFait?'Bilan fait le '+bhDateLongue(bw.dateFait):'Bilan du '+bhDateLongue(w)}</b><span>${bw.completed?'sauvegardé':'en cours'}</span></div>
           <div class="bh2-thumbs">${thumbs}</div>
           <div class="bh2-stats">${kk.me}/8<br>mensu.</div>
           <div class="bh2-chev">›</div>
@@ -6616,7 +6617,12 @@ function updateBilanNotes(bilanId, val){
 
 async function saveBilanHebdo(bilanId){
   const b=S.bilansHebdo.find(x=>x.id===bilanId);
-  if(b) b.completed=true;
+  if(b){
+    b.completed=true;
+    // Date exacte à laquelle le bilan a été fait (photos/mensurations ajoutées).
+    // On la fixe à la première sauvegarde et on n'y touche plus ensuite.
+    if(!b.dateFait) b.dateFait=new Date().toISOString().slice(0,10);
+  }
   persist();
   if(S.screen==='bilanHebdo') render.bilanHebdo();
   if(b) await saveBilanHebdoToSupa(b);
@@ -8946,6 +8952,7 @@ async function syncBilansThisWeek(){
     mensurations:{poitrine:b.poitrine||'',taille:b.taille||'',epaules:b.epaules||'',fessiers:b.fessiers||'',cuisses:b.cuisses||'',cuisse_d:b.cuisse_d||'',bras:b.bras||'',bras_d:b.bras_d||''},
     notes:b.notes||'',
     completed:b.completed||false,
+    dateFait:b.date_fait||null,
     modifDiete:b.modif_diete||'',
     modifTraining:b.modif_training||''
   })));
@@ -9206,6 +9213,7 @@ async function syncClientData(clientId){
       mensurations:{poitrine:b.poitrine||'',taille:b.taille||'',epaules:b.epaules||'',fessiers:b.fessiers||'',cuisses:b.cuisses||'',cuisse_d:b.cuisse_d||'',bras:b.bras||'',bras_d:b.bras_d||''},
       notes:b.notes||'',
       completed:b.completed||false,
+      dateFait:b.date_fait||null,
       modifDiete:b.modif_diete||'',
       modifTraining:b.modif_training||''
     })));
@@ -9465,6 +9473,7 @@ async function saveBilanHebdoToSupa(bilan){
     bras_d:parseFloat(bilan.mensurations?.bras_d)||null,
     notes:bilan.notes||null,
     completed:bilan.completed||false,
+    date_fait:bilan.dateFait||null,
     modif_diete:bilan.modifDiete||null,
     modif_training:bilan.modifTraining||null
   };
