@@ -271,7 +271,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .serie-inp{width:100%;padding:7px 4px;font-size:14px;font-weight:500;text-align:center;border:.5px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text)}
 .serie-inp:focus{outline:none;border-color:var(--green)}
 /* Apparition animée des chiffres tapés dans les cases de séries */
-.charpop-overlay{position:fixed;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;white-space:pre;z-index:60}
+.charpop-overlay{position:absolute;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;white-space:pre;z-index:60}
 .charpop-overlay span{display:inline-block}
 .charpop-overlay span.cp-new{animation:cpIn .24s cubic-bezier(.34,1.45,.64,1) both}
 @keyframes cpIn{from{opacity:0;transform:translateY(6px) scale(.6)}to{opacity:1;transform:none}}
@@ -4837,9 +4837,10 @@ function updateLogSerie(ei,si,field,val,inputEl){
   let ov=null,inp=null,prev='';
   function place(){
     if(!ov||!inp)return;
-    const r=inp.getBoundingClientRect();
-    ov.style.left=r.left+'px';ov.style.top=r.top+'px';
-    ov.style.width=r.width+'px';ov.style.height=r.height+'px';
+    // Position relative au parent de l'input : l'overlay suit la case
+    // même quand le clavier mobile fait défiler/décaler la page
+    ov.style.left=inp.offsetLeft+'px';ov.style.top=inp.offsetTop+'px';
+    ov.style.width=inp.offsetWidth+'px';ov.style.height=inp.offsetHeight+'px';
   }
   function renderChars(animate){
     if(!ov||!inp)return;
@@ -4875,7 +4876,9 @@ function updateLogSerie(ei,si,field,val,inputEl){
     ov.style.fontWeight=cs.fontWeight;ov.style.letterSpacing=cs.letterSpacing;
     ov.style.color=cs.color;
     t.style.caretColor=cs.color;
-    document.body.appendChild(ov);
+    const parent=t.parentElement;
+    if(parent&&getComputedStyle(parent).position==='static')parent.style.position='relative';
+    (parent||document.body).appendChild(ov);
     place();renderChars(false);
   }
   document.addEventListener('focusin',e=>{
@@ -5127,6 +5130,12 @@ function updateLogComment(ei, val){
 async function saveLog(){
   const finishedClientId=S.logSeance&&S.logSeance.client_id;
   const logToSave=S.logSeance;
+  // 1) Marquer tout de suite la séance comme VALIDÉE : à partir d'ici, plus aucun
+  //    envoi "séance en cours" (même retardataire) ne pourra la ressusciter.
+  markLogFinished(logToSave&&logToSave.id);
+  // 2) Plus de séance en cours côté app : un événement tardif (tap pendant la
+  //    transition, clavier qui se ferme…) ne pourra plus recréer le brouillon.
+  S.logSeance=null;
   S.logsSeances.push(logToSave);persist();
   clearTimeout(_pushActiveLogTimer);
   localStorage.removeItem('c_activeLog');
@@ -5136,6 +5145,9 @@ async function saveLog(){
   const res=await saveLogToSupa(logToSave);
   if(res){
     clearActiveLogServer(finishedClientId);
+    // 2e effacement quelques secondes plus tard : gagne la "course" contre un
+    // brouillon parti juste avant "Terminer" et arrivé au serveur après le 1er effacement.
+    setTimeout(()=>{clearActiveLogServer(finishedClientId);},4000);
     toast('✓ Séance enregistrée !');
   }else{
     // Envoi raté (réseau/serveur) : la séance reste en local et sera renvoyée
@@ -5479,8 +5491,21 @@ function showLogModal(progId){
 // ─── Synchro de la séance en cours avec Supabase (table seances_en_cours) ───
 let _pushActiveLogTimer=null;
 // Sauvegarde locale immédiate + push serveur (debounce ~1.2s)
+// ─── Séances déjà validées : on garde leurs identifiants pour ne JAMAIS
+// les relancer comme "séance en cours" (anti-séance-fantôme). ───
+function getFinishedLogIds(){return lsGet('c_finishedLogIds')||[];}
+function markLogFinished(id){
+  if(!id)return;
+  const ids=getFinishedLogIds().filter(x=>x!==id);
+  ids.push(id);
+  while(ids.length>30)ids.shift(); // on ne garde que les 30 dernières
+  lsSet('c_finishedLogIds',ids);
+}
+function isLogFinished(id){return !!id&&getFinishedLogIds().includes(id);}
+
 function saveActiveLog(log){
   if(!log){return;}
+  if(isLogFinished(log.id)){return;} // séance déjà validée : ne pas recréer de brouillon
   log.updated_at_ts=Date.now();
   // La séance en cours est prioritaire : si le quota local est plein,
   // on tente l'écriture, et en cas d'échec on purge les caches lourds puis on réessaie.
@@ -5503,6 +5528,7 @@ function saveActiveLog(log){
 // Upsert immédiat de la séance en cours vers le serveur
 async function pushActiveLogNow(log){
   if(!log||!log.client_id){return;}
+  if(isLogFinished(log.id)){return;} // séance déjà validée : ne rien envoyer au serveur
   const payload={
     client_id:log.client_id,
     seance_type_id:log.seance_type_id||null,
@@ -5552,6 +5578,15 @@ async function restoreActiveSession(){
 
   if(!activeLog || !activeLog.seance_type_id || !activeLog.client_id) return false;
 
+  // Cette séance a déjà été validée sur cet appareil : on jette le brouillon
+  // (local + serveur) sans rien demander au réseau. C'est le verrou principal
+  // contre la "séance fantôme".
+  if(isLogFinished(activeLog.id)){
+    localStorage.removeItem('c_activeLog');
+    clearActiveLogServer(activeLog.client_id);
+    return false;
+  }
+
   // Sécurité anti-"brouillon fantôme" : si cette séance a en réalité déjà été
   // enregistrée comme terminée (ex : l'appli a été fermée/mise en arrière-plan
   // juste après avoir appuyé sur "Terminer", avant que le nettoyage du brouillon
@@ -5566,6 +5601,7 @@ async function restoreActiveSession(){
     }catch(e){/* hors-ligne : on se fie seulement au cache local ci-dessus */}
   }
   if(alreadySavedLocally || alreadySavedRemotely){
+    markLogFinished(activeLog.id); // mémoriser pour ne plus refaire cette vérification
     localStorage.removeItem('c_activeLog');
     clearActiveLogServer(activeLog.client_id);
     return false;
@@ -5599,19 +5635,19 @@ async function restoreActiveSession(){
   S.logSeance = activeLog;
 
   // Construit une history cohérente pour que le bouton retour marche
+  // NB : pas d'écran "programme" dans l'app → le mettre dans l'historique
+  // provoquait une page blanche quand on appuyait sur Précédent.
   if(currentIsCoach){
     S.history = [
       {screen:'clients', client:null, programme:null, seanceType:null},
       {screen:'suivi', client:client, programme:null, seanceType:null},
-      {screen:'training', client:client, programme:null, seanceType:null},
-      {screen:'programme', client:client, programme:programme, seanceType:null},
+      {screen:'training', client:client, programme:programme, seanceType:null},
       {screen:'seance', client:client, programme:programme, seanceType:seanceType}
     ];
   } else {
     S.history = [
       {screen:'menu', client:client, programme:null, seanceType:null},
-      {screen:'training', client:client, programme:null, seanceType:null},
-      {screen:'programme', client:client, programme:programme, seanceType:null},
+      {screen:'training', client:client, programme:programme, seanceType:null},
       {screen:'seance', client:client, programme:programme, seanceType:seanceType}
     ];
   }
@@ -9308,7 +9344,16 @@ async function syncPendingLogs(){
       const enAttente=S.logsSeances.filter(l=>l.client_id===cid&&l.id&&!remoteIds.has(l.id));
       for(const l of enAttente){
         const ok=await saveLogToSupa(l);
-        if(ok) renvoyees++;
+        if(ok){
+          renvoyees++;
+          markLogFinished(l.id);
+          // Si un brouillon "séance en cours" traîne encore sur le serveur pour
+          // cette séance désormais enregistrée, on le nettoie.
+          try{
+            const row=await fetchActiveLogServer(cid);
+            if(row&&row.data&&row.data.id===l.id) await clearActiveLogServer(cid);
+          }catch(e){}
+        }
       }
     }
     if(renvoyees>0){ try{toast('✓ '+renvoyees+' séance(s) synchronisée(s)');}catch{} }
