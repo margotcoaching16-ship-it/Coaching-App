@@ -2413,6 +2413,17 @@ function showScreen(screen,opts={}){
   }
 
   try{ if(render[screen]) render[screen](); }catch(err){ console.error(err); const target=document.getElementById(screen+'-content')||el; if(target) target.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Oups</div><div class="empty-sub">'+String(err.message||err)+'</div><button class="btn btn-secondary" style="margin-top:16px" onclick="logout()">Se déconnecter</button></div>'; }
+
+  // Recharge la base d'aliments partagée (customs + recettes) en arrière-plan
+  // à l'ouverture de l'écran diète : un aliment créé sur un autre appareil
+  // apparaît ainsi avec ses bonnes calories, sans redémarrer l'app.
+  if(screen==='diete'){
+    const avant=JSON.stringify(S.customAliments)+JSON.stringify(S.recettes);
+    Promise.all([syncCustomAliments(),syncRecettes()]).then(()=>{
+      const apres=JSON.stringify(S.customAliments)+JSON.stringify(S.recettes);
+      if(S.screen==='diete'&&apres!==avant) render.diete();
+    }).catch(e=>console.warn('Re-sync aliments diète:',e));
+  }
 }
 
 function setTopbar(title,sub='',action=''){
