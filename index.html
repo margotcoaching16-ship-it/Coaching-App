@@ -2489,6 +2489,13 @@ render.clients=function(filter=''){
       if(S.screen==='clients') render.clients(filter);
     });
   }
+  // Re-sync silencieux des données d'assiduité (max toutes les 60s)
+  if(currentIsCoach && Date.now()-_lastAssiduiteSync>60000){
+    _lastAssiduiteSync=Date.now();
+    syncAssiduiteData().then(()=>{
+      if(S.screen==='clients') render.clients(filter);
+    }).catch(e=>console.warn('syncAssiduiteData:',e));
+  }
   const sortMode=S.clientsSort||'alpha';
   const sortBtn=`<div class="suivi-seg" id="clients-seg" style="margin-left:8px">
     <div class="suivi-seg-thumb"></div>
@@ -2544,6 +2551,201 @@ function isBilanFaitThisWeek(clientId){
   if(!b) return false;
   // La pastille s'allume uniquement si le bilan a été explicitement sauvegardé
   return b.completed===true;
+}
+
+// ─────────────────────────────────────────
+// TAUX D'ASSIDUITÉ (visible coach uniquement)
+// ─────────────────────────────────────────
+let _lastAssiduiteSync=0;
+S.assiduite={checkins:[],logs:[],bilans:[]};
+
+async function syncAssiduiteData(){
+  // Récupère en une seule fois les 28 derniers jours de toutes les clientes
+  const since=new Date(Date.now()-28*864e5).toISOString().slice(0,10);
+  const [ci,logs,bil]=await Promise.all([
+    supa('GET','checkins','',`?date=gte.${since}&select=client_id,date`),
+    supa('GET','logs_seances','',`?date_seance=gte.${since}&select=client_id,date_seance`),
+    supa('GET','bilans_hebdo','',`?semaine_debut=gte.${since}&select=client_id,semaine_debut,completed`)
+  ]);
+  S.assiduite={checkins:ci||[],logs:logs||[],bilans:bil||[]};
+}
+
+function computeAssiduite(clientId){
+  const c=S.clients.find(x=>x.id===clientId);
+  if(!c) return null;
+  const A=S.assiduite||{checkins:[],logs:[],bilans:[]};
+  const since=new Date(Date.now()-28*864e5).toISOString().slice(0,10);
+  const parts=[];
+  const isPack=c.formule==='pack';
+  // 1) Check-ins : jours distincts remplis sur 28
+  if(!isPack){
+    const days=new Set(A.checkins.filter(x=>x.client_id===clientId&&x.date>=since).map(x=>x.date));
+    parts.push({label:'Check-ins',pct:Math.min(100,Math.round(days.size/28*100)),detail:`${days.size}/28 j`});
+  }
+  // 2) Bilans : complétés sur les 4 dernières semaines (si jour de bilan défini)
+  if(!isPack&&c.jourBilan){
+    const done=A.bilans.filter(x=>x.client_id===clientId&&x.semaine_debut>=since&&x.completed).length;
+    parts.push({label:'Bilans',pct:Math.min(100,Math.round(done/4*100)),detail:`${done}/4 sem`});
+  }
+  // 3) Entraînements : séances loggées vs prévues (objectif séances/sem, sinon programme)
+  let prevSem=parseInt(c.goals&&c.goals.seances)||0;
+  if(!prevSem){const prog=S.programmes.find(p=>p.client_id===clientId);prevSem=prog?(prog.nb_seances||0):0;}
+  if(prevSem){
+    const n=A.logs.filter(x=>x.client_id===clientId&&(x.date_seance||'')>=since).length;
+    parts.push({label:'Entraînements',pct:Math.min(100,Math.round(n/(prevSem*4)*100)),detail:`${n}/${prevSem*4} séances`});
+  }
+  if(!parts.length) return null;
+  const pct=Math.round(parts.reduce((s,p)=>s+p.pct,0)/parts.length);
+  return {pct,parts};
+}
+
+function assiduiteColor(pct){return pct>=75?'var(--green-dark)':pct>=50?'#c98a1b':'#E24B4A';}
+function assiduiteBg(pct){return pct>=75?'var(--green-light)':pct>=50?'rgba(230,170,60,.18)':'rgba(226,75,74,.15)';}
+
+function assiduiteBadgeHTML(clientId){
+  if(!currentIsCoach) return '';
+  const a=computeAssiduite(clientId);
+  if(!a) return '';
+  return `<span title="Assiduité sur les 4 dernières semaines" style="font-size:10px;font-weight:700;background:${assiduiteBg(a.pct)};color:${assiduiteColor(a.pct)};padding:2px 7px;border-radius:10px">${a.pct}%</span>`;
+}
+
+// ─────────────────────────────────────────
+// RAPPELS PAR NOTIFICATION PUSH
+// ─────────────────────────────────────────
+const VAPID_PUBLIC_KEY='BE7wMD86JsBoyqzY8xiKbgTszPJ8yet1K6iaevngT_Ntu-6VwJT6TH34rKRWdRoqekv2CB5DpNzOYSuykW30rDM';
+S.rappels={checkin:false,bilan:false,subscribed:false,loading:false};
+
+function _b64ToUint8(s){
+  const pad='='.repeat((4-s.length%4)%4);
+  const b64=(s+pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=atob(b64);
+  return Uint8Array.from([...raw].map(ch=>ch.charCodeAt(0)));
+}
+
+function pushSupported(){
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
+async function getPushSub(){
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    return await reg.pushManager.getSubscription();
+  }catch(e){return null;}
+}
+
+// L'état des rappels est PARTAGÉ : un seul réglage par cliente (rappel_checkin /
+// rappel_bilan sur sa fiche). Coach et cliente basculent le même interrupteur.
+async function refreshRappelsUI(){
+  if(currentIsCoach||!S.client||!pushSupported())return;
+  S.rappels.checkin=S.client.rappel_checkin===true;
+  S.rappels.bilan=S.client.rappel_bilan===true;
+  const sub=await getPushSub();
+  S.rappels.subscribed=!!sub;
+  // Si un rappel est actif mais que ce téléphone n'est pas encore abonné
+  // et que la permission est déjà accordée -> on l'abonne silencieusement
+  if((S.rappels.checkin||S.rappels.bilan)&&!sub&&Notification.permission==='granted'){
+    try{
+      const reg=await navigator.serviceWorker.ready;
+      const newSub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:_b64ToUint8(VAPID_PUBLIC_KEY)});
+      await _saveRappelRow(newSub);
+      S.rappels.subscribed=true;
+    }catch(e){console.warn('auto-subscribe:',e);}
+  }
+  _paintRappelSwitch('checkin');
+  _paintRappelSwitch('bilan');
+}
+
+function _paintRappelSwitch(type){
+  const el=document.getElementById('rp-sw-'+type);
+  if(!el)return;
+  const on=S.rappels[type];
+  el.style.background=on?'#1D9E75':'var(--border2)';
+  const ci=el.querySelector('.diet-toggle-switch-circle');
+  if(ci)ci.style.transform=`translateX(${on?'22px':'0px'})`;
+}
+
+async function toggleRappel(type){
+  if(currentIsCoach||!S.client)return;
+  if(!pushSupported()){toast('⚠ Notifications non supportées sur cet appareil');return;}
+  if(S.rappels.loading)return;
+  S.rappels.loading=true;
+  const el=document.getElementById('rp-sw-'+type);
+  const field=type==='checkin'?'rappel_checkin':'rappel_bilan';
+  try{
+    // S'assurer que ce téléphone est abonné (demande la permission si besoin)
+    const ensureSub=async()=>{
+      const perm=await Notification.requestPermission();
+      if(perm!=='granted'){
+        toast('⚠ Notifications bloquées. Autorise-les dans les réglages de ton téléphone (Réglages > Notifications).');
+        return null;
+      }
+      const reg=await navigator.serviceWorker.ready;
+      let sub=await reg.pushManager.getSubscription();
+      if(!sub){
+        sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:_b64ToUint8(VAPID_PUBLIC_KEY)});
+      }
+      await _saveRappelRow(sub);
+      S.rappels.subscribed=true;
+      return sub;
+    };
+    if(!S.rappels[type]){
+      // Activation : abonner ce téléphone + activer le réglage partagé
+      const sub=await ensureSub();
+      if(!sub)return;
+      S.rappels[type]=true;
+      S.client[field]=true;
+      persist();
+      await supa('PATCH','clients',{[field]:true},`?id=eq.${S.client.id}`);
+      toast(type==='checkin'?'🔔 Rappel check-in activé (21h)':'🔔 Rappel bilan activé (8h le jour du bilan)');
+    }else if(!S.rappels.subscribed){
+      // Déjà activé (par la coach) mais téléphone pas encore abonné -> on finalise
+      const sub=await ensureSub();
+      if(!sub)return;
+      toast('🔔 Notifications activées sur ce téléphone');
+    }else{
+      // Désactivation : coupe le réglage partagé (pour la coach aussi)
+      S.rappels[type]=false;
+      S.client[field]=false;
+      persist();
+      await supa('PATCH','clients',{[field]:false},`?id=eq.${S.client.id}`);
+      toast('🔕 Rappel désactivé');
+    }
+    if(el)playSwitchAnim(el,S.rappels[type]);
+    _paintRappelSwitch(type);
+  }catch(e){
+    console.error('toggleRappel:',e);
+    toast('⚠ Impossible d\'activer les notifications');
+  }finally{
+    S.rappels.loading=false;
+  }
+}
+
+async function _saveRappelRow(sub){
+  const payload={
+    client_id:S.client.id,
+    endpoint:sub.endpoint,
+    subscription:JSON.parse(JSON.stringify(sub)),
+    rappel_checkin:S.rappels.checkin,
+    rappel_bilan:S.rappels.bilan,
+    updated_at:new Date().toISOString()
+  };
+  await supa('POST','push_subscriptions',payload,'?on_conflict=endpoint',{prefer:'resolution=merge-duplicates,return=representation'});
+}
+
+// Côté coach : autoriser/couper les rappels d'une cliente (valeur par défaut)
+async function toggleRappelCoach(field,el){
+  const c=S.client;if(!c)return;
+  const newVal=!(c[field]===true);
+  c[field]=newVal;
+  persist();
+  if(el){
+    playSwitchAnim(el,newVal);
+    el.style.background=newVal?'#1D9E75':'var(--border2)';
+    const ci=el.querySelector('.diet-toggle-switch-circle');
+    if(ci)ci.style.transform=`translateX(${newVal?'22px':'0px'})`;
+  }
+  await supa('PATCH','clients',{[field]:newVal},`?id=eq.${c.id}`);
+  toast(newVal?'🔔 Rappel activé pour '+c.prenom:'🔕 Rappel coupé pour '+c.prenom);
 }
 
 function getBadges5kg(clientId){
@@ -2648,6 +2850,7 @@ function clientRowHTML(c,i){
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <div class="client-name">${c.prenom} ${c.nom}</div>
         ${bilanFait?`<span style="font-size:10px;font-weight:700;background:var(--green-light);color:var(--green-dark);padding:2px 7px;border-radius:10px">✓ Bilan</span>`:''}
+        ${assiduiteBadgeHTML(c.id)}
       </div>
       ${c.objectif?`<div class="client-obj">${c.objectif}</div>`:''}${c.email?`<div class="client-obj">${c.email}</div>`:''}
     </div>
@@ -3435,6 +3638,12 @@ render.menu=function(){
   `;
   const lastCheckin=S.checkIns.filter(ci=>ci.client_id===c.id).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
   const checkinCount=S.checkIns.filter(ci=>ci.client_id===c.id).length;
+  // Assiduité (coach uniquement) — re-sync silencieux si données trop vieilles
+  if(currentIsCoach && Date.now()-_lastAssiduiteSync>60000){
+    _lastAssiduiteSync=Date.now();
+    syncAssiduiteData().then(()=>{if(S.screen==='menu')render.menu();}).catch(e=>console.warn('syncAssiduiteData:',e));
+  }
+  const assid=currentIsCoach?computeAssiduite(c.id):null;
   document.getElementById('topbar-action').innerHTML=`<div style="display:flex;gap:6px;align-items:center">${currentIsCoach?`<button class="client-mini-btn" onclick="openCalculsPerte('${c.id}')" title="Trame">Plan</button>`:''}<div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div></div>`;
   const isPack=c.formule==='pack';
   document.getElementById('menu-grid').innerHTML=`
@@ -3462,7 +3671,42 @@ render.menu=function(){
       <div class="menu-card-icon">📈</div>
       <div class="menu-card-label">Bilan hebdomadaire</div>
       <div class="menu-card-sub">Photos · Mensurations · Comparaison</div>
-    </div>`}
+    </div>
+    ${!currentIsCoach?`<div class="menu-card" style="grid-column:span 2;cursor:default">
+      <div style="text-align:left">
+        <div class="menu-card-label">🔔 Rappels</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px">
+          <div class="menu-card-sub">Check-in quotidien · tous les soirs à 21h</div>
+          <div class="diet-toggle-switch" id="rp-sw-checkin" onclick="toggleRappel('checkin')" style="background:var(--border2);flex-shrink:0"><div class="diet-toggle-switch-circle"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:10px">
+          <div class="menu-card-sub">Bilan hebdo · à 8h le jour du bilan</div>
+          <div class="diet-toggle-switch" id="rp-sw-bilan" onclick="toggleRappel('bilan')" style="background:var(--border2);flex-shrink:0"><div class="diet-toggle-switch-circle"></div></div>
+        </div>
+      </div>
+    </div>`:''}`}
+    ${currentIsCoach&&assid?`<div class="menu-card" style="grid-column:span 2;border-color:${assiduiteColor(assid.pct)};cursor:default">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="menu-card-icon" style="flex-shrink:0">🎯</div>
+        <div style="flex:1;min-width:0;text-align:left">
+          <div class="menu-card-label">Assiduité <span style="color:${assiduiteColor(assid.pct)}">${assid.pct}%</span> <span style="font-size:10px;font-weight:600;color:var(--text3)">· 4 dern. semaines</span></div>
+          <div class="menu-card-sub">${assid.parts.map(p=>`${p.label} ${p.pct}% (${p.detail})`).join(' · ')}</div>
+        </div>
+      </div>
+    </div>`:''}
+    ${currentIsCoach?`<div class="menu-card" style="grid-column:span 2;cursor:default;border-color:#5b8def">
+      <div style="text-align:left">
+        <div class="menu-card-label">🔔 Rappels autorisés</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px">
+          <div class="menu-card-sub">Check-in quotidien · 21h</div>
+          <div class="diet-toggle-switch" onclick="toggleRappelCoach('rappel_checkin',this)" style="background:${c.rappel_checkin===true?'#1D9E75':'var(--border2)'};flex-shrink:0"><div class="diet-toggle-switch-circle" style="transform:translateX(${c.rappel_checkin===true?'22px':'0px'})"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:10px">
+          <div class="menu-card-sub">Bilan hebdo · 8h le jour du bilan</div>
+          <div class="diet-toggle-switch" onclick="toggleRappelCoach('rappel_bilan',this)" style="background:${c.rappel_bilan===true?'#1D9E75':'var(--border2)'};flex-shrink:0"><div class="diet-toggle-switch-circle" style="transform:translateX(${c.rappel_bilan===true?'22px':'0px'})"></div></div>
+        </div>
+      </div>
+    </div>`:''}
     ${currentIsCoach?`<div class="menu-card" onclick="showWeeklyRecap('${c.id}')" style="grid-column:span 2;border-color:var(--green)">
       <div class="menu-card-icon">📊</div>
       <div class="menu-card-label">Récap semaine</div>
@@ -3484,6 +3728,8 @@ render.menu=function(){
     </div>`:''}
     </div>
   `;
+  // Met à jour l'état réel des interrupteurs de rappels (côté cliente)
+  if(!currentIsCoach) refreshRappelsUI();
 };
 
 function countProgs(clientId){return S.programmes.filter(p=>p.client_id===clientId).length;}
@@ -8147,6 +8393,7 @@ async function saveCibles(){
   tgt.gluc=parseInt(document.getElementById('ct-gluc').value)||tgt.gluc;
   tgt.lip=parseInt(document.getElementById('ct-lip').value)||tgt.lip;
   persist();
+  saveDieteDraft();
   closeModal();render.diete();
   try{ await saveDieteToSupa(S.client.id,S.dieteState.day); toast('✓ Cibles enregistrées'); }
   catch(e){ console.error('saveCibles → Supabase:',e); toast('⚠ Cibles sauvées localement, erreur serveur'); }
@@ -9201,7 +9448,7 @@ async function syncRecettes(){
 
 async function syncClientData(clientId){
   const [dietes,progs,seances,logs,checkins,bilans]=await Promise.all([
-    supa('GET','dietes','',`?client_id=eq.${clientId}`),
+    supa('GET','dietes','',`?client_id=eq.${clientId}&order=updated_at.desc`),
     supa('GET','programmes','',`?client_id=eq.${clientId}&order=created_at.asc`),
     supa('GET','seances_type','',`?order=ordre.asc`),
     supa('GET','logs_seances','',`?client_id=eq.${clientId}&order=date_seance.desc`),
@@ -9212,17 +9459,23 @@ async function syncClientData(clientId){
     const dON=dietes.find(d=>d.jour==='on');
     const dOFF=dietes.find(d=>d.jour==='off');
     if(!S.dietes[clientId]) S.dietes[clientId]={};
-    // Ne pas écraser les repas si une modif locale non sauvegardée existe (brouillon en cours)
+    // Ne pas écraser les repas NI les cibles si une modif locale existe (brouillon en cours)
     const hasDraft=(day)=>!!sessionStorage.getItem('c_dieteDraft_'+clientId+'_'+day);
     if(dON){
-      const keepMeals=hasDraft('on');
-      S.dietes[clientId].on={...S.dietes[clientId].on,targets:{kcal:dON.cible_kcal,prot:dON.cible_prot,gluc:dON.cible_gluc,lip:dON.cible_lip},_id:dON.id};
-      if(!keepMeals) S.dietes[clientId].on.meals=dON.repas;
+      const keepLocal=hasDraft('on');
+      S.dietes[clientId].on={...S.dietes[clientId].on,_id:dON.id};
+      if(!keepLocal){
+        S.dietes[clientId].on.targets={kcal:dON.cible_kcal,prot:dON.cible_prot,gluc:dON.cible_gluc,lip:dON.cible_lip};
+        S.dietes[clientId].on.meals=dON.repas;
+      }
     }
     if(dOFF){
-      const keepMeals=hasDraft('off');
-      S.dietes[clientId].off={...S.dietes[clientId].off,targets:{kcal:dOFF.cible_kcal,prot:dOFF.cible_prot,gluc:dOFF.cible_gluc,lip:dOFF.cible_lip},_id:dOFF.id};
-      if(!keepMeals) S.dietes[clientId].off.meals=dOFF.repas;
+      const keepLocal=hasDraft('off');
+      S.dietes[clientId].off={...S.dietes[clientId].off,_id:dOFF.id};
+      if(!keepLocal){
+        S.dietes[clientId].off.targets={kcal:dOFF.cible_kcal,prot:dOFF.cible_prot,gluc:dOFF.cible_gluc,lip:dOFF.cible_lip};
+        S.dietes[clientId].off.meals=dOFF.repas;
+      }
     }
   }
   if(progs){

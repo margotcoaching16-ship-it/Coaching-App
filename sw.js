@@ -6,7 +6,21 @@
 //    Change le numéro ci-dessous (v1 -> v2 -> v3…) avant d'uploader sur GitHub.
 //    Ça force l'appli à jeter l'ancien cache et à prendre la nouvelle version.
 
-const CACHE_NAME = 'coaching-app-v3';
+const CACHE_NAME = 'coaching-app-v4';
+
+// Réception d'une notification push envoyée par le serveur (rappels check-in / bilan)
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data.json(); } catch (e) {}
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Coaching App', {
+      body: data.body || '',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      data: { url: data.url || '/Coaching-App/' }
+    })
+  );
+});
 
 self.addEventListener('install', event => {
   self.skipWaiting(); // Active immédiatement sans attendre la fermeture des onglets
