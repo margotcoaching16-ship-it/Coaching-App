@@ -424,6 +424,22 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .checkin-section{padding:0 16px 12px}
 .checkin-section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;padding-top:10px}
 .scale-row{display:flex;gap:5px;margin-top:5px}
+/* ── Curseur « niveau d'énergie » ── */
+.nrj{background:var(--bg2);border-radius:var(--radius-lg);padding:14px 16px 10px;margin-top:5px}
+.nrj-face{font-size:44px;line-height:1;text-align:center;transition:transform .18s cubic-bezier(.34,1.6,.5,1)}
+.nrj-face.pop{transform:scale(1.22)}
+.nrj-label{text-align:center;font-size:13px;font-weight:800;margin-top:4px;transition:color .2s}
+.nrj-val{text-align:center;font-size:10.5px;font-weight:700;color:var(--text3);margin-top:1px}
+.nrj-slider{-webkit-appearance:none;appearance:none;width:100%;height:10px;border-radius:999px;margin:12px 0 2px;outline:none;
+  background:linear-gradient(90deg,#E24B4A 0%,#e08a2b 30%,#d8c22e 55%,#7cc44a 78%,#1D9E75 100%);cursor:pointer}
+.nrj-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;border-radius:50%;
+  background:var(--bg);border:3px solid var(--text);box-shadow:0 2px 8px rgba(0,0,0,.28);cursor:grab;transition:transform .15s}
+.nrj-slider:active::-webkit-slider-thumb{transform:scale(1.15);cursor:grabbing}
+.nrj-slider::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--bg);border:3px solid var(--text);box-shadow:0 2px 8px rgba(0,0,0,.28);cursor:grab}
+.nrj-ticks{display:flex;justify-content:space-between;padding:0 2px;font-size:15px;opacity:.45}
+.nrj-ticks span{cursor:pointer;transition:opacity .15s,transform .15s}
+.nrj-ticks span.on{opacity:1;transform:scale(1.25)}
+.nrj-empty{text-align:center;font-size:12px;color:var(--text3);font-weight:600;padding:6px 0 2px}
 .scale-btn{flex:1;padding:8px 2px;border:.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);cursor:pointer;font-size:14px;text-align:center;transition:all .15s;font-family:inherit;font-weight:600;color:var(--text2)}
 .scale-btn.emoji{font-size:22px;line-height:1.1;padding:10px 2px}
 .scale-btn .emoji-sub{display:block;font-size:10px;line-height:1.1;margin-top:4px;color:inherit;font-weight:700;opacity:.8}
@@ -1501,6 +1517,129 @@ html.da-chic .topbar-title::after{content:'';display:block;width:36px;height:2px
 .pal-sw{display:flex;gap:3px;margin-bottom:6px}
 .pal-sw div{flex:1;height:22px;border-radius:6px;border:.5px solid rgba(0,0,0,.12)}
 .pal-name{font-size:11px;font-weight:700;color:var(--text)}
+
+/* ═══════════════════════════════════════════════
+   SÉANCE EN COURS — mode Liste / mode Carte
+   ═══════════════════════════════════════════════ */
+/* ── Barre de bascule (toggle glissant) ── */
+.lg-viewbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 16px 4px}
+.lg-viewbar-date{font-size:11px;color:var(--text3);font-weight:600;display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lg-seg{position:relative;display:flex;background:var(--bg2);border-radius:999px;padding:3px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;flex-shrink:0}
+.lg-seg.dragging{cursor:grabbing}
+.lg-seg-thumb{position:absolute;top:3px;left:3px;height:calc(100% - 6px);border-radius:999px;background:var(--bg);box-shadow:0 1px 4px rgba(0,0,0,.16);transition:transform .32s cubic-bezier(.34,1.35,.5,1),width .2s;z-index:0}
+.lg-seg.dragging .lg-seg-thumb{transition:none}
+.lg-seg button{position:relative;z-index:1;border:none;background:transparent;font-family:inherit;font-size:11.5px;font-weight:700;color:var(--text3);padding:6px 13px;border-radius:999px;cursor:inherit;display:flex;align-items:center;gap:4px;transition:color .25s;white-space:nowrap}
+.lg-seg button.on{color:var(--green-dark)}
+
+/* ── Mode LISTE retravaillé ── */
+.lg-chip{display:inline-flex;align-items:center;gap:3px;background:var(--bg2);border-radius:999px;padding:2px 7px;font-size:10.5px;font-weight:700;color:var(--text2)}
+.lg-chip.g{background:var(--green-light);color:var(--green-dark)}
+.lg-chip.a{background:var(--amber-light);color:var(--amber)}
+.lg-chips{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:3px}
+.lg-lhead{display:flex;align-items:center;gap:10px;padding:11px 12px;cursor:pointer}
+.lg-lhead-txt{flex:1;min-width:0}
+.lg-lname{font-size:14.5px;font-weight:700;line-height:1.25;color:var(--text)}
+.lg-caret{font-size:11px;color:var(--text3);transition:transform .25s;flex-shrink:0}
+.lg-lblock.collapsed .lg-caret{transform:rotate(-90deg)}
+.lg-lblock.collapsed .exo-card-body{display:none}
+.lg-lblock.done{opacity:.75}
+.lg-lsummary{display:none;padding:0 12px 11px;font-size:11.5px;color:var(--green-dark);font-weight:600;line-height:1.4}
+.lg-lblock.collapsed.done .lg-lsummary{display:block}
+.exo-num-badge.ok{background:var(--green)!important;color:#fff!important}
+.lg-lastperf{display:flex;align-items:center;gap:7px;padding:7px 9px;background:var(--amber-light);border-radius:8px;margin:8px 0 0;font-size:11px;color:var(--amber);line-height:1.35}
+.lg-note{display:flex;gap:6px;padding:7px 9px;background:var(--bg2);border-radius:8px;margin-top:8px;font-size:11.5px;color:var(--text2);line-height:1.4}
+
+/* ── Mode CARTE ── */
+#screen-log.lg-mode-carte.active{display:flex;flex-direction:column;overflow:hidden}
+#screen-log.lg-mode-carte #log-content{flex:1;min-height:0;height:auto;padding:0!important;display:flex;flex-direction:column}
+#screen-log.lg-mode-carte .log-progress{flex-shrink:0}
+.lg-cardview{flex:1;min-height:0;display:flex;flex-direction:column}
+.lg-stepper{display:flex;align-items:center;gap:7px;padding:6px 16px 7px;flex-shrink:0}
+.lg-dots{flex:1;display:flex;gap:5px;align-items:center}
+.lg-dot{flex:1;height:4px;border-radius:3px;background:var(--bg3);transition:all .3s}
+.lg-dot.on{background:var(--green)}
+.lg-dot.ok{background:var(--green);opacity:.45}
+.lg-steplbl{font-size:10.5px;font-weight:800;color:var(--text3);font-variant-numeric:tabular-nums;flex-shrink:0}
+.lg-track{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.lg-track::-webkit-scrollbar{display:none}
+.lg-slide{min-width:100%;scroll-snap-align:center;scroll-snap-stop:always;padding:0 14px 8px;display:flex;flex-direction:column;overflow:hidden}
+.lg-card{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg);border-radius:var(--radius-xl);box-shadow:var(--shadow);overflow-y:auto;overflow-x:hidden}
+.lg-card.ss{border:1.5px solid rgba(99,179,237,.45)}
+.lg-top{padding:13px 15px 11px;flex-shrink:0}
+.lg-kicker{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.lg-kicker .n{width:19px;height:19px;border-radius:50%;background:var(--green-light);color:var(--green-dark);display:flex;align-items:center;justify-content:center;font-size:10.5px;flex-shrink:0}
+.lg-kicker .n.ok{background:var(--green);color:#fff}
+.lg-cname{font-size:21px;font-weight:800;line-height:1.13;letter-spacing:-.4px;color:var(--text)}
+.lg-goals{display:flex;gap:6px;margin-top:10px}
+.lg-goal{flex:1;background:var(--bg2);border-radius:11px;padding:7px 6px;text-align:center}
+.lg-goal b{display:block;font-size:16px;font-weight:800;line-height:1.1;color:var(--green-dark)}
+.lg-goal span{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+.lg-goal.a b{color:var(--amber)}
+.lg-actions{display:flex;gap:6px;padding:0 15px 10px;flex-wrap:wrap;flex-shrink:0;align-items:center}
+.lg-pill{height:29px;padding:0 11px;border-radius:999px;border:none;background:var(--bg2);color:var(--text2);font-family:inherit;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0}
+.lg-pill.v{background:var(--green-light);color:var(--green-dark)}
+.lg-pill.on{background:var(--green-light);color:var(--green-dark)}
+.lg-ico.on{background:var(--green-light);color:var(--green-dark)}
+.lg-body{padding:0 15px 14px;flex:1;min-height:0;display:flex;flex-direction:column}
+.lg-body .series-table{margin-top:9px}
+.lg-card .serie-row,.lg-card .series-table-head{grid-template-columns:30px 1fr 1fr 34px;gap:8px}
+.lg-card .serie-inp{padding:13px 4px;font-size:18px;border-radius:11px}
+.lg-card .serie-done{width:30px;height:30px}
+.lg-card .serie-done:not(.on){opacity:1;background:var(--bg2);border-color:transparent}
+.lg-card .serie-label{font-size:13px;font-weight:800}
+.lg-card .lg-lastperf,.lg-card .last-perf{margin-top:0;font-size:10.5px;padding:6px 9px}
+
+/* superset : deux exos compactés dans une seule carte */
+.lg-sshalf{flex:1;min-height:0;display:flex;flex-direction:column;padding:9px 12px 6px}
+.lg-sshalf+.lg-sshalf{border-top:1px dashed rgba(99,179,237,.4)}
+.lg-sstag{background:rgba(99,179,237,.12);color:#4A90E2;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:6px 13px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.lg-sshead{display:flex;align-items:center;gap:8px}
+.lg-ssletter{width:22px;height:22px;border-radius:50%;background:rgba(99,179,237,.18);color:#4A90E2;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.lg-ssletter.ok{background:var(--green);color:#fff}
+.lg-sstxt{flex:1;min-width:0}
+.lg-ssname{font-size:15px;font-weight:800;line-height:1.15;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.lg-ssgoal{font-size:10.5px;font-weight:700;color:var(--green-dark);margin-top:1px}
+.lg-ssgoal em{font-style:normal;color:var(--text3);font-weight:600}
+.lg-ssicons{display:flex;gap:4px;flex-shrink:0}
+.lg-ico{width:26px;height:26px;border-radius:50%;border:none;background:var(--bg2);color:var(--text2);font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex-shrink:0}
+.lg-ico.v{background:var(--green-light);color:var(--green-dark)}
+.lg-sslast{font-size:9.5px;color:var(--amber);background:var(--amber-light);border-radius:6px;padding:3px 7px;margin-top:6px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-sshalf .series-table{margin-top:6px;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
+.lg-sshalf .series-table-head{display:none}
+.lg-sshalf .serie-row{grid-template-columns:24px 1fr 1fr 26px;gap:6px;margin-bottom:5px}
+.lg-sshalf .serie-label{font-size:11px}
+.lg-sshalf .serie-inp{padding:8px 4px;font-size:15px;border-radius:9px}
+.lg-sshalf .serie-done{width:24px;height:24px}
+.lg-card.ss.tight .lg-sshalf{padding:6px 11px 4px}
+.lg-card.ss.tight .lg-ssletter{width:20px;height:20px;font-size:10px}
+.lg-card.ss.tight .lg-ssname{font-size:13.5px}
+.lg-card.ss.tight .lg-ssgoal{font-size:9.5px}
+.lg-card.ss.tight .lg-ico{width:23px;height:23px;font-size:11px}
+.lg-card.ss.tight .lg-sslast{font-size:9px;padding:2px 6px;margin-top:4px}
+.lg-card.ss.tight .series-table{margin-top:4px}
+.lg-card.ss.tight .serie-row{margin-bottom:4px}
+.lg-card.ss.tight .serie-inp{padding:6px 4px;font-size:14px}
+.lg-card.ss.tight .lg-sstag{padding:4px 12px;font-size:9.5px}
+
+/* barre de navigation bas de carte */
+.lg-navrow{display:flex;align-items:center;gap:9px;padding:8px 14px 12px;flex-shrink:0}
+.lg-nav{width:46px;height:46px;border-radius:50%;border:.5px solid var(--border);background:var(--bg);color:var(--text2);font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-shadow:var(--shadow)}
+.lg-nav:disabled{opacity:.35;cursor:default}
+.lg-next{flex:1;height:46px;border-radius:23px;border:none;background:var(--green);color:#fff;font-family:inherit;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+.lg-next.ghost{background:var(--bg);color:var(--text2);border:.5px solid var(--border);box-shadow:var(--shadow)}
+
+/* récap de fin de séance (dernière carte) */
+.lg-recap{flex:1;min-height:0;overflow-y:auto;background:var(--bg);border-radius:var(--radius-xl);padding:16px;box-shadow:var(--shadow)}
+.lg-recap h3{margin:0 0 3px;font-size:19px;font-weight:800;color:var(--text)}
+.lg-recap-sub{font-size:12px;color:var(--text3);margin-bottom:12px}
+.lg-rline{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:.5px solid var(--border);font-size:13px}
+.lg-rline:last-of-type{border-bottom:none}
+.lg-rn{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lg-rn.miss{background:var(--bg3);color:var(--text3)}
+.lg-rt{flex:1;min-width:0}
+.lg-rt b{display:block;font-weight:700;font-size:13px;color:var(--text)}
+.lg-rt span{font-size:11px;color:var(--text3)}
+.lg-rgo{font-size:11px;font-weight:800;color:var(--green-dark);background:var(--green-light);border:none;font-family:inherit;border-radius:999px;padding:4px 9px;cursor:pointer;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -1678,11 +1817,9 @@ html.da-chic .topbar-title::after{content:'';display:block;width:36px;height:2px
     <div class="whatsnew-title">Du nouveau !</div>
     <div class="whatsnew-sub">Quelques améliorations rien que pour toi :</div>
     <ul class="whatsnew-list">
-      <li>📈 Le bilan hebdo fait peau neuve : un grand bouton pour le bilan de la semaine, et tous tes bilans passés listés en dessous</li>
-      <li>📊 Ta courbe de poids devient interactive : choisis la période, touche un point pour voir le détail, et admire ton avant/après en photos</li>
-      <li>🪄 Les cartes du menu prennent du relief et bougent avec ton téléphone (accepte l'accès aux mouvements si on te le demande)</li>
-      <li>✨ Plein d'animations toutes douces — essaie le mode nuit, tu vas voir 🌙</li>
-      <li>📱 L'affichage sur iPad est enfin à la bonne taille</li>
+      <li>🃏 Pendant ta séance, tu peux passer en <b>mode Carte</b> : un exercice par écran, tu fais glisser pour aller au suivant. Le petit bouton Liste / Carte est en haut, tu choisis ce que tu préfères</li>
+      <li>⚡ Nouveau dans le check-in : ton <b>niveau d'énergie</b>. Fais glisser le point, le smiley suit ton humeur du jour</li>
+      <li>📋 Ta séance en mode Liste a aussi été revue : objectifs plus lisibles, et un exercice terminé se replie tout seul</li>
     </ul>
     <button class="whatsnew-btn" onclick="closeWhatsNew()">C'est parti 💪</button>
   </div>
@@ -2074,6 +2211,12 @@ async function trySupaTokenRefresh(){
 }
 
 async function supa(method,table,body,query='',opts){
+  // Le profil de démonstration ne vit que dans l'application : on n'écrit
+  // jamais ses données en base (et on ne peut donc pas l'abîmer).
+  if(method!=='GET'){
+    const empreinte=(query||'')+(body?JSON.stringify(body):'');
+    if(empreinte.includes('demo-')) return null;
+  }
   try{
     const url=`${SUPA_URL}/rest/v1/${table}${query}`;
     const buildHeaders=()=>{const h=getHeaders();if(opts&&opts.prefer){h['Prefer']=opts.prefer;}return h;};
@@ -2489,13 +2632,6 @@ render.clients=function(filter=''){
       if(S.screen==='clients') render.clients(filter);
     });
   }
-  // Re-sync silencieux des données d'assiduité (max toutes les 60s)
-  if(currentIsCoach && Date.now()-_lastAssiduiteSync>60000){
-    _lastAssiduiteSync=Date.now();
-    syncAssiduiteData().then(()=>{
-      if(S.screen==='clients') render.clients(filter);
-    }).catch(e=>console.warn('syncAssiduiteData:',e));
-  }
   const sortMode=S.clientsSort||'alpha';
   const sortBtn=`<div class="suivi-seg" id="clients-seg" style="margin-left:8px">
     <div class="suivi-seg-thumb"></div>
@@ -2544,9 +2680,9 @@ render.clients=function(filter=''){
 const JOURS_BILAN=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 
 function isBilanFaitThisWeek(clientId){
-  // La semaine ISO (lun→dim) gère la réinitialisation naturellement :
-  // le lundi suivant, getMondayStr() change → les ✓ de la semaine passée disparaissent
-  const monday=getMondayStr();
+  // Semaine de bilan en cours : les bilans remplis le samedi ou le dimanche
+  // comptent déjà pour la semaine qui commence le lundi suivant.
+  const monday=getSemaineBilanStr();
   const b=S.bilansHebdo.find(b=>b.client_id===clientId&&b.date===monday);
   if(!b) return false;
   // La pastille s'allume uniquement si le bilan a été explicitement sauvegardé
@@ -2850,7 +2986,6 @@ function clientRowHTML(c,i){
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <div class="client-name">${c.prenom} ${c.nom}</div>
         ${bilanFait?`<span style="font-size:10px;font-weight:700;background:var(--green-light);color:var(--green-dark);padding:2px 7px;border-radius:10px">✓ Bilan</span>`:''}
-        ${assiduiteBadgeHTML(c.id)}
       </div>
       ${c.objectif?`<div class="client-obj">${c.objectif}</div>`:''}${c.email?`<div class="client-obj">${c.email}</div>`:''}
     </div>
@@ -3638,12 +3773,6 @@ render.menu=function(){
   `;
   const lastCheckin=S.checkIns.filter(ci=>ci.client_id===c.id).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
   const checkinCount=S.checkIns.filter(ci=>ci.client_id===c.id).length;
-  // Assiduité (coach uniquement) — re-sync silencieux si données trop vieilles
-  if(currentIsCoach && Date.now()-_lastAssiduiteSync>60000){
-    _lastAssiduiteSync=Date.now();
-    syncAssiduiteData().then(()=>{if(S.screen==='menu')render.menu();}).catch(e=>console.warn('syncAssiduiteData:',e));
-  }
-  const assid=currentIsCoach?computeAssiduite(c.id):null;
   document.getElementById('topbar-action').innerHTML=`<div style="display:flex;gap:6px;align-items:center">${currentIsCoach?`<button class="client-mini-btn" onclick="openCalculsPerte('${c.id}')" title="Trame">Plan</button>`:''}<div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div></div>`;
   const isPack=c.formule==='pack';
   document.getElementById('menu-grid').innerHTML=`
@@ -3685,15 +3814,6 @@ render.menu=function(){
         </div>
       </div>
     </div>`:''}`}
-    ${currentIsCoach&&assid?`<div class="menu-card" style="grid-column:span 2;border-color:${assiduiteColor(assid.pct)};cursor:default">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="menu-card-icon" style="flex-shrink:0">🎯</div>
-        <div style="flex:1;min-width:0;text-align:left">
-          <div class="menu-card-label">Assiduité <span style="color:${assiduiteColor(assid.pct)}">${assid.pct}%</span> <span style="font-size:10px;font-weight:600;color:var(--text3)">· 4 dern. semaines</span></div>
-          <div class="menu-card-sub">${assid.parts.map(p=>`${p.label} ${p.pct}% (${p.detail})`).join(' · ')}</div>
-        </div>
-      </div>
-    </div>`:''}
     ${currentIsCoach?`<div class="menu-card" style="grid-column:span 2;cursor:default;border-color:#5b8def">
       <div style="text-align:left">
         <div class="menu-card-label">🔔 Rappels autorisés</div>
@@ -4347,131 +4467,498 @@ function saveExoConfig(ei){
 // ─────────────────────────────────────────
 // RENDER: LOG SÉANCE (exécution réelle)
 // ─────────────────────────────────────────
+// ═══════════════════════════════════════════════
+// SÉANCE EN COURS — deux modes d'affichage : Liste / Carte
+// Le choix est mémorisé sur l'appareil de la cliente.
+// ═══════════════════════════════════════════════
+function getLogView(){ return lsGet('c_logViewMode')==='carte' ? 'carte' : 'liste'; }
+function setLogView(v){
+  const prev=getLogView();
+  v=(v==='carte'?'carte':'liste');
+  if(v===prev){ lgPlaceThumb(); return; }
+  S._lgPrevView=prev;           // pour rejouer le glissement après le redessin
+  lsSet('c_logViewMode', v);
+  if(S.screen==='log') render.log();
+}
+function toggleLogView(){ setLogView(getLogView()==='carte'?'liste':'carte'); }
+
+// Position courante dans le carrousel (index de bloc)
+S._logCard = 0;
+// Exercices repliés en mode liste
+S._logCollapsed = S._logCollapsed || {};
+function toggleLogCollapse(el,ei){
+  if(event && event.target && event.target.closest('button')) return;
+  const blk=el.closest('.lg-lblock'); if(!blk) return;
+  blk.classList.toggle('collapsed');
+  S._logCollapsed[ei]=blk.classList.contains('collapsed');
+}
+
+// ── Petites briques réutilisées par les deux modes ──
+function _lgIsCardio(e){ return e.cat==='Cardio'; }
+function _lgExoDone(e){ return (e.series||[]).length>0 && (e.series||[]).every(s=>isSerieDone(s)); }
+function _lgVideoUrl(e){
+  const master=S.exercices.find(x=>x.id===e.exo_id);
+  return e.videoCustom?(e.video||''):(master?.video||e.video||'');
+}
+function _lgLastPerfTxt(e){
+  const l=getLastLog(e.exo_id);
+  if(!l||!l.series) return null;
+  return l.series.map(s=>'duree' in s?(s.duree?s.duree+'min':'—'):`${s.poids?s.poids+'kg':'—'} × ${s.reps||'—'}`).join(' / ');
+}
+function _lgResume(e){
+  return (e.series||[]).map(s=>'duree' in s?(s.duree?s.duree+' min':'—'):`${s.poids||'—'}kg × ${s.reps||'—'}`).join('  /  ');
+}
+// Tableau de saisie — markup identique à l'ancien pour ne rien casser
+// (updateLogSerie, animation des chiffres et coche verte s'appuient dessus)
+function _lgSeriesTable(e,i){
+  const isCardio=_lgIsCardio(e);
+  const head=`<div class="series-table-head"><span>#</span>${isCardio?'<span style="grid-column:span 2;text-align:center">Durée (min)</span>':'<span>Poids (kg)</span><span>Reps</span>'}<span>✓</span></div>`;
+  const rows=(e.series||[]).map((serie,si)=>`
+    <div class="serie-row">
+      <span class="serie-label">${si+1}</span>
+      ${isCardio
+        ?`<div style="grid-column:span 2;display:flex;align-items:center;gap:8px">
+            ${e.duree_min?`<span style="font-size:12px;color:var(--amber);font-weight:600;white-space:nowrap">/ ${e.duree_min} min</span>`:''}
+            <input class="serie-inp" type="number" inputmode="decimal" min="0" step="1" placeholder="min" value="${serie.duree||''}" style="flex:1" oninput="updateLogSerie(${i},${si},'duree',this.value,this)" />
+          </div>`
+        :`<input class="serie-inp" type="number" inputmode="decimal" min="0" step="0.5" placeholder="kg" value="${serie.poids||''}" oninput="updateLogSerie(${i},${si},'poids',this.value,this)" />
+      <input class="serie-inp" type="number" inputmode="decimal" min="0" placeholder="reps" value="${serie.reps||''}" oninput="updateLogSerie(${i},${si},'reps',this.value,this)" />`}
+      <div class="serie-done${isSerieDone(serie)?' on':''}"></div>
+    </div>`).join('');
+  return `<div class="series-table">${head}${rows}${_lgExtraSeries(e,i)}</div>`;
+}
+// Séries supplémentaires : drop set / rest pause
+function _lgExtraSeries(e,i){
+  const isCardio=_lgIsCardio(e);
+  if(isCardio) return '';
+  if(e.methode==='dropset'){
+    return `<div class="serie-row" style="border-top:1px dashed var(--border);margin-top:4px;opacity:.85">
+      <span class="serie-label" style="color:var(--amber);font-size:10px">↓</span>
+      <input class="serie-inp" type="number" inputmode="decimal" min="0" step="0.5" placeholder="poids ↓" value="${e._dropPoids||''}" oninput="updateLogDrop(${i},'poids',this.value)" style="border-color:rgba(255,140,0,.4)"/>
+      <input class="serie-inp" type="number" inputmode="decimal" min="0" placeholder="reps" value="${e._dropReps||''}" oninput="updateLogDrop(${i},'reps',this.value)" style="border-color:rgba(255,140,0,.4)"/>
+      <div class="serie-done${e._dropDone?' on':''}" onclick="toggleLogDrop(${i})" style="cursor:pointer;opacity:1"></div>
+    </div>`;
+  }
+  if(e.methode==='restpause'){
+    return `<div style="display:flex;align-items:center;gap:6px;margin-top:4px;padding:5px 0;border-top:1px dashed rgba(154,117,232,.4)">
+      <span style="font-size:11px;color:#9a75e8;font-weight:600">⏸ Rest pause</span>
+      <span style="font-size:11px;color:var(--text3)">10-15 sec de pause puis reprendre</span>
+    </div>`;
+  }
+  return '';
+}
+// Barre d'outils (vidéo démo, chrono, historique, remplacer, options)
+function _lgTools(e,i){
+  const url=_lgVideoUrl(e);
+  const isCardio=_lgIsCardio(e);
+  return `${url?`<button class="video-pill" data-url="${url}" onclick="toggleVideoEmbed(this,'vid-embed-${i}')" title="Vidéo"><span class="vp-ico"><span class="i-play">${VIDEO_PILL_ICON}</span><span class="i-close">✕</span></span><span class="vp-txt">Vidéo</span></button>`:''}
+    <button class="exo-mini-btn" onclick="openHistorique('${e.exo_id}')" title="Historique">📈</button>
+    ${!isCardio&&e.repos?`<button class="exo-mini-btn" onclick="startRestTimer(${e.repos})" title="Lancer le chrono (${e.repos}s)" style="font-size:15px">⏱</button>`:''}
+    <button class="exo-mini-btn" onclick="showSwapExoModal(${i})" title="Remplacer pour cette séance" style="${e._replacedFrom?'color:var(--amber)':''}">🔄</button>
+    <button class="intens-picker-btn" onclick="showIntensificationPicker(${i},'log')" title="Méthode d'intensification">···</button>`;
+}
+// Outils du mode carte : ce qui prend de la place s'ouvre en tiroir par-dessus
+function _lgToolsCard(e,i,logId){
+  const url=_lgVideoUrl(e);
+  const isCardio=_lgIsCardio(e);
+  const hasCmt=(e.commentaire||'').trim()!=='';
+  const nbVid=(S.videos||[]).filter(v=>v.exo_id===e.exo_id&&v.log_seance_id===logId).length;
+  return `${url?`<button class="lg-pill v" onclick="lgSheet('demo',${i})">▶ Vidéo démo</button>`:''}
+    ${!isCardio&&e.repos?`<button class="lg-pill" onclick="startRestTimer(${e.repos})">⏱ ${e.repos}s</button>`:''}
+    <button class="lg-pill" onclick="openHistorique('${e.exo_id}')">📈 Historique</button>
+    <button class="lg-pill${hasCmt?' on':''}" onclick="lgSheet('comment',${i})" title="Commentaire">💬${hasCmt?' ✓':''}</button>
+    <button class="lg-pill${(nbVid||e.videoDemandee)?' on':''}" onclick="lgSheet('videos',${i})" title="Ma vidéo">📹${nbVid?' '+nbVid:''}</button>
+    <button class="lg-pill" onclick="showSwapExoModal(${i})" title="Remplacer" style="${e._replacedFrom?'color:var(--amber)':''}">🔄</button>
+    <button class="lg-pill" onclick="showIntensificationPicker(${i},'log')" title="Options">···</button>`;
+}
+// Tiroirs (réutilisent la modale de l'app, qui monte déjà depuis le bas)
+S._lgSheet=null;
+function lgSheet(type,i){
+  const log=S.logSeance; if(!log) return;
+  const e=log.exercices[i]; if(!e) return;
+  S._lgSheet={type,i};
+  if(type==='demo'){
+    const url=_lgVideoUrl(e);
+    openModal(`<div class="modal-title">▶ ${e.nom}</div>${url?buildVideoEmbed(url):'<div style="color:var(--text3);font-size:13px">Aucune vidéo de démonstration</div>'}`);
+  } else if(type==='comment'){
+    openModal(`<div class="modal-title">💬 ${e.nom}</div>
+      <textarea class="form-inp" id="lg-cmt-${i}" rows="4" placeholder="Ressenti, douleur, question…" style="resize:none" oninput="updateLogComment(${i},this.value);lgMarkTools()">${e.commentaire||''}</textarea>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="closeModal()">OK</button>`);
+    setTimeout(()=>{const t=document.getElementById('lg-cmt-'+i);if(t){t.focus();t.selectionStart=t.value.length;}},300);
+  } else {
+    openModal(`<div class="modal-title">📹 ${e.nom}</div>${renderExoVideoSection(e,i,'log',log.id)}`);
+  }
+}
+// Rafraîchit les pastilles ✓ des boutons 💬 / 📹 sans redessiner la carte
+function lgMarkTools(){
+  const log=S.logSeance; if(!log||getLogView()!=='carte') return;
+  document.querySelectorAll('[onclick^="lgSheet(\'comment\'"]').forEach(b=>{
+    const i=+(b.getAttribute('onclick').match(/,(\d+)\)/)||[])[1];
+    const e=log.exercices[i]; if(!e) return;
+    const has=(e.commentaire||'').trim()!=='';
+    b.classList.toggle('on',has);
+    if(b.classList.contains('lg-pill')) b.textContent=has?'💬 ✓':'💬';
+  });
+}
+
+// Notes coach + dernière perf
+function _lgContext(e){
+  const last=_lgLastPerfTxt(e);
+  return `${e.notes?`<div class="lg-note">📝 <span>${e.notes}</span></div>`:''}
+    ${last?`<div class="lg-lastperf"><span>⏱</span><div><b>Dernière fois :</b> ${last}</div></div>`:''}`;
+}
+// Commentaire de l'exercice + vidéos de la cliente
+function _lgFooter(e,i,logId){
+  return `<textarea class="form-inp form-inp-sm" rows="2" placeholder="💬 Commentaire (ressenti, douleur, question…)" style="margin-top:8px;font-size:13px;resize:none" oninput="updateLogComment(${i},this.value)">${e.commentaire||''}</textarea>
+    ${renderExoVideoSection(e,i,'log',logId)}`;
+}
+
+// ═══ MODE LISTE ═══
+function _lgListCard(e,i,logId){
+  const isCardio=_lgIsCardio(e);
+  const done=_lgExoDone(e);
+  const collapsed=S._logCollapsed[i]?' collapsed':'';
+  const chips=isCardio
+    ? `<span class="lg-chip a">${e.duree_min||'?'} min</span><span class="lg-chip">Cardio</span>`
+    : `<span class="lg-chip g">${e.nb_series} × ${e.reps_min}-${e.reps_max} reps</span>${e.repos?`<span class="lg-chip">⏱ ${e.repos}s</span>`:''}${e.cat?`<span class="lg-chip">${e.cat}</span>`:''}`;
+  return `<div class="exo-card lg-lblock${done?' done':''}${collapsed}" data-exoblock="${i}" style="margin-bottom:0;border-radius:0;box-shadow:none;border:none">
+    <div class="lg-lhead" onclick="toggleLogCollapse(this,${i})">
+      <div class="exo-num-badge${done?' ok':''}" data-exomark="${i}" data-n="${i+1}" style="${isCardio&&!done?'background:var(--amber-light);color:var(--amber)':''}">${done?'✓':(i+1)}</div>
+      <div class="lg-lhead-txt">
+        <div class="lg-lname">${e.nom}${e._replacedFrom?`<span style="font-size:10px;color:var(--amber);background:var(--amber-light);border-radius:6px;padding:2px 6px;margin-left:6px;font-weight:600">🔄 remplacé</span>`:''}</div>
+        ${e._replacedFrom?`<div style="font-size:10px;color:var(--text3);margin-top:1px">Remplace : ${e._replacedFrom}</div>`:''}
+        <div class="lg-chips">${chips}</div>
+      </div>
+      <div class="lg-caret">▾</div>
+    </div>
+    <div class="lg-lsummary" data-exoresume="${i}">✓ ${_lgResume(e)}</div>
+    <div class="exo-card-body">
+      <div style="display:flex;align-items:center;gap:6px;padding-top:10px;flex-wrap:wrap">${_lgTools(e,i)}</div>
+      <div id="vid-embed-${i}" class="video-embed-box"></div>
+      ${_lgContext(e)}
+      ${_lgSeriesTable(e,i)}
+      ${_lgFooter(e,i,logId)}
+    </div>
+  </div>`;
+}
+
+// ═══ MODE CARTE ═══
+function _lgBigCard(e,i,n,total,logId){
+  const isCardio=_lgIsCardio(e);
+  const done=_lgExoDone(e);
+  const goals=isCardio
+    ? `<div class="lg-goal a"><b>${e.duree_min||'?'}</b><span>minutes</span></div><div class="lg-goal a"><b>Cardio</b><span>type</span></div>`
+    : `<div class="lg-goal"><b>${e.nb_series}</b><span>séries</span></div>
+       <div class="lg-goal"><b>${e.reps_min}-${e.reps_max}</b><span>reps</span></div>
+       ${e.repos?`<div class="lg-goal"><b>${e.repos}s</b><span>repos</span></div>`:''}`;
+  return `<div class="lg-card">
+    <div class="lg-top">
+      <div class="lg-kicker"><span class="n${done?' ok':''}" data-exomark="${i}" data-n="${n}">${done?'✓':n}</span> Exercice ${n} sur ${total}${e.cat?' · '+e.cat:''}</div>
+      <div class="lg-cname">${e.nom}${e._replacedFrom?`<span style="font-size:10px;color:var(--amber);background:var(--amber-light);border-radius:6px;padding:2px 6px;margin-left:6px;font-weight:600;vertical-align:middle">🔄 remplacé</span>`:''}</div>
+      <div class="lg-goals">${goals}</div>
+    </div>
+    <div class="lg-actions">${_lgToolsCard(e,i,logId)}</div>
+    <div class="lg-body">
+      ${_lgContext(e)}
+      ${_lgSeriesTable(e,i)}
+    </div>
+  </div>`;
+}
+// Moitié de carte superset : en-tête sur une ligne, outils en icônes
+function _lgSsHalf(e,i,letter,logId){
+  const done=_lgExoDone(e);
+  const isCardio=_lgIsCardio(e);
+  const url=_lgVideoUrl(e);
+  const last=_lgLastPerfTxt(e);
+  const goal=isCardio
+    ? `${e.duree_min||'?'} min <em>· cardio</em>`
+    : `${e.nb_series} × ${e.reps_min}-${e.reps_max} reps <em>· ${e.repos?e.repos+'s de repos après':'enchaîne'}</em>`;
+  return `<div class="lg-sshalf">
+    <div class="lg-sshead">
+      <div class="lg-ssletter${done?' ok':''}" data-exomark="${i}" data-n="${letter}">${done?'✓':letter}</div>
+      <div class="lg-sstxt">
+        <div class="lg-ssname">${e.nom}</div>
+        <div class="lg-ssgoal">${goal}</div>
+      </div>
+      <div class="lg-ssicons">
+        ${url?`<button class="lg-ico v" onclick="lgSheet('demo',${i})" title="Vidéo démo">▶</button>`:''}
+        ${!isCardio&&e.repos?`<button class="lg-ico" onclick="startRestTimer(${e.repos})" title="Chrono ${e.repos}s">⏱</button>`:''}
+        <button class="lg-ico" onclick="openHistorique('${e.exo_id}')" title="Historique">📈</button>
+        <button class="lg-ico${(e.commentaire||'').trim()?' on':''}" onclick="lgSheet('comment',${i})" title="Commentaire">💬</button>
+        <button class="lg-ico${e.videoDemandee?' on':''}" onclick="lgSheet('videos',${i})" title="Ma vidéo">📹</button>
+        <button class="lg-ico" onclick="showIntensificationPicker(${i},'log')" title="Options">···</button>
+      </div>
+    </div>
+    ${last?`<div class="lg-sslast">⏱ Dernière fois : ${last}</div>`:''}
+    ${e.notes?`<div class="lg-note" style="margin-top:5px;font-size:10.5px;padding:5px 8px">📝 <span>${e.notes}</span></div>`:''}
+    ${_lgSeriesTable(e,i)}
+  </div>`;
+}
+
+// Récap final (dernière carte)
+function _lgRecapHtml(blocs){
+  const log=S.logSeance;
+  const p=getLogProgress();
+  const manquants=log.exercices.filter(e=>!_lgExoDone(e)).length;
+  let lines='';
+  blocs.forEach((b,bi)=>{
+    b.forEach(i=>{
+      const e=log.exercices[i];
+      const ok=_lgExoDone(e);
+      lines+=`<div class="lg-rline">
+        <div class="lg-rn${ok?'':' miss'}">${ok?'✓':(i+1)}</div>
+        <div class="lg-rt"><b>${e.nom}</b><span>${_lgResume(e)}</span></div>
+        ${ok?'':`<button class="lg-rgo" onclick="lgGoto(${bi})">Compléter</button>`}
+      </div>`;
+    });
+  });
+  return `<div class="lg-recap">
+    <h3>Récap de la séance</h3>
+    <div class="lg-recap-sub">${p.done} / ${p.total} séries remplies${manquants?` · ${manquants} exercice(s) incomplet(s)`:' · tout est bon 💪'}</div>
+    ${lines}
+    <div class="form-group" style="margin:14px 0 0">
+      <label class="form-label">💬 Commentaire global sur la séance</label>
+      <textarea class="form-inp" rows="3" placeholder="Ressenti général, énergie, conditions particulières du jour…" style="resize:none" oninput="updateLogSeanceComment(this.value)">${log.commentaireSeance||''}</textarea>
+    </div>
+    <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px" onclick="confirmCancelLog()">Annuler la séance</button>
+  </div>`;
+}
+
+// Met à jour en direct les pastilles ✓ et les points de progression
+function lgRefreshMarks(){
+  const log=S.logSeance; if(!log||S.screen!=='log') return;
+  document.querySelectorAll('[data-exomark]').forEach(el=>{
+    const e=log.exercices[+el.dataset.exomark]; if(!e) return;
+    const ok=_lgExoDone(e);
+    el.classList.toggle('ok',ok);
+    el.textContent=ok?'✓':(el.dataset.n||'');
+  });
+  document.querySelectorAll('[data-exoblock]').forEach(el=>{
+    const e=log.exercices[+el.dataset.exoblock]; if(!e) return;
+    el.classList.toggle('done',_lgExoDone(e));
+  });
+  document.querySelectorAll('[data-exoresume]').forEach(el=>{
+    const e=log.exercices[+el.dataset.exoresume]; if(!e) return;
+    el.textContent='✓ '+_lgResume(e);
+  });
+  if(S._logBlocs) lgRefreshDots(S._logBlocs);
+}
+
+// Navigation du carrousel
+function lgGoto(i){
+  const track=document.getElementById('lg-track'); if(!track) return;
+  const max=track.children.length-1;
+  i=Math.max(0,Math.min(max,i));
+  S._logCard=i;
+  const x=track.clientWidth*i;
+  try{ track.scrollTo({left:x,behavior:'smooth'}); }catch(e){ track.scrollLeft=x; }
+  if(track.scrollLeft!==x && !track.scrollTo) track.scrollLeft=x;
+  lgSyncNav();
+}
+function lgSyncNav(){
+  const track=document.getElementById('lg-track'); if(!track) return;
+  const total=track.children.length, i=S._logCard;
+  document.querySelectorAll('.lg-dot').forEach((d,k)=>d.classList.toggle('on',k===i));
+  const lbl=document.getElementById('lg-steplbl'); if(lbl) lbl.textContent=(i+1)+'/'+total;
+  const prev=document.getElementById('lg-prev'); if(prev) prev.disabled=(i===0);
+  const next=document.getElementById('lg-next'); if(!next) return;
+  if(i===total-1){
+    next.textContent='💾 Terminer la séance';
+    next.className='lg-next';
+    next.onclick=function(){springPop(this);setTimeout(saveLog,240);};
+  } else if(i===total-2){
+    next.textContent='Voir le récap ›';
+    next.className='lg-next';
+    next.onclick=function(){lgGoto(S._logCard+1);};
+  } else {
+    next.textContent='Exercice suivant ›';
+    next.className='lg-next ghost';
+    next.onclick=function(){lgGoto(S._logCard+1);};
+  }
+}
+// Marque les blocs terminés dans la barre de progression du carrousel
+function lgRefreshDots(blocs){
+  const log=S.logSeance; if(!log) return;
+  document.querySelectorAll('.lg-dot').forEach((d,k)=>{
+    if(!blocs[k]) return;
+    d.classList.toggle('ok', blocs[k].every(i=>_lgExoDone(log.exercices[i])));
+  });
+}
+
 render.log=function(){
   const log=S.logSeance;
+  const mode=getLogView();
   const dateStr=new Date(log.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   setTopbar(log.seance_nom,'','');
   document.getElementById('back-btn').style.display='block';
+  const screen=document.getElementById('screen-log');
+  if(screen) screen.classList.toggle('lg-mode-carte',mode==='carte');
   const el=document.getElementById('log-content');
 
-  el.innerHTML=`
+  // Regroupement en blocs : un exercice seul, ou une paire de superset
+  const ssMap={};
+  log.exercices.forEach((exo,ei)=>{
+    if(exo.methode==='superset'&&exo.supersetWith!=null){
+      const pIdx=log.exercices.findIndex((e,i)=>i!==ei&&(e.exo_id===exo.supersetWith||i===exo.supersetWith));
+      if(pIdx>=0) ssMap[ei]=pIdx;
+    }
+  });
+  const blocs=[]; const seen=new Set();
+  log.exercices.forEach((exo,ei)=>{
+    if(seen.has(ei)) return;
+    seen.add(ei);
+    const p=ssMap[ei];
+    if(exo.methode==='superset'&&p!=null&&!seen.has(p)){ seen.add(p); blocs.push([ei,p]); }
+    else blocs.push([ei]);
+  });
+
+  const progressHtml=`
     <div class="log-progress" id="log-progress">
       <div class="log-progress-row">
         <div class="log-progress-track"><div class="log-progress-fill" id="log-progress-fill" data-pct="0"></div></div>
         <div class="log-progress-pct" id="log-progress-pct">0%</div>
       </div>
       <div class="log-progress-sub" id="log-progress-sub">0 / 0 séries faites</div>
-    </div>
-    <div class="log-banner">
-      <div>📅</div>
-      <div class="log-banner-text">${dateStr}</div>
-      <button class="btn btn-secondary btn-sm" style="width:auto;flex-shrink:0" onclick="confirmCancelLog()">Annuler</button>
-    </div>
-    ${(()=>{
-      // Build superset pairs map : exo_id → partner index
-      const ssMap={};
-      log.exercices.forEach((exo,ei)=>{
-        if(exo.methode==='superset'&&exo.supersetWith!=null){
-          const pIdx=log.exercices.findIndex((e,i)=>i!==ei&&(e.exo_id===exo.supersetWith||i===exo.supersetWith));
-          if(pIdx>=0) ssMap[ei]=pIdx;
-        }
-      });
-      const rendered=new Set();
-      let html='';
-      log.exercices.forEach((exo,ei)=>{
-        if(rendered.has(ei)) return;
-        rendered.add(ei);
-        const partnerIdx=ssMap[ei];
-        const isSuperset=exo.methode==='superset'&&partnerIdx!=null;
-        const cardHtml=(e,i)=>{
-          const lastLog=getLastLog(e.exo_id);
-          const exoMaster=S.exercices.find(x=>x.id===e.exo_id);
-          const videoUrl=e.videoCustom?(e.video||''):(exoMaster?.video||e.video||'');
-          const isCardio=e.cat==='Cardio';
-          const badgeStyle=isCardio?'background:var(--amber-light);color:var(--amber)':'';
-          // Extra series for Drop set / Rest pause
-          let extraSeries='';
-          if(e.methode==='dropset'&&!isCardio){
-            extraSeries=`<div class="serie-row" style="border-top:1px dashed var(--border);margin-top:4px;opacity:.85">
-              <span class="serie-label" style="color:var(--amber);font-size:10px">↓</span>
-              <input class="serie-inp" type="number" inputmode="decimal" min="0" step="0.5" placeholder="poids ↓" value="${e._dropPoids||''}" oninput="updateLogDrop(${i},'poids',this.value)" style="border-color:rgba(255,140,0,.4)"/>
-              <input class="serie-inp" type="number" inputmode="decimal" min="0" placeholder="reps" value="${e._dropReps||''}" oninput="updateLogDrop(${i},'reps',this.value)" style="border-color:rgba(255,140,0,.4)"/>
-              <div class="serie-done${e._dropDone?' on':''}" onclick="toggleLogDrop(${i})" style="cursor:pointer"></div>
-            </div>`;
-          }
-          if(e.methode==='restpause'&&!isCardio){
-            extraSeries=`<div style="display:flex;align-items:center;gap:6px;margin-top:4px;padding:5px 0;border-top:1px dashed rgba(154,117,232,.4)">
-              <span style="font-size:11px;color:#9a75e8;font-weight:600">⏸ Rest pause</span>
-              <span style="font-size:11px;color:var(--text3)">10-15 sec de pause puis reprendre</span>
-            </div>`;
-          }
-          return `<div class="exo-card" style="margin-bottom:0;border-radius:0;box-shadow:none;border:none">
-            <div class="exo-card-name">${e.nom}${e._replacedFrom?`<span style="font-size:10px;color:var(--amber);background:var(--amber-light);border-radius:6px;padding:2px 6px;margin-left:6px;font-weight:600">🔄 remplacé</span>`:''}</div>
-            <div class="exo-card-header" style="padding-top:4px">
-              <div class="exo-num-badge" style="${badgeStyle}">${i+1}</div>
-              <div class="exo-card-info">
-                ${e._replacedFrom?`<div style="font-size:10px;color:var(--text3);margin-bottom:1px">Remplace : ${e._replacedFrom}</div>`:''}
-                <div class="exo-card-cat" style="${isCardio?'color:var(--amber)':''}">${isCardio?(e.cat+' · '+(e.duree_min||'?')+' min'):(e.cat?e.cat+' · ':'')+e.nb_series+' séries · '+e.reps_min+'-'+e.reps_max+' reps'}</div>
-              </div>
-              ${videoUrl?`<button class="video-pill" data-url="${videoUrl}" onclick="toggleVideoEmbed(this,'vid-embed-${i}')" title="Vidéo"><span class="vp-ico"><span class="i-play">${VIDEO_PILL_ICON}</span><span class="i-close">✕</span></span><span class="vp-txt">Vidéo</span></button>`:''}
-              <button class="exo-mini-btn" onclick="openHistorique('${e.exo_id}')" title="Historique">📈</button>
-              ${!isCardio&&e.repos?`<button class="exo-mini-btn" onclick="startRestTimer(${e.repos})" title="Lancer le chrono (${e.repos}s)" style="font-size:15px">⏱</button>`:''}
-              <button class="exo-mini-btn" onclick="showSwapExoModal(${i})" title="Remplacer pour cette séance" style="${e._replacedFrom?'color:var(--amber)':''}">🔄</button>
-              <button class="intens-picker-btn" onclick="showIntensificationPicker(${i},'log')" title="Méthode d'intensification">···</button>
-            </div>
-            <div class="exo-card-body">
-              <div id="vid-embed-${i}" class="video-embed-box"></div>
-              ${e.notes?`<div class="last-perf" style="background:var(--bg2);color:var(--text2);border:none">📝 ${e.notes}</div>`:''}
-              ${lastLog?`<div class="last-perf">⏱ Dernière fois : ${lastLog.series.map(s=>'duree' in s?(s.duree?s.duree+'min':'—'):`${s.poids?s.poids+'kg':'—'} × ${s.reps||'—'}`).join(' / ')}</div>`:''}
-              <div class="series-table">
-                <div class="series-table-head"><span>#</span>${isCardio?'<span style="grid-column:span 2;text-align:center">Durée (min)</span>':'<span>Poids (kg)</span><span>Reps</span>'}<span>✓</span></div>
-                ${e.series.map((serie,si)=>`
-                  <div class="serie-row">
-                    <span class="serie-label">${si+1}</span>
-                    ${isCardio
-                      ?`<div style="grid-column:span 2;display:flex;align-items:center;gap:8px">
-                          ${e.duree_min?`<span style="font-size:12px;color:var(--amber);font-weight:600;white-space:nowrap">/ ${e.duree_min} min</span>`:''}
-                          <input class="serie-inp" type="number" inputmode="decimal" min="0" step="1" placeholder="min" value="${serie.duree||''}" style="flex:1" oninput="updateLogSerie(${i},${si},'duree',this.value,this)" />
-                        </div>`
-                      :`<input class="serie-inp" type="number" inputmode="decimal" min="0" step="0.5" placeholder="kg" value="${serie.poids||''}" oninput="updateLogSerie(${i},${si},'poids',this.value,this)" />
-                    <input class="serie-inp" type="number" inputmode="decimal" min="0" placeholder="reps" value="${serie.reps||''}" oninput="updateLogSerie(${i},${si},'reps',this.value,this)" />`}
-                    <div class="serie-done${isSerieDone(serie)?' on':''}"></div>
-                  </div>`).join('')}
-                ${extraSeries}
-              </div>
-              <textarea class="form-inp form-inp-sm" rows="2" placeholder="💬 Commentaire (ressenti, douleur, question…)" style="margin-top:8px;font-size:13px;resize:none" oninput="updateLogComment(${i},this.value)">${e.commentaire||''}</textarea>
-              ${renderExoVideoSection(e,i,'log',log.id)}
-            </div>
-          </div>`;
-        };
-        if(isSuperset&&!rendered.has(partnerIdx)){
-          rendered.add(partnerIdx);
-          const partner=log.exercices[partnerIdx];
-          html+=`<div class="superset-group" style="margin-bottom:12px">
-            ${cardHtml(exo,ei)}
-            <div class="superset-connector"><div class="superset-connector-line"></div><span class="superset-connector-label">⟷ Superset</span><div class="superset-connector-line"></div></div>
-            ${cardHtml(partner,partnerIdx)}
-          </div>`;
-        } else {
-          // Exercice normal — wrapper avec le style habituel
-          html+=`<div style="background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)">
-            ${cardHtml(exo,ei)}
-          </div>`;
-        }
-      });
-      return html;
-    })()}
-    <div style="padding:0 16px;margin-top:4px">
-      <div class="form-group" style="margin-bottom:10px">
-        <label class="form-label">💬 Commentaire global sur la séance</label>
-        <textarea class="form-inp" rows="3" placeholder="Ressenti général, énergie, conditions particulières du jour…" style="resize:none" oninput="updateLogSeanceComment(this.value)">${log.commentaireSeance||''}</textarea>
-      </div>
-    </div>
-    <div style="padding:0 16px;margin-top:8px">
-      <button class="btn btn-primary" onclick="springPop(this);setTimeout(saveLog,240)">💾 Terminer la séance</button>
     </div>`;
+  const toggleHtml=`
+    <div class="lg-viewbar">
+      <div class="lg-viewbar-date">📅 ${dateStr}</div>
+      <div class="lg-seg" id="lg-seg">
+        <div class="lg-seg-thumb" id="lg-seg-thumb"></div>
+        <button id="lg-seg-liste" class="${mode==='liste'?'on':''}">☰ Liste</button>
+        <button id="lg-seg-carte" class="${mode==='carte'?'on':''}">▢ Carte</button>
+      </div>
+    </div>`;
+
+  if(mode==='carte'){
+    const total=log.exercices.length;
+    const slides=blocs.map(b=>{
+      if(b.length===2){
+        const [a,c]=b;
+        const nbSeries=(log.exercices[a].series||[]).length+(log.exercices[c].series||[]).length;
+        return `<div class="lg-slide"><div class="lg-card ss${nbSeries>6?' tight':''}">
+          <div class="lg-sstag">⟷ Superset — exos ${a+1} &amp; ${c+1} sur ${total} · enchaîne sans repos</div>
+          ${_lgSsHalf(log.exercices[a],a,'A',log.id)}
+          ${_lgSsHalf(log.exercices[c],c,'B',log.id)}
+        </div></div>`;
+      }
+      const i=b[0];
+      return `<div class="lg-slide">${_lgBigCard(log.exercices[i],i,i+1,total,log.id)}</div>`;
+    }).join('');
+    const dots=blocs.map((b,k)=>`<div class="lg-dot${k===S._logCard?' on':''}"></div>`).join('')
+      +`<div class="lg-dot${S._logCard===blocs.length?' on':''}" style="max-width:16px"></div>`;
+    el.innerHTML=progressHtml+toggleHtml+`
+      <div class="lg-cardview">
+        <div class="lg-stepper">
+          <div class="lg-dots">${dots}</div>
+          <div class="lg-steplbl" id="lg-steplbl">1/${blocs.length+1}</div>
+        </div>
+        <div class="lg-track" id="lg-track">${slides}<div class="lg-slide">${_lgRecapHtml(blocs)}</div></div>
+        <div class="lg-navrow">
+          <button class="lg-nav" id="lg-prev" onclick="lgGoto(S._logCard-1)">‹</button>
+          <button class="lg-next" id="lg-next">Exercice suivant ›</button>
+        </div>
+      </div>`;
+    const track=document.getElementById('lg-track');
+    S._logCard=Math.min(S._logCard,blocs.length);
+    requestAnimationFrame(()=>{ track.scrollLeft=track.clientWidth*S._logCard; lgSyncNav(); lgRefreshDots(blocs); });
+    track.addEventListener('scroll',()=>{
+      const k=Math.round(track.scrollLeft/track.clientWidth);
+      if(k!==S._logCard){ S._logCard=k; lgSyncNav(); lgRefreshDots(blocs); }
+    },{passive:true});
+    S._logBlocs=blocs;
+  } else {
+    let html='';
+    blocs.forEach(b=>{
+      if(b.length===2){
+        html+=`<div class="superset-group" style="margin:0 16px 12px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow)">
+          ${_lgListCard(log.exercices[b[0]],b[0],log.id)}
+          <div class="superset-connector"><div class="superset-connector-line"></div><span class="superset-connector-label">⟷ Superset</span><div class="superset-connector-line"></div></div>
+          ${_lgListCard(log.exercices[b[1]],b[1],log.id)}
+        </div>`;
+      } else {
+        html+=`<div style="background:var(--bg);border:.5px solid var(--border);border-radius:var(--radius-lg);margin:0 16px 12px;overflow:hidden;box-shadow:var(--shadow)">
+          ${_lgListCard(log.exercices[b[0]],b[0],log.id)}
+        </div>`;
+      }
+    });
+    el.innerHTML=progressHtml+toggleHtml+`
+      <div class="log-banner" style="margin-top:8px">
+        <div>📅</div>
+        <div class="log-banner-text">${dateStr}</div>
+        <button class="btn btn-secondary btn-sm" style="width:auto;flex-shrink:0" onclick="confirmCancelLog()">Annuler</button>
+      </div>
+      ${html}
+      <div style="padding:0 16px;margin-top:4px">
+        <div class="form-group" style="margin-bottom:10px">
+          <label class="form-label">💬 Commentaire global sur la séance</label>
+          <textarea class="form-inp" rows="3" placeholder="Ressenti général, énergie, conditions particulières du jour…" style="resize:none" oninput="updateLogSeanceComment(this.value)">${log.commentaireSeance||''}</textarea>
+        </div>
+      </div>
+      <div style="padding:0 16px;margin-top:8px">
+        <button class="btn btn-primary" onclick="springPop(this);setTimeout(saveLog,240)">💾 Terminer la séance</button>
+      </div>`;
+    S._logBlocs=blocs;
+  }
+  lgInitToggle();
   refreshLogProgress();
+  // Si un tiroir vidéo est ouvert (ex : après un upload), on rafraîchit son contenu
+  const ov=document.getElementById('overlay');
+  if(mode==='carte' && S._lgSheet && S._lgSheet.type==='videos' && ov && ov.classList.contains('open')){
+    lgSheet('videos',S._lgSheet.i);
+  }
 };
+
+// ── Toggle glissant Liste / Carte ──
+function lgPlaceThumb(instant){
+  const seg=document.getElementById('lg-seg'); if(!seg) return;
+  const th=document.getElementById('lg-seg-thumb');
+  const b=document.getElementById(getLogView()==='carte'?'lg-seg-carte':'lg-seg-liste');
+  if(!th||!b) return;
+  if(instant) th.style.transition='none';
+  th.style.width=b.offsetWidth+'px';
+  th.style.transform='translateX('+(b.offsetLeft-3)+'px)';
+  if(instant) requestAnimationFrame(()=>{th.style.transition='';});
+}
+function lgInitToggle(){
+  const seg=document.getElementById('lg-seg'); if(!seg||seg._init) return;
+  seg._init=true;
+  const th=document.getElementById('lg-seg-thumb');
+  let drag=false,x0=0,base=0,moved=0;
+  seg.addEventListener('pointerdown',ev=>{
+    drag=true;moved=0;x0=ev.clientX;
+    const b=document.getElementById(getLogView()==='carte'?'lg-seg-carte':'lg-seg-liste');
+    base=b.offsetLeft-3;
+    seg.classList.add('dragging');
+    try{seg.setPointerCapture(ev.pointerId);}catch(e){}
+  });
+  seg.addEventListener('pointermove',ev=>{
+    if(!drag) return;
+    const dx=ev.clientX-x0; moved=Math.abs(dx);
+    const max=document.getElementById('lg-seg-carte').offsetLeft-3;
+    th.style.transform='translateX('+Math.max(0,Math.min(max,base+dx))+'px)';
+  });
+  const end=()=>{
+    if(!drag) return;
+    drag=false; seg.classList.remove('dragging');
+    const max=document.getElementById('lg-seg-carte').offsetLeft-3;
+    const cx=parseFloat((th.style.transform||'').replace(/[^-\d.]/g,''))||0;
+    if(moved<6) toggleLogView();
+    else setLogView(cx>max/2?'carte':'liste');
+  };
+  seg.addEventListener('pointerup',end);
+  seg.addEventListener('pointercancel',end);
+  const from=S._lgPrevView; S._lgPrevView=null;
+  if(from && from!==getLogView()){
+    const b0=document.getElementById(from==='carte'?'lg-seg-carte':'lg-seg-liste');
+    th.style.transition='none';
+    th.style.width=b0.offsetWidth+'px';
+    th.style.transform='translateX('+(b0.offsetLeft-3)+'px)';
+    requestAnimationFrame(()=>{ th.style.transition=''; requestAnimationFrame(()=>lgPlaceThumb(false)); });
+  } else {
+    requestAnimationFrame(()=>lgPlaceThumb(true));
+  }
+}
 
 function updateLogSeanceComment(val){
   if(!S.logSeance) return;
@@ -5124,6 +5611,7 @@ function updateLogSerie(ei,si,field,val,inputEl){
   if(doneEl && serie.done && !wasDone){playSerieCheckAnim(doneEl);springPop(doneEl);}
   saveActiveLog(S.logSeance);
   refreshLogProgress();
+  if(typeof lgRefreshMarks==='function') lgRefreshMarks();
 }
 
 // ─────────────────────────────────────────
@@ -5221,7 +5709,18 @@ function showWeeklyRecap(clientId, periodOffset){
     <button onclick="showWeeklyRecap('${cid}',${offset+1})" style="background:var(--bg2);border:none;border-radius:8px;padding:6px 12px;font-size:16px;cursor:pointer;color:${offset<0?'var(--text)':'var(--text3)'};pointer-events:${offset<0?'auto':'none'}">▶</button>
   </div>`;
 
-  let html=`<div class="modal-title">📊 Récap perfs</div>${navHtml}`;
+  // Nombre de séances réalisées sur la période (7 jours glissants)
+  const nbSeances=periodLogs.length;
+  const libellePeriode=offset===0?'sur les 7 derniers jours':'sur cette période';
+  const compteurHtml=`<div style="display:flex;align-items:center;gap:10px;background:var(--green-light);border-radius:12px;padding:11px 13px;margin-bottom:14px">
+    <div style="font-size:22px;line-height:1">💪</div>
+    <div style="line-height:1.25">
+      <div style="font-size:15px;font-weight:800;color:var(--green-dark)">${nbSeances} séance${nbSeances>1?'s':''}</div>
+      <div style="font-size:11px;font-weight:600;color:var(--green-dark);opacity:.75">${libellePeriode}</div>
+    </div>
+  </div>`;
+
+  let html=`<div class="modal-title">📊 Récap perfs</div>${navHtml}${compteurHtml}`;
 
   if(!periodLogs.length){
     html+=`<div class="empty" style="padding:20px 0"><div class="empty-icon">😴</div><div class="empty-title">Aucune séance sur cette période</div></div>`;
@@ -5925,12 +6424,21 @@ async function restoreActiveSession(){
   }
   if(!client) return false;
 
-  // En mode coach, charger les données du client si nécessaire
+  // Recharge le dossier complet de la personne concernée AVANT d'afficher la séance.
+  // Sans ça, la séance revenait bien mais sans son contexte : "Dernière fois",
+  // historique 📈, récap des perfs et vidéos restaient vides, car ces données
+  // n'étaient chargées que lorsque la séance type manquait au cache local.
+  // Garde-fou : en salle le réseau est souvent mauvais. Si le chargement traîne
+  // plus de 8 secondes, on affiche quand même la séance plutôt que de bloquer.
+  const _avecDelaiMax=(promesse,ms)=>Promise.race([promesse,new Promise(r=>setTimeout(r,ms))]);
+  try{
+    if(currentIsCoach) await _avecDelaiMax(syncClientData(client.id),8000);
+    // Côté cliente le dossier est déjà chargé au démarrage ; seules les vidéos
+    // ne font pas partie de ce chargement initial.
+    else await _avecDelaiMax(syncVideos(client.id),6000);
+  }catch(e){ console.error('Reprise séance — rechargement du dossier :',e); }
+
   let seanceType = S.seancesType.find(s=>s.id===activeLog.seance_type_id);
-  if(!seanceType && currentIsCoach){
-    try { await syncClientData(client.id); } catch(e){}
-    seanceType = S.seancesType.find(s=>s.id===activeLog.seance_type_id);
-  }
   if(!seanceType) return false;
 
   const programme = S.programmes.find(p=>p.id===seanceType.programme_id);
@@ -6180,7 +6688,7 @@ render.bilanHebdo=function(){
   const c=S.client; if(!c) return;
   if(!S.bhView) S.bhView='accueil';
   const el=document.getElementById('bilanHebdo-content');
-  const thisWeek=getMondayStr();
+  const thisWeek=getSemaineBilanStr();
   const existingDates=getClientBilanDates(c.id);
   const allWeeks=[...new Set([thisWeek,...existingDates])].sort((a,z)=>z.localeCompare(a));
 
@@ -6635,7 +7143,7 @@ function renderBhComparaison(clientId, allWeeks){
 
   function wkLabel(d){
     if(!d)return'—';
-    return d===getMondayStr()?'Cette semaine':new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+    return d===getSemaineBilanStr()?'Cette semaine':new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
   }
   function photoCol(bilan,label,slot){
     const src=bilan&&bilan.photos[S.bhCompareView];
@@ -6852,7 +7360,7 @@ function addBilanWeek(){
   openModal(`
     <div class="modal-title">Semaine à ajouter</div>
     <div class="form-group"><label class="form-label">Date de début (lundi)</label>
-      <input class="form-inp" id="bh-new-date" type="date" value="${getMondayStr()}" /></div>
+      <input class="form-inp" id="bh-new-date" type="date" value="${getSemaineBilanStr()}" /></div>
     <button class="btn btn-primary" onclick="confirmAddBilanWeek()">Ajouter</button>
   `);
 }
@@ -6928,6 +7436,20 @@ function getMondayStr(input){
   const base=input?new Date(input+'T12:00:00'):new Date();
   const day=(base.getDay()+6)%7;
   base.setDate(base.getDate()-day);
+  return base.toISOString().slice(0,10);
+}
+
+// Semaine à laquelle rattacher un bilan.
+// La semaine de travail va du lundi au vendredi : un bilan rempli le samedi
+// ou le dimanche prépare la semaine à venir, il compte donc pour le lundi
+// SUIVANT (et sa pastille « ✓ Bilan » reste visible toute cette semaine-là).
+function getSemaineBilanStr(input){
+  const base=input?new Date(input+'T12:00:00'):new Date();
+  const jour=base.getDay(); // 0=dimanche, 6=samedi
+  if(jour===6) base.setDate(base.getDate()+2);      // samedi → lundi suivant
+  else if(jour===0) base.setDate(base.getDate()+1); // dimanche → lundi suivant
+  const d=(base.getDay()+6)%7;
+  base.setDate(base.getDate()-d);
   return base.toISOString().slice(0,10);
 }
 
@@ -7056,6 +7578,7 @@ render.checkin=function(){
       '<div class="checkin-section-title">T\'es tu entrainé aujourd\'hui ?</div><div class="radio-group">'+yn('entraine','oui','Oui')+yn('entraine','non','Non')+'</div>'+
       '<div class="form-group" style="margin-top:8px"><label class="form-label">As tu augmenté tes charges/répétitions ? Quel est ton ressenti sur séance ?</label><textarea class="checkin-textarea" rows="3" placeholder="Ex : +2 reps au squat, bonnes sensations..." oninput="setCheckinField(\'seance_ressenti\',this.value)">'+safe(d.seance_ressenti)+'</textarea></div>'+
       '<div class="form-group"><label class="form-label">As tu fais tout ton cardio ?</label><input class="checkin-inp" placeholder="Ex : oui, non, 20 min sur 30..." value="'+safe(d.cardio)+'" oninput="setCheckinField(\'cardio\',this.value)" /></div>'+
+      '<div class="checkin-section-title">⚡ Niveau d\'énergie sur la journée</div>'+energieSlider(d.energie)+
       '<div class="checkin-section-title">😴 Qualité du sommeil (de très mal à super bien)</div>'+scale('sommeil')+
       '<div class="checkin-section-title">😵‍💫 Niveau de stress (de zen à ultra stressée)</div>'+scale('stress',true)+
       '<div class="form-group"><label class="form-label">Nombre de pas</label><input class="checkin-inp" type="number" inputmode="decimal" value="'+safe(d.pas)+'" oninput="setCheckinField(\'pas\',this.value)" /></div>'+
@@ -7066,6 +7589,54 @@ render.checkin=function(){
       '<button class="btn btn-primary" onclick="saveCheckin()">Enregistrer</button>'+
     '</div>';
 };
+
+// ── Niveau d'énergie : un point à faire glisser, le smiley suit ──
+const NRJ_FACES=['😵','😪','😐','🙂','😄','🤩'];        // index 0 = non renseigné
+const NRJ_LABELS=['','Vidée','Fatiguée','Ça va','En forme','À bloc'];
+const NRJ_COLORS=['var(--text3)','#E24B4A','#e08a2b','#c9a227','#7cc44a','var(--green-dark)'];
+
+function energieSlider(val){
+  const n=parseInt(val)||0;
+  const face=n?NRJ_FACES[n]:'🙂';
+  return '<div class="nrj">'+
+    '<div class="nrj-face" id="nrj-face" style="'+(n?'':'opacity:.35')+'">'+face+'</div>'+
+    (n
+      ? '<div class="nrj-label" id="nrj-label" style="color:'+NRJ_COLORS[n]+'">'+NRJ_LABELS[n]+'</div>'+
+        '<div class="nrj-val" id="nrj-val">'+n+' sur 5</div>'
+      : '<div class="nrj-label" id="nrj-label" style="color:var(--text3)">—</div>'+
+        '<div class="nrj-val" id="nrj-val">Fais glisser le point</div>')+
+    '<input class="nrj-slider" id="nrj-slider" type="range" min="1" max="5" step="1" value="'+(n||3)+'" '+
+      'oninput="onEnergieInput(this.value)" onchange="onEnergieInput(this.value)" />'+
+    '<div class="nrj-ticks">'+[1,2,3,4,5].map(i=>
+      '<span class="'+(n===i?'on':'')+'" data-nrj="'+i+'" onclick="setEnergie('+i+')">'+NRJ_FACES[i]+'</span>').join('')+
+    '</div>'+
+  '</div>';
+}
+// Mise à jour visuelle sans redessiner la page (sinon le glissement serait interrompu)
+function onEnergieInput(v){
+  const n=parseInt(v)||3;
+  setCheckinField('energie',n);
+  const face=document.getElementById('nrj-face');
+  const label=document.getElementById('nrj-label');
+  const valEl=document.getElementById('nrj-val');
+  if(face){
+    face.style.opacity='1';
+    if(face.textContent!==NRJ_FACES[n]){
+      face.textContent=NRJ_FACES[n];
+      face.classList.add('pop');
+      setTimeout(()=>face.classList.remove('pop'),180);
+      if(navigator.vibrate) navigator.vibrate(8);
+    }
+  }
+  if(label){ label.textContent=NRJ_LABELS[n]; label.style.color=NRJ_COLORS[n]; }
+  if(valEl) valEl.textContent=n+' sur 5';
+  document.querySelectorAll('[data-nrj]').forEach(el=>el.classList.toggle('on',+el.dataset.nrj===n));
+}
+function setEnergie(n){
+  const sl=document.getElementById('nrj-slider');
+  if(sl) sl.value=n;
+  onEnergieInput(n);
+}
 
 function setCheckinField(key,val,rerender=false){
   if(!S.checkinData) S.checkinData={};
@@ -7202,6 +7773,7 @@ render.suivi=function(){
     const avgPoids=avg(daysData.map(x=>x.ci?.poids));
     const avgStress=avg(daysData.map(x=>x.ci?.stress));
     const avgSommeil=avg(daysData.map(x=>x.ci?.sommeil));
+    const avgEnergie=avg(daysData.map(x=>x.ci?.energie));
     const avgAppetit=avg(daysData.map(x=>x.ci?.appetit));
     const avgPas=avg(daysData.map(x=>x.ci?.pas));
 
@@ -7221,6 +7793,7 @@ render.suivi=function(){
       avgPoids,
       avgStress,
       avgSommeil,
+      avgEnergie,
       avgAppetit,
       avgPas,
       deltaPoids:null
@@ -7236,11 +7809,12 @@ render.suivi=function(){
 
   const weekHtml=weeks.map(week=>{
     const summaryHtml=''+
-      '<div style="display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:8px;padding:0 16px 10px;overflow-x:auto">'+
+      '<div style="display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:8px;padding:0 16px 10px;overflow-x:auto">'+
         '<div class="card" style="padding:10px 8px;text-align:center;margin-bottom:0"><div class="record-label" style="color:var(--text3)">Poids moy.</div><div class="record-val" style="font-size:18px;color:var(--text)">'+fmtNum(week.avgPoids,1,' kg')+'</div></div>'+
         '<div class="card" style="padding:10px 8px;text-align:center;margin-bottom:0"><div class="record-label" style="color:var(--text3)">Écart sem. préc.</div><div class="record-val" style="font-size:18px;color:'+(week.deltaPoids===null?'var(--text)':(week.deltaPoids<=0?'var(--green)':'var(--red)'))+'">'+fmtDelta(week.deltaPoids)+'</div></div>'+
         '<div class="card" style="padding:10px 8px;text-align:center;margin-bottom:0"><div class="record-label" style="color:var(--text3)">Stress moy.</div><div class="record-val" style="font-size:18px;color:var(--text)">'+fmtNum(week.avgStress,1,'')+'</div></div>'+
         '<div class="card" style="padding:10px 8px;text-align:center;margin-bottom:0"><div class="record-label" style="color:var(--text3)">Sommeil moy.</div><div class="record-val" style="font-size:18px;color:var(--text)">'+fmtNum(week.avgSommeil,1,'')+'</div></div>'+
+        '<div class="card" style="padding:10px 8px;text-align:center;margin-bottom:0"><div class="record-label" style="color:var(--text3)">⚡ Énergie moy.</div><div class="record-val" style="font-size:18px;color:var(--text)">'+(week.avgEnergie===null?'—':fmtNum(week.avgEnergie,1,'')+' '+NRJ_FACES[Math.round(week.avgEnergie)])+'</div></div>'+
         '<div class="card" style="padding:10px 8px;text-align:center;margin-bottom:0"><div class="record-label" style="color:var(--text3)">Appétit moy.</div><div class="record-val" style="font-size:18px;color:var(--text)">'+fmtNum(week.avgAppetit,1,'')+'</div></div>'+
         '<div class="card" style="padding:10px 8px;text-align:center;margin-bottom:0"><div class="record-label" style="color:var(--text3)">Pas moy.</div><div class="record-val" style="font-size:18px;color:var(--text)">'+fmtNum(week.avgPas,0,'')+'</div></div>'+
       '</div>';
@@ -7258,6 +7832,7 @@ render.suivi=function(){
         '<td>'+textOrDash(ci&&ci.seance_ressenti)+'</td>'+
         '<td>'+textOrDash(ci&&ci.cardio)+'</td>'+
         '<td>'+scoreOrDash(ci&&ci.sommeil)+'</td>'+
+        '<td>'+(ci&&ci.energie?'<span class="cell-score '+scoreClass(ci.energie)+'">'+ci.energie+'</span> '+NRJ_FACES[ci.energie]:'—')+'</td>'+
         '<td>'+scoreOrDash(ci&&ci.stress)+'</td>'+
         '<td>'+textOrDash(ci&&ci.pas)+'</td>'+
         '<td>'+textOrDash(ci&&ci.eau)+'</td>'+
@@ -7272,7 +7847,7 @@ render.suivi=function(){
       '<div class="suivi-week-title">'+week.title+'</div>'+(week.subLabel?'<div class="suivi-week-sub">'+week.subLabel+'</div>':'')+
       summaryHtml+
       '<div class="suivi-table-wrap"><table class="suivi-table"><thead><tr>'+
-      '<th>Jour</th><th>Poids</th><th>Écarts</th><th>Si oui, quoi ?</th><th>Digestion</th><th>Appétit</th><th>Entraînée</th><th>Charges/répétitions + ressenti</th><th>Cardio</th><th>Sommeil</th><th>Stress</th><th>Pas</th><th>Eau</th><th>Règles</th><th>SPM</th><th>Autres précisions</th><th style="width:40px"></th>'+
+      '<th>Jour</th><th>Poids</th><th>Écarts</th><th>Si oui, quoi ?</th><th>Digestion</th><th>Appétit</th><th>Entraînée</th><th>Charges/répétitions + ressenti</th><th>Cardio</th><th>Sommeil</th><th>⚡ Énergie</th><th>Stress</th><th>Pas</th><th>Eau</th><th>Règles</th><th>SPM</th><th>Autres précisions</th><th style="width:40px"></th>'+
       '</tr></thead><tbody>'+days+'</tbody></table></div></div>';
   }).join('');
 
@@ -8305,7 +8880,7 @@ function hideTrophy(){
 
 // ─── Pop-up "nouveautés", affiché une seule fois par version ───
 // Pour refaire un pop-up à la prochaine mise à jour : change le numéro de version ci-dessous.
-const WHATSNEW_VERSION='2026-07-maj2';
+const WHATSNEW_VERSION='2026-07-maj3';
 function maybeShowWhatsNew(){
   try{
     if(localStorage.getItem('c_whatsnew_seen')===WHATSNEW_VERSION) return; // déjà vu
@@ -9236,11 +9811,14 @@ function confirmCancel(){
 // ─────────────────────────────────────────
 
 async function syncBilansThisWeek(){
+  // Le samedi et le dimanche, deux semaines sont concernées : celle qui se
+  // termine et celle qui commence lundi (où vont les bilans du week-end).
   const monday=getMondayStr();
-  const res=await supa('GET','bilans_hebdo','',`?semaine_debut=eq.${monday}`);
+  const semaineBilan=getSemaineBilanStr();
+  const res=await supa('GET','bilans_hebdo','',`?semaine_debut=gte.${monday}`);
   if(!res) return;
-  // Retire les bilans de cette semaine en cache, remplace par les frais
-  S.bilansHebdo=(S.bilansHebdo||[]).filter(b=>b.date!==monday);
+  // Retire les bilans de ces semaines en cache, remplace par les frais
+  S.bilansHebdo=(S.bilansHebdo||[]).filter(b=>b.date!==monday && b.date!==semaineBilan);
   S.bilansHebdo.push(...res.map(b=>({
     id:b.id,client_id:b.client_id,date:b.semaine_debut,
     photos:b.photos||{face:null,gauche:null,droit:null,dos:null},
@@ -9333,12 +9911,13 @@ async function syncClients(){
     // et renvoyé au serveur, au lieu d'être effacé par la liste serveur.
     const serverIds=new Set([...a.map(c=>c.id),...((archives||[]).map(c=>c.id))]);
     const deletedIds=new Set(lsGet('c_deletedClients')||[]);
-    const pending=(S.clients||[]).filter(c=>c&&c.id&&!serverIds.has(c.id)&&!deletedIds.has(c.id));
+    const pending=(S.clients||[]).filter(c=>c&&c.id&&!isDemoId(c.id)&&!serverIds.has(c.id)&&!deletedIds.has(c.id));
     pending.forEach(c=>saveClientToSupa(c));
     S.clients=[...a,...pending];
     lsSet('c_clients',S.clients);
   }
   if(archives){const a=archives.map(normalize);S.archivedClients=a;lsSet('c_archivedClients',a);}
+  seedDemoClient();
 }
 
 // Restaure sur la base d'exercices les liens vidéo encore présents dans les
@@ -9447,6 +10026,7 @@ async function syncRecettes(){
 }
 
 async function syncClientData(clientId){
+  if(isDemoId(clientId)) return; // profil de démonstration : données locales uniquement
   const [dietes,progs,seances,logs,checkins,bilans]=await Promise.all([
     supa('GET','dietes','',`?client_id=eq.${clientId}&order=updated_at.desc`),
     supa('GET','programmes','',`?client_id=eq.${clientId}&order=created_at.asc`),
@@ -9705,6 +10285,7 @@ async function saveCheckinToSupa(ci){
     digestion:ci.digestion||null,appetit:parseInt(ci.appetit)||null,
     entraine:ci.entraine||null,seance_ressenti:ci.seance_ressenti||null,
     cardio:ci.cardio||null,sommeil:parseInt(ci.sommeil)||null,
+    energie:parseInt(ci.energie)||null,
     stress:parseInt(ci.stress)||null,pas:parseInt(ci.pas)||null,
     eau:parseFloat(ci.eau)||null,regles:ci.regles||null,
     spm:ci.spm||null,autres:ci.autres||null
@@ -10201,6 +10782,242 @@ async function startApp(){
   return initApp();
 }
 
+// ═══════════════════════════════════════════════════════════
+// PROFIL DE DÉMONSTRATION (visible par la coach uniquement)
+// Il est reconstruit à chaque ouverture de l'app à partir de la date
+// du jour : le contenu ne change jamais, mais il tombe toujours sur
+// les 3 dernières semaines. Rien n'est enregistré en base de données,
+// donc ce profil ne peut ni être modifié ni polluer les vraies clientes.
+// ═══════════════════════════════════════════════════════════
+const DEMO_CLIENT_ID='demo-cliente-presentation';
+// Journées types d'Emma, ajustées pour atteindre ses cibles (± 2 %)
+const DEMO_DIETE_ON={targets:{kcal:1850,prot:130,gluc:230,lip:50},meals:[{name:"Petit déjeuner",items:[{food:"Flocon d'avoine",cat:"Céréales",type:null,qty:85,enabled:true},{food:"Skyr",cat:"Produits laitiers",type:null,qty:150,enabled:true},{food:"Banane",cat:"Fruits",type:"Unité",qty:1,enabled:true},{food:"Beurre de cacahuète",cat:"Oléagineux",type:null,qty:14,enabled:true}]},{name:"Déjeuner",items:[{food:"Filet de poulet cuit",cat:"Viande",type:null,qty:150,enabled:true},{food:"Riz blanc cuit",cat:"Féculents",type:null,qty:210,enabled:true},{food:"Courgette cuite",cat:"Légumes",type:null,qty:175,enabled:true},{food:"Huile d'olive",cat:"Huile",type:null,qty:9,enabled:true}]},{name:"Collation",items:[{food:"Skyr",cat:"Produits laitiers",type:null,qty:160,enabled:true},{food:"Myrtille",cat:"Fruits",type:null,qty:140,enabled:true},{food:"Amandes",cat:"Oléagineux",type:null,qty:17,enabled:true}]},{name:"Dîner",items:[{food:"Saumon cuit",cat:"Poisson",type:null,qty:120,enabled:true},{food:"Pomme de terre cuites",cat:"Féculents",type:null,qty:220,enabled:true},{food:"Broccolis cuits",cat:"Légumes",type:null,qty:200,enabled:true}]}]};
+const DEMO_DIETE_OFF={targets:{kcal:1600,prot:120,gluc:180,lip:45},meals:[{name:"Petit déjeuner",items:[{food:"Flocon d'avoine",cat:"Céréales",type:null,qty:70,enabled:true},{food:"Fromage blanc 0%",cat:"Produits laitiers",type:null,qty:150,enabled:true},{food:"Framboise",cat:"Fruits",type:null,qty:70,enabled:true}]},{name:"Déjeuner",items:[{food:"Thon naturel égouté",cat:"Poisson",type:null,qty:130,enabled:true},{food:"Pomme de terre cuites",cat:"Féculents",type:null,qty:150,enabled:true},{food:"Broccolis cuits",cat:"Légumes",type:null,qty:175,enabled:true},{food:"Huile d'olive",cat:"Huile",type:null,qty:13,enabled:true}]},{name:"Collation",items:[{food:"Skyr",cat:"Produits laitiers",type:null,qty:130,enabled:true},{food:"Pomme",cat:"Fruits",type:"Unité",qty:1,enabled:true},{food:"Amandes",cat:"Oléagineux",type:null,qty:22,enabled:true}]},{name:"Dîner",items:[{food:"Filet de poulet cuit",cat:"Viande",type:null,qty:120,enabled:true},{food:"Quinoa cuit",cat:"Féculents",type:null,qty:150,enabled:true},{food:"Haricots verts cuits",cat:"Légumes",type:null,qty:125,enabled:true},{food:"Avocat",cat:"Lipides",type:null,qty:55,enabled:true}]}]};
+function isDemoId(id){ return String(id||'').startsWith('demo-'); }
+
+function _demoDate(joursAvant){
+  const d=new Date(); d.setHours(12,0,0,0);
+  d.setDate(d.getDate()-joursAvant);
+  return d;
+}
+function _demoIso(joursAvant){ return _demoDate(joursAvant).toISOString().slice(0,10); }
+
+// Retrouve l'exercice dans la vraie bibliothèque (pour récupérer sa vidéo),
+// sinon crée une référence de démonstration.
+function _demoExo(nom,cat){
+  const vrai=(S.exercices||[]).find(e=>e.nom&&e.nom.toLowerCase()===nom.toLowerCase());
+  return vrai
+    ? {exo_id:vrai.id,nom:vrai.nom,cat:vrai.cat||cat,video:vrai.video||''}
+    : {exo_id:'demo-exo-'+nom.toLowerCase().replace(/[^a-z0-9]+/g,'-'),nom,cat,video:''};
+}
+
+function buildDemoData(){
+  const now=new Date();
+  // Lundi de la semaine en cours
+  const lundi=new Date(now); lundi.setHours(12,0,0,0);
+  lundi.setDate(lundi.getDate()-((lundi.getDay()+6)%7));
+  const isoDe=d=>d.toISOString().slice(0,10);
+  const lundiMoins=n=>{const d=new Date(lundi); d.setDate(d.getDate()-7*n); return isoDe(d);};
+
+  // ── La cliente ──
+  const client={
+    id:DEMO_CLIENT_ID,
+    prenom:'Emma',
+    nom:'(exemple)',
+    email:'exemple@demo.fr',
+    objectif:'Perte de gras · garder du muscle',
+    formule:'suivi',
+    jourBilan:'Lundi',
+    dietMode:'flexible',
+    favori:false,
+    archive:false,
+    goals:{seances:'4',pas:'9000',hydra_jour:'2',hydra_seance:'0.7'},
+    notes_coach:"Très régulière. Tendance à sous-manger le week-end → surveiller les protéines du samedi.\nGenou droit sensible : éviter les fentes marchées.",
+    blockPlan:{
+      active:true,
+      objectif:'Sèche',
+      startDate:lundiMoins(2),
+      blockWeeks:8,
+      phaseCount:2,
+      phases:[
+        {weeks:4,mode:'deficit',pct:15,cardio:'2 × 25 min vélo',steps:'9 000 pas'},
+        {weeks:4,mode:'deficit',pct:20,cardio:'3 × 25 min vélo',steps:'10 000 pas'}
+      ]
+    }
+  };
+
+  // ── Programme et séances type ──
+  const programme={
+    id:'demo-prog-1',client_id:DEMO_CLIENT_ID,nom:'Bloc Sèche — 4 séances',nb_seances:4,
+    description:"Haut / Bas en alternance, 4 séances par semaine.",
+    warmup:"10 min vélo + mobilité hanches et épaules",
+    hydratation:"2 L par jour, +700 ml à l'entraînement"
+  };
+  const ex=_demoExo;
+  const seances=[
+    {id:'demo-st-1',nom:'Haut du corps A',ordre:1,exercices:[
+      {...ex('Développé couché haltères','Pectoraux'),nb_series:4,reps_min:8,reps_max:10,repos:90,notes:'Descente contrôlée 3 sec'},
+      {...ex('Tirage vertical','Dos'),nb_series:4,reps_min:10,reps_max:12,repos:90,notes:''},
+      {...ex('Élévations latérales','Épaules'),nb_series:4,reps_min:12,reps_max:15,repos:60,notes:'Sans élan'},
+      {...ex('Curl haltères','Biceps'),nb_series:3,reps_min:10,reps_max:12,repos:60,notes:''}
+    ]},
+    {id:'demo-st-2',nom:'Bas du corps A',ordre:2,exercices:[
+      {...ex('Squat barre','Quadriceps'),nb_series:4,reps_min:6,reps_max:8,repos:150,notes:'Ceinture à partir de la 3e série'},
+      {...ex('Soulevé de terre roumain','Ischios'),nb_series:4,reps_min:8,reps_max:10,repos:120,notes:'Dos gainé'},
+      {...ex('Presse à cuisses','Quadriceps'),nb_series:3,reps_min:12,reps_max:15,repos:90,notes:''},
+      {...ex('Hip thrust','Fessiers'),nb_series:4,reps_min:10,reps_max:12,repos:90,notes:'Pause 1 sec en haut'}
+    ]},
+    {id:'demo-st-3',nom:'Haut du corps B',ordre:3,exercices:[
+      {...ex('Développé militaire','Épaules'),nb_series:4,reps_min:8,reps_max:10,repos:90,notes:''},
+      {...ex('Rowing haltère','Dos'),nb_series:4,reps_min:10,reps_max:12,repos:90,notes:''},
+      {...ex('Écarté poulie','Pectoraux'),nb_series:3,reps_min:12,reps_max:15,repos:60,notes:''},
+      {...ex('Extension triceps poulie','Triceps'),nb_series:3,reps_min:12,reps_max:15,repos:60,notes:''}
+    ]},
+    {id:'demo-st-4',nom:'Bas du corps B + cardio',ordre:4,exercices:[
+      {...ex('Fentes bulgares','Quadriceps'),nb_series:3,reps_min:10,reps_max:12,repos:90,notes:'Genou droit : amplitude réduite'},
+      {...ex('Leg curl allongé','Ischios'),nb_series:4,reps_min:12,reps_max:15,repos:60,notes:''},
+      {...ex('Abduction machine','Fessiers'),nb_series:3,reps_min:15,reps_max:20,repos:45,notes:''},
+      {...ex('Vélo','Cardio'),cat:'Cardio',nb_series:1,reps_min:0,reps_max:0,repos:0,duree_min:25,notes:'Allure modérée'}
+    ]}
+  ].map(s=>({
+    ...s,programme_id:'demo-prog-1',
+    exercices:s.exercices.map(e=>({videoDemandee:false,methode:null,supersetWith:null,duree_min:0,desc:'',...e}))
+  }));
+
+  // ── Séances réalisées : lundi / mardi / jeudi / vendredi sur 3 semaines ──
+  // Charges qui progressent doucement d'une semaine à l'autre.
+  const logs=[];
+  const planning=[{j:0,st:0},{j:1,st:1},{j:3,st:2},{j:4,st:3}]; // lun, mar, jeu, ven
+  const commentairesSeance=[
+    "Bonne séance, énergie au top.",
+    "Un peu fatiguée mais tout est passé.",
+    "Grosse forme, +2,5 kg sur le squat 💪",
+    "Séance écourtée, salle bondée.",
+    "Sensations correctes, dos bien engagé.",
+    ""
+  ];
+  for(let sem=2; sem>=0; sem--){
+    planning.forEach(({j,st},k)=>{
+      const d=new Date(lundi); d.setDate(d.getDate()-7*sem+j); d.setHours(18,30,0,0);
+      if(d>now) return;                       // pas de séance dans le futur
+      const modele=seances[st];
+      const progression=(2-sem);              // 0, 1 puis 2 → charges qui montent
+      logs.push({
+        id:'demo-log-'+sem+'-'+k,
+        client_id:DEMO_CLIENT_ID,
+        seance_type_id:modele.id,
+        seance_nom:modele.nom,
+        date:d.toISOString(),
+        commentaireSeance:commentairesSeance[(sem*4+k)%commentairesSeance.length],
+        exercices:modele.exercices.map((e,ei)=>{
+          const cardio=e.cat==='Cardio';
+          if(cardio){
+            return {...e,commentaire:'',series:[{duree:String(25+progression*2),done:true}]};
+          }
+          const basePoids=[14,40,8,10][ei%4]+progression*2;
+          const reps=e.reps_max-(ei%2);
+          return {...e,commentaire:(ei===0&&sem===0)?'Bonnes sensations, prête à monter la semaine prochaine.':'',
+            series:Array.from({length:e.nb_series},(_,si)=>({
+              poids:String(basePoids-(si>1?2.5:0)),
+              reps:String(Math.max(e.reps_min,reps-si)),
+              done:true
+            }))};
+        })
+      });
+    });
+  }
+
+  // ── Check-ins quotidiens sur 21 jours (2 jours volontairement manquants) ──
+  const checkins=[];
+  const poidsSerie=[68.4,68.2,68.5,68.1,67.9,68.0,67.8, 67.9,67.6,67.7,67.4,67.3,67.5,67.2, 67.3,67.0,67.1,66.8,66.7,66.9,66.6];
+  const energieSerie=[3,4,4,3,5,4,2, 4,4,5,3,4,5,3, 4,5,4,4,3,5,4];
+  const sommeilSerie=[3,4,4,3,4,5,3, 4,4,4,3,5,4,4, 4,5,4,3,4,5,4];
+  const stressSerie= [3,2,2,4,2,1,3, 2,3,2,4,2,1,2, 2,1,3,3,2,1,2];
+  const appetitSerie=[3,3,4,4,3,2,3, 3,4,3,4,3,2,3, 3,3,4,3,4,2,3];
+  const manquants=[13,17];                    // deux jours sans check-in
+  for(let i=20;i>=0;i--){
+    if(manquants.includes(i)) continue;
+    const idx=20-i;
+    const d=_demoDate(i);
+    const jour=d.getDay();                    // 0=dim, 6=sam
+    const weekend=(jour===0||jour===6);
+    const entraine=[1,2,4,5].includes(jour)?'oui':'non';
+    checkins.push({
+      client_id:DEMO_CLIENT_ID,
+      date:_demoIso(i),
+      poids:String(poidsSerie[idx]),
+      ecarts:weekend?'oui':'non',
+      ecarts_detail:weekend?(jour===6?'Restaurant samedi soir, dessert partagé':'Apéro dimanche midi'):'',
+      digestion:idx%7===2?'Un peu ballonnée en fin de journée':'RAS',
+      appetit:appetitSerie[idx],
+      entraine,
+      seance_ressenti:entraine==='oui'?['+2 reps au tirage','Charges identiques, bonnes sensations','+2,5 kg au squat','Séance courte mais intense'][idx%4]:'',
+      cardio:entraine==='oui'?(jour===5?'25 min vélo':'Non'):'Marche 40 min',
+      sommeil:sommeilSerie[idx],
+      stress:stressSerie[idx],
+      energie:energieSerie[idx],
+      pas:String(weekend?6500+idx*40:9200+((idx*137)%1800)),
+      eau:String(weekend?1.6:2.2),
+      regles:(idx>=7&&idx<=11)?'oui':'non',
+      spm:(idx===6||idx===7)?'Fringales sucrées, ventre gonflé':'',
+      autres:idx===18?'Grosse semaine au travail, peu de temps pour cuisiner.':''
+    });
+  }
+
+  // ── Bilans hebdo (3 semaines) ──
+  const mensu=[
+    {poitrine:92,taille:74.5,epaules:104,fessiers:99,cuisses:59,cuisse_d:59,bras:29,bras_d:29},
+    {poitrine:91.5,taille:73.6,epaules:104,fessiers:98.5,cuisses:58.5,cuisse_d:58.5,bras:29,bras_d:29},
+    {poitrine:91,taille:72.8,epaules:104.5,fessiers:98,cuisses:58,cuisse_d:58,bras:29.5,bras_d:29.5}
+  ];
+  const bilans=[2,1,0].map((n,i)=>({
+    id:'demo-bh-'+n,
+    client_id:DEMO_CLIENT_ID,
+    date:lundiMoins(n),
+    photos:{face:null,gauche:null,droit:null,dos:null},
+    mensurations:Object.fromEntries(Object.entries(mensu[i]).map(([k,v])=>[k,String(v)])),
+    notes:[
+      "Première semaine du bloc. Bonne adhérence à la diète, à part le week-end.",
+      "Le tour de taille descend bien. Énergie stable malgré le déficit.",
+      "Belle progression sur le squat et le hip thrust. On garde le cap."
+    ][i],
+    completed:true,
+    dateFait:lundiMoins(n),
+    modifDiete:["Aucune modification cette semaine.","−100 kcal les jours OFF (glucides).","On garde les mêmes cibles, priorité aux protéines le week-end."][i],
+    modifTraining:["Ajout d'une 4e séance.","+1 série sur le hip thrust.","Fentes bulgares : amplitude réduite (genou droit)."][i]
+  }));
+
+  return {client,programme,seances,logs,checkins,bilans};
+}
+
+// Injecte (ou réinjecte) le profil de démonstration dans l'app
+function seedDemoClient(){
+  if(!currentIsCoach) return;
+  try{
+    const D=buildDemoData();
+    // On repart toujours de zéro : les dates doivent suivre le calendrier
+    S.clients=(S.clients||[]).filter(c=>!isDemoId(c.id));
+    S.programmes=(S.programmes||[]).filter(p=>!isDemoId(p.client_id)&&!isDemoId(p.id));
+    S.seancesType=(S.seancesType||[]).filter(s=>!isDemoId(s.id)&&!isDemoId(s.programme_id));
+    S.logsSeances=(S.logsSeances||[]).filter(l=>!isDemoId(l.client_id));
+    S.checkIns=(S.checkIns||[]).filter(c=>!isDemoId(c.client_id));
+    S.bilansHebdo=(S.bilansHebdo||[]).filter(b=>!isDemoId(b.client_id));
+
+    S.clients.push(D.client);
+    S.programmes.push(D.programme);
+    S.seancesType.push(...D.seances);
+    S.logsSeances.push(...D.logs);
+    S.checkIns.push(...D.checkins);
+    S.bilansHebdo.push(...D.bilans);
+    if(!S.dietes) S.dietes={};
+    // Diète calée sur ses cibles : les jauges de macros sont bien remplies
+    S.dietes[DEMO_CLIENT_ID]={
+      on:JSON.parse(JSON.stringify(DEMO_DIETE_ON)),
+      off:JSON.parse(JSON.stringify(DEMO_DIETE_OFF))
+    };
+  }catch(e){ console.warn('Profil de démonstration :',e); }
+}
+
 async function initApp(){
   initTheme();
   await loadIaApiKey();
@@ -10218,7 +11035,9 @@ async function initApp(){
     render.clients();
     await syncExercices();
     await seedProgrammeTheo();
-    restoreActiveSession();
+    seedDemoClient();
+    render.clients();
+    await restoreActiveSession();
     // Renvoie les séances enregistrées hors-ligne / dont l'envoi avait échoué.
     syncPendingLogs();
     // Pop-up nouveautés, aussi pour la coach
