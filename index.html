@@ -191,6 +191,23 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;letter-spacing:-.5px}
 .client-info{flex:1;min-width:0}
 .client-name{font-size:15px;font-weight:600}
+.bilan-chip{padding:4px 9px;border-radius:999px;font-size:10px;font-weight:800;line-height:1.25;cursor:pointer;flex-shrink:0;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.bilan-chip:active{transform:scale(.94)}
+.jour-chip{padding:4px 7px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text3);font-family:inherit;font-size:10px;font-weight:700;line-height:1.25;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+.jour-chip.vide{opacity:.45;border-style:dashed}
+.jour-chip:active{transform:scale(.94)}
+.bulle{position:fixed;z-index:1000;min-width:186px;max-width:min(92vw,340px);padding:6px;border-radius:16px;background:var(--bg2);border:.5px solid var(--border2);box-shadow:0 12px 34px rgba(0,0,0,.20),0 2px 6px rgba(0,0,0,.10);display:flex;flex-direction:column;gap:3px}
+.bulle.anim{animation:bullePopIn .18s cubic-bezier(.22,1.2,.36,1)}
+.bulle-fleche{position:absolute;width:12px;height:12px;background:var(--bg2);border-left:.5px solid var(--border2);border-top:.5px solid var(--border2);transform:rotate(45deg);border-radius:2px}
+.bulle-fleche.bas{border:none;border-right:.5px solid var(--border2);border-bottom:.5px solid var(--border2)}
+.bulle-titre{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;padding:6px 10px 5px}
+.bulle-note{font-size:10px;color:var(--text3);text-align:center;padding:5px 8px 3px}
+.bulle-sep{height:.5px;background:var(--border);margin:3px 6px}
+.bulle-opt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:10px 11px;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+.bulle-opt:active{transform:scale(.97)}
+.bulle-puce{width:13px;height:13px;border-radius:50%;border:1.5px solid;flex-shrink:0}
+.bulle-scroll{max-height:min(46vh,300px);overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+@keyframes bullePopIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
 .client-obj{font-size:12px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fav-btn{background:none;border:none;cursor:pointer;font-size:22px;padding:4px;line-height:1;flex-shrink:0;opacity:.6;transition:opacity .15s}
 .fav-btn.on{opacity:1}
@@ -318,10 +335,15 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 @keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 
 /* ── MODAL ── */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+/* --kb = la hauteur cachée par le clavier du téléphone (0 quand il est fermé) */
+:root{--kb:0px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s,padding-bottom .22s ease;padding-bottom:var(--kb)}
 .overlay.open{opacity:1;pointer-events:all}
-.modal{background:var(--bg);border-radius:var(--radius-xl) var(--radius-xl) 0 0;padding:6px 16px 40px;width:100%;max-width:430px;max-height:90dvh;overflow-y:auto;transform:translateY(100%);transition:transform .25s ease}
+.modal{background:var(--bg);border-radius:var(--radius-xl) var(--radius-xl) 0 0;padding:6px 16px 40px;width:100%;max-width:430px;max-height:calc(90dvh - var(--kb));overflow-y:auto;transform:translateY(100%);transition:transform .25s ease}
+/* Quand le clavier est ouvert, on rabote le gros padding du bas pour gagner de la place */
+body.clavier-ouvert .modal{padding-bottom:14px}
 .overlay.open .modal{transform:translateY(0)}
+/* L'effet « jaillit du bouton » est piloté en JS (zoomDepuisBouton) */
 .modal-handle{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:8px auto 16px}
 .modal-title{font-size:18px;font-weight:700;margin-bottom:16px;letter-spacing:-.3px}
 
@@ -632,7 +654,7 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .ia-modified-badge span{flex:1}
 .ia-modified-dismiss{background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:0 2px;line-height:1}
 /* ── CONFIRM MODAL ── */
-.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .2s}
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:24px;padding-bottom:calc(24px + var(--kb));opacity:0;pointer-events:none;transition:opacity .2s,padding-bottom .22s ease}
 .confirm-overlay.open{opacity:1;pointer-events:all}
 .confirm-box{background:var(--bg);border-radius:var(--radius-xl);padding:24px;width:100%;max-width:320px;text-align:center;transform:scale(.92);transition:transform .2s}
 .confirm-overlay.open .confirm-box{transform:scale(1)}
@@ -1166,6 +1188,24 @@ html.theme-night .btn-primary{
 /* ── MICRO-ANIMATIONS : ressort (tap réussi) & secousse (erreur) ── */
 @keyframes springPopAnim{0%{transform:scale(1)}40%{transform:scale(1.25)}70%{transform:scale(.94)}100%{transform:scale(1)}}
 .spring-pop{animation:springPopAnim .3s cubic-bezier(.34,1.56,.64,1)}
+.ico-swap{display:inline-block;line-height:1}
+.icon-spin{animation:iconSpinAnim .5s cubic-bezier(.45,.05,.25,1)}
+@keyframes iconSpinAnim{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.ico-fx{display:inline-block;line-height:1}
+.icon-shake{animation:icoShakeAnim .45s ease}
+@keyframes icoShakeAnim{0%,100%{transform:rotate(0)}15%{transform:rotate(-17deg)}32%{transform:rotate(14deg)}49%{transform:rotate(-10deg)}66%{transform:rotate(6deg)}83%{transform:rotate(-3deg)}}
+body.no-fade .exo-card,body.no-fade .prog-card,body.no-fade .exo-list-row{animation:none !important}
+.row-out{animation:rowOutAnim .25s cubic-bezier(.4,0,1,1) forwards;pointer-events:none}
+@keyframes rowOutAnim{60%{transform:translateX(72px);opacity:0}100%{transform:translateX(72px);opacity:0;max-height:0;margin-top:0;margin-bottom:0;padding-top:0;padding-bottom:0;border-width:0}}
+.row-in{animation:rowInAnim .45s cubic-bezier(.34,1.5,.64,1) both}
+@keyframes rowInAnim{from{opacity:0;transform:translateY(-16px) scale(.96)}to{opacity:1;transform:none}}
+.sparkle{position:fixed;z-index:1200;width:6px;height:6px;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);animation:sparkleAnim .55s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes sparkleAnim{0%{transform:translate(-50%,-50%) scale(.2);opacity:0}25%{opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(0);opacity:0}}
+.photo-in{animation:photoInAnim .42s cubic-bezier(.34,1.45,.64,1) both}
+@keyframes photoInAnim{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){
+  .row-out,.row-in,.sparkle,.photo-in,.icon-shake,.icon-spin,.bulle.anim{animation:none}
+}
 @keyframes shakeNoAnim{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(3px)}30%,70%{transform:translateX(-5px)}40%,60%{transform:translateX(5px)}50%{transform:translateX(-3px)}}
 .shake-no{animation:shakeNoAnim .5s ease}
 
@@ -2600,6 +2640,36 @@ async function logout(){
   location.href=window.location.pathname;
 }
 
+// ────────────────────────────────────────
+// LE CLAVIER DU TÉLÉPHONE
+// On mesure la place qu'il prend et on remonte les fenêtres d'autant,
+// pour ne plus jamais écrire « sous » le clavier.
+// ────────────────────────────────────────
+(function(){
+  const vv=window.visualViewport;
+  if(!vv)return;
+  let attente=null;
+  function mesurer(){
+    attente=null;
+    const cache=Math.max(0,window.innerHeight-vv.height-vv.offsetTop);
+    const ouvert=cache>90; // en-dessous, c'est juste la barre d'adresse, pas le clavier
+    document.documentElement.style.setProperty('--kb',(ouvert?Math.round(cache):0)+'px');
+    document.body.classList.toggle('clavier-ouvert',ouvert);
+  }
+  const planifier=()=>{if(attente===null)attente=requestAnimationFrame(mesurer);};
+  vv.addEventListener('resize',planifier);
+  vv.addEventListener('scroll',planifier);
+  mesurer();
+})();
+
+// Quand on touche un champ dans une fenêtre, on le ramène bien en vue
+document.addEventListener('focusin',function(e){
+  const el=e.target;
+  if(!el||!el.matches||!el.matches('input,textarea,select'))return;
+  if(!el.closest('.modal,.confirm-box,.bulle'))return;
+  setTimeout(()=>{try{el.scrollIntoView({block:'center',behavior:'smooth'});}catch(_){}} ,320);
+});
+
 function openModal(html,opts){
   document.getElementById('modal-body').innerHTML=html;
   const modal=document.querySelector('.modal');
@@ -2610,7 +2680,43 @@ function openModal(html,opts){
       modal.style.maxWidth='';
     }
   }
-  document.getElementById('overlay').classList.add('open');
+  const ov=document.getElementById('overlay');
+  ov.classList.remove('zoom');
+  if(modal) modal.style.transformOrigin='';
+  // opts.from = le bouton qu'on vient de toucher : la fenêtre jaillit de lui
+  const aspire=(opts&&opts.from)?zoomDepuisBouton(modal,opts.from):false;
+  ov.classList.add('open');
+  if(aspire) aspire();   // on lance l'animation une fois la fenêtre en place
+}
+
+// « Effet aspirateur » à la iPhone : la fenêtre part d'un tout petit point posé
+// sur le bouton, puis se déplie jusqu'à sa taille normale.
+// Renvoie une fonction à appeler juste après l'ouverture (ou false).
+function zoomDepuisBouton(modal,btn){
+  if(!modal||!btn||!btn.getBoundingClientRect||_animOff()||!modal.animate) return false;
+  const r=btn.getBoundingClientRect();
+  if(!r.width||!r.height) return false;
+  // Position finale de la fenêtre : on neutralise un instant sa transformation
+  const transAvant=modal.style.transition, formeAvant=modal.style.transform;
+  modal.style.transition='none';
+  modal.style.transform='none';
+  const m=modal.getBoundingClientRect();
+  const rayonFinal=getComputedStyle(modal).borderRadius;
+  modal.style.transition=transAvant;
+  modal.style.transform=formeAvant;
+  if(!m.width||!m.height) return false;
+
+  const ech=Math.max(.04,Math.min(.9,r.width/m.width));   // à quel point on rapetisse
+  const dx=(r.left+r.width/2)-(m.left+m.width/2);
+  const dy=(r.top+r.height/2)-(m.top+m.height/2);
+
+  return function(){
+    modal.animate([
+      {transform:`translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px) scale(${ech.toFixed(3)})`,opacity:0,borderRadius:'999px'},
+      {transform:`translate(${(dx*.14).toFixed(1)}px,${(dy*.14).toFixed(1)}px) scale(${(1-(1-ech)*.14).toFixed(3)})`,opacity:1,borderRadius:'34px',offset:.5},
+      {transform:'translate(0px,0px) scale(1)',opacity:1,borderRadius:rayonFinal}
+    ],{duration:520,easing:'cubic-bezier(.42,.02,.22,1)',fill:'none'});
+  };
 }
 function closeModal(){
   document.getElementById('overlay').classList.remove('open');
@@ -2687,6 +2793,140 @@ function isBilanFaitThisWeek(clientId){
   if(!b) return false;
   // La pastille s'allume uniquement si le bilan a été explicitement sauvegardé
   return b.completed===true;
+}
+
+// ────────────────────────────────────────
+// ÉTIQUETTE DE SUIVI DES BILANS (coach, clientes en Suivi uniquement)
+// 3 états choisis À LA MAIN par la coach, via un petit menu :
+//   'nontraite' → bleu  : « Non traité »  (état par défaut)
+//   'traite'    → vert  : « Traité »
+//   'nonfait'   → rouge : « Bilan non fait »
+// L'état est rattaché à la semaine de bilan en cours : chaque lundi tout
+// repasse automatiquement en « Non traité ».
+// ────────────────────────────────────────
+const BILAN_STATUTS={
+  nontraite:{label:'Non traité',      color:'#2F7BD6',           bg:'rgba(47,123,214,.14)', border:'rgba(47,123,214,.45)'},
+  traite   :{label:'Traité',          color:'var(--green-dark)', bg:'var(--green-light)',   border:'var(--green)'},
+  nonfait  :{label:'Bilan non fait',  color:'#E24B4A',           bg:'rgba(226,75,74,.14)',  border:'rgba(226,75,74,.45)'}
+};
+
+function getBilanStatut(c){
+  if(!c) return 'nontraite';
+  // Si l'état a été posé une semaine précédente, il est périmé → « Non traité »
+  if(c.bilanStatutSemaine!==getSemaineBilanStr()) return 'nontraite';
+  return BILAN_STATUTS[c.bilanStatut]?c.bilanStatut:'nontraite';
+}
+
+function bilanStatutChipHTML(c){
+  if(!currentIsCoach) return '';
+  if((c.formule||'suivi')==='pack') return '';
+  const st=getBilanStatut(c);
+  const s=BILAN_STATUTS[st];
+  return `<button class="bilan-chip" title="Suivi du bilan — clique pour changer" onclick="event.stopPropagation();showBilanStatutMenu('${c.id}',this)" style="background:${s.bg};border:1px solid ${s.border};color:${s.color}">${s.label}</button>`;
+}
+
+// ────────────────────────────────────────
+// LES BULLES  (petits menus qui sortent du bouton qu'on vient de toucher)
+// openBulle(bouton, contenuHTML, options) → place une bulle collée au bouton,
+// avec sa petite pointe, et la referme si on clique ailleurs / si on scrolle.
+// options : {key} identifiant (re-clic sur le même bouton = on referme)
+//           {align} 'right' (défaut) | 'left' | 'center'
+//           {width} largeur CSS forcée, ex '280px'
+// ────────────────────────────────────────
+let _bulle=null,_bulleKey=null;
+
+function closeBulle(){
+  if(_bulle){_bulle.remove();_bulle=null;}
+  _bulleKey=null;
+  document.removeEventListener('pointerdown',_bulleDehors,true);
+  window.removeEventListener('scroll',closeBulle,true);
+  window.removeEventListener('resize',closeBulle);
+}
+function _bulleDehors(e){
+  if(_bulle&&!_bulle.contains(e.target)) closeBulle();
+}
+
+function openBulle(bouton,html,opts){
+  opts=opts||{};
+  if(!bouton||!bouton.getBoundingClientRect) return null;
+  const key=opts.key||'';
+  const memeBouton=!!_bulle&&_bulleKey===key;
+  closeBulle();
+  if(memeBouton) return null; // re-clic sur le même bouton → on referme, point.
+
+  const pop=document.createElement('div');
+  pop.className='bulle'+(opts.cls?' '+opts.cls:'');
+  pop.innerHTML='<div class="bulle-fleche"></div>'+html;
+  // On la pose hors écran le temps de la mesurer, puis on l'anime une fois placée
+  pop.style.left='-9999px';pop.style.top='0px';pop.style.visibility='hidden';
+  if(opts.width) pop.style.width=opts.width;
+  document.body.appendChild(pop);
+
+  const r=bouton.getBoundingClientRect();
+  const pw=pop.offsetWidth, ph=pop.offsetHeight;
+  const marge=8;
+  const align=opts.align||'right';
+  let left = align==='left' ? r.left
+           : align==='center' ? r.left+r.width/2-pw/2
+           : r.right-pw;
+  left=Math.max(marge,Math.min(left,window.innerWidth-pw-marge));
+  let top=r.bottom+10, versLeHaut=false;
+  if(top+ph>window.innerHeight-marge && r.top-ph-10>marge){top=r.top-ph-10;versLeHaut=true;}
+  top=Math.max(marge,Math.min(top,window.innerHeight-ph-marge));
+  pop.style.left=left+'px';
+  pop.style.top=top+'px';
+
+  // La petite pointe, alignée sur le centre du bouton
+  const fleche=pop.querySelector('.bulle-fleche');
+  const fx=Math.max(14,Math.min(r.left+r.width/2-left,pw-14));
+  fleche.style.left=(fx-6)+'px';
+  if(versLeHaut){fleche.style.bottom='-6px';fleche.classList.add('bas');}
+  else{fleche.style.top='-6px';}
+  pop.style.transformOrigin=`${fx}px ${versLeHaut?'100%':'0'}`;
+  pop.style.visibility='visible';
+  pop.classList.add('anim');
+
+  _bulle=pop;_bulleKey=key;
+  setTimeout(()=>{
+    document.addEventListener('pointerdown',_bulleDehors,true);
+    window.addEventListener('scroll',closeBulle,true);
+    window.addEventListener('resize',closeBulle);
+  },0);
+  return pop;
+}
+
+// Petit utilitaire : une ligne de menu dans une bulle
+function bulleOpt(onclick,label,opts){
+  opts=opts||{};
+  const puce=opts.puce===undefined?'':`<span class="bulle-puce" style="border-color:${opts.border||'var(--border2)'};background:${opts.puce?(opts.color||'var(--text2)'):'transparent'}"></span>`;
+  return `<button class="bulle-opt" onclick="${onclick}" style="background:${opts.bg||'transparent'};color:${opts.color||'var(--text)'}">${puce}${opts.icone?`<span style="width:18px;text-align:center;flex-shrink:0">${opts.icone}</span>`:''}<span style="flex:1;min-width:0">${label}</span></button>`;
+}
+
+// ── Bulle « bilan de la semaine » ────────
+function showBilanStatutMenu(clientId,btn){
+  const c=S.clients.find(x=>x.id===clientId);if(!c)return;
+  const cur=getBilanStatut(c);
+  const choix=['nontraite','traite','nonfait'].map(k=>{
+    const st=BILAN_STATUTS[k];const on=cur===k;
+    return bulleOpt(`setBilanStatut('${clientId}','${k}')`,st.label,{puce:on,color:st.color,border:st.border,bg:on?st.bg:'transparent'});
+  }).join('');
+  openBulle(btn,
+    `<div class="bulle-titre">${c.prenom} — bilan de la semaine</div>${choix}
+     <div class="bulle-note">Repasse en « Non traité » chaque lundi</div>`,
+    {key:'bilan-'+clientId});
+}
+
+async function setBilanStatut(clientId,statut){
+  const c=S.clients.find(x=>x.id===clientId);if(!c)return;
+  if(!BILAN_STATUTS[statut])return;
+  const monday=getSemaineBilanStr();
+  c.bilanStatut=statut;
+  c.bilanStatutSemaine=monday;
+  persist();
+  closeBulle();
+  render.clients();
+  toast('→ '+BILAN_STATUTS[statut].label);
+  await supa('PATCH','clients',{bilan_statut:statut,bilan_statut_semaine:monday},`?id=eq.${clientId}`);
 }
 
 // ─────────────────────────────────────────
@@ -2891,16 +3131,23 @@ function getBadges5kg(clientId){
   return perte>=5?Math.floor(perte/5):0;
 }
 
-function showJourBilanModal(clientId){
-  event.stopPropagation();
+// ── Bulle « jour de bilan » ──────────────
+const JOURS_SEMAINE=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+
+function showJourBilanBulle(clientId,btn){
   const c=S.clients.find(x=>x.id===clientId);if(!c)return;
-  openModal(`<div class="modal-title">Jour de bilan — ${c.prenom}</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
-      ${['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'].map(j=>
-        `<button class="btn ${c.jourBilan===j?'btn-primary':'btn-secondary'}" style="padding:10px 4px;font-size:13px" onclick="setJourBilan('${clientId}','${j}')">${j.slice(0,3)}</button>`
-      ).join('')}
-      <button class="btn btn-secondary" style="padding:10px 4px;font-size:13px;color:var(--text3)" onclick="setJourBilan('${clientId}','')">Aucun</button>
-    </div>`);
+  const dowNames=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const aujourdhui=dowNames[new Date().getDay()];
+  const choix=JOURS_SEMAINE.map(j=>{
+    const on=c.jourBilan===j;
+    return bulleOpt(`setJourBilan('${clientId}','${j}')`,
+      j+(j===aujourdhui?' <span style="font-size:10px;font-weight:700;color:var(--green-dark)">· aujourd\'hui</span>':''),
+      {puce:on,color:on?'var(--green-dark)':'var(--text)',border:on?'var(--green)':'var(--border2)',bg:on?'var(--green-light)':'transparent'});
+  }).join('');
+  const aucun=bulleOpt(`setJourBilan('${clientId}','')`,'Aucun jour',{puce:!c.jourBilan,color:'var(--text3)'});
+  openBulle(btn,
+    `<div class="bulle-titre">${c.prenom} — jour de bilan</div>${choix}<div class="bulle-sep"></div>${aucun}`,
+    {key:'jour-'+clientId});
 }
 
 function setJourBilan(clientId,jour){
@@ -2908,7 +3155,7 @@ function setJourBilan(clientId,jour){
   c.jourBilan=jour;
   persist();
   saveClientToSupa(c);
-  closeModal();
+  closeBulle();
   render.clients();
   toast(jour?`📅 Bilan le ${jour} pour ${c.prenom}`:`Jour de bilan retiré`);
 }
@@ -2979,7 +3226,9 @@ function removeClientJour(clientId){
 function clientRowHTML(c,i){
   const [bg,text]=avatarColors(i);
   const bilanFait=isBilanFaitThisWeek(c.id);
-  const jourChip=c.jourBilan?`<span style="font-size:10px;font-weight:600;color:var(--text3)">${c.jourBilan.slice(0,3)}</span>`:'';
+  const jourChip=currentIsCoach
+    ? `<button class="jour-chip${c.jourBilan?'':' vide'}" title="Jour de bilan" onclick="event.stopPropagation();showJourBilanBulle('${c.id}',this)">${c.jourBilan?c.jourBilan.slice(0,3):'📅'}</button>`
+    : (c.jourBilan?`<span style="font-size:10px;font-weight:600;color:var(--text3)">${c.jourBilan.slice(0,3)}</span>`:'');
   return `<div class="client-row">
     <div class="avatar" style="background:${bg};color:${text}">${initials(c)}</div>
     <div class="client-info" onclick="openClient('${c.id}')">
@@ -2990,6 +3239,7 @@ function clientRowHTML(c,i){
       ${c.objectif?`<div class="client-obj">${c.objectif}</div>`:''}${c.email?`<div class="client-obj">${c.email}</div>`:''}
     </div>
     <div class="client-actions">
+      ${bilanStatutChipHTML(c)}
       ${jourChip}
       <button class="client-mini-btn" onclick="openCalculsPerte('${c.id}')" title="Trame">Plan</button>
       <button class="fav-btn${c.favori?' on':''}" onclick="toggleFavori('${c.id}',this)">${c.favori?'⭐':'☆'}</button>
@@ -3004,7 +3254,10 @@ async function toggleFavori(id,btn){
   const c=S.clients.find(x=>x.id===id);if(!c)return;
   c.favori=!c.favori;persist();
   // Ressort sur l'étoile, puis on redessine la liste juste après l'animation
-  if(btn){btn.textContent=c.favori?'⭐':'☆';btn.classList.toggle('on',c.favori);springPop(btn);}
+  if(btn){
+    btn.textContent=c.favori?'⭐':'☆';btn.classList.toggle('on',c.favori);springPop(btn);
+    if(c.favori)sparkle(btn,'#f5c451'); // mini étincelles quand on l'allume
+  }
   setTimeout(()=>render.clients(),btn?280:0);
   toast(c.favori?'⭐ Ajouté aux favoris':'Retiré des favoris');
   await supa('PATCH','clients',{favori:c.favori},`?id=eq.${id}`);
@@ -3890,7 +4143,7 @@ render.training=function(){
                 <button class="reorder-btn" onclick="event.stopPropagation();moveSeance('${s.id}','${prog.id}',-1)" ${i===0?'disabled':''}>↑</button>
                 <button class="reorder-btn" onclick="event.stopPropagation();moveSeance('${s.id}','${prog.id}',1)" ${i===seances.length-1?'disabled':''}>↓</button>
               `:''}
-              ${currentIsCoach?`<button class="reorder-btn" onclick="event.stopPropagation();deleteSeance('${s.id}','${prog.id}')" title="Supprimer la séance">🗑</button>`:''}
+              ${currentIsCoach?`<button class="reorder-btn" onclick="event.stopPropagation();shakeIcon(this);deleteSeance('${s.id}','${prog.id}')" title="Supprimer la séance"><span class="ico-fx">🗑</span></button>`:''}
               <div class="seance-exo-count">${(s.exercices||[]).length} exo${(s.exercices||[]).length>1?'s':''} ›</div>
             </div>
           </div>`).join('')}
@@ -3901,7 +4154,7 @@ render.training=function(){
         <div style="padding:8px 14px;display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" style="flex:1" onclick="showAddSeanceModal('${prog.id}')">➕ Ajouter une séance</button>
           ${currentIsCoach?`<button class="btn btn-secondary btn-sm" style="width:auto;padding:8px 12px" onclick="showCopyProgModal('${prog.id}')" title="Copier ce programme vers une autre cliente">📑 Copier</button>`:''}
-          <button class="btn btn-danger btn-sm" style="width:auto;padding:8px 12px" onclick="deleteProg('${prog.id}')">🗑</button>
+          <button class="btn btn-danger btn-sm" style="width:auto;padding:8px 12px" onclick="shakeIcon(this);deleteProg('${prog.id}')"><span class="ico-fx">🗑</span></button>
         </div>
       </div>`:''}
     </div>`;
@@ -4156,7 +4409,7 @@ render.seance=function(){
         <div class="exo-card-actions">
           ${videoUrl?`<a class="video-pill" href="${videoUrl}" target="_blank" rel="noopener noreferrer" title="Vidéo" style="width:28px;padding:0;justify-content:center"><svg width="9" height="11" viewBox="0 0 10 12" fill="currentColor" aria-hidden="true"><path d="M1.2.3A1 1 0 0 0 0 1.28v9.44a1 1 0 0 0 1.55.84l7.62-4.72a1 1 0 0 0 0-1.68L1.55.44A1 1 0 0 0 1.2.3Z"/></svg></a>`:''}
           <button class="exo-mini-btn" onclick="openHistorique('${exo.exo_id}')">📈</button>
-          <button class="exo-mini-btn" onclick="showSwapExoSeanceModal(${ei})" title="Remplacer">🔄</button>
+          <button class="exo-mini-btn" onclick="spinIcon(this);showSwapExoSeanceModal(${ei},this)" title="Remplacer"><span class="ico-swap">🔄</span></button>
           <button class="exo-mini-btn" onclick="editExoConfig(${ei})">✏️</button>
           <button class="intens-picker-btn" onclick="showExoOptionsMenu(${ei},'seance')">⚙️</button>
           <button class="exo-mini-btn" onclick="removeExoFromSeance(${ei})">✕</button>
@@ -4370,6 +4623,9 @@ function startExoDrag(ev,gi){
 }
 
 function removeExoFromSeance(ei){
+  slideOutRow(document.getElementById('exo-card-'+ei),()=>_removeExoFromSeance(ei));
+}
+function _removeExoFromSeance(ei){
   const removedId=S.seanceType.exercices[ei]?.exo_id;
   S.seanceType.exercices.splice(ei,1);
   // Synchroniser avec le log actif
@@ -4379,7 +4635,7 @@ function removeExoFromSeance(ei){
   }
   const idx=S.seancesType.findIndex(s=>s.id===S.seanceType.id);
   if(idx>=0)S.seancesType[idx]=S.seanceType;
-  persist();render.seance();toast('Exercice supprimé');
+  persist();sansFondu(500);render.seance();toast('Exercice supprimé');
 }
 
 function showRepsPerSeriesModal(ei){
@@ -4554,7 +4810,7 @@ function _lgTools(e,i){
   return `${url?`<button class="video-pill" data-url="${url}" onclick="toggleVideoEmbed(this,'vid-embed-${i}')" title="Vidéo"><span class="vp-ico"><span class="i-play">${VIDEO_PILL_ICON}</span><span class="i-close">✕</span></span><span class="vp-txt">Vidéo</span></button>`:''}
     <button class="exo-mini-btn" onclick="openHistorique('${e.exo_id}')" title="Historique">📈</button>
     ${!isCardio&&e.repos?`<button class="exo-mini-btn" onclick="startRestTimer(${e.repos})" title="Lancer le chrono (${e.repos}s)" style="font-size:15px">⏱</button>`:''}
-    <button class="exo-mini-btn" onclick="showSwapExoModal(${i})" title="Remplacer pour cette séance" style="${e._replacedFrom?'color:var(--amber)':''}">🔄</button>
+    <button class="exo-mini-btn" onclick="spinIcon(this);showSwapExoModal(${i},this)" title="Remplacer pour cette séance" style="${e._replacedFrom?'color:var(--amber)':''}"><span class="ico-swap">🔄</span></button>
     <button class="intens-picker-btn" onclick="showIntensificationPicker(${i},'log')" title="Méthode d'intensification">···</button>`;
 }
 // Outils du mode carte : ce qui prend de la place s'ouvre en tiroir par-dessus
@@ -4568,7 +4824,7 @@ function _lgToolsCard(e,i,logId){
     <button class="lg-pill" onclick="openHistorique('${e.exo_id}')">📈 Historique</button>
     <button class="lg-pill${hasCmt?' on':''}" onclick="lgSheet('comment',${i})" title="Commentaire">💬${hasCmt?' ✓':''}</button>
     <button class="lg-pill${(nbVid||e.videoDemandee)?' on':''}" onclick="lgSheet('videos',${i})" title="Ma vidéo">📹${nbVid?' '+nbVid:''}</button>
-    <button class="lg-pill" onclick="showSwapExoModal(${i})" title="Remplacer" style="${e._replacedFrom?'color:var(--amber)':''}">🔄</button>
+    <button class="lg-pill" onclick="spinIcon(this);showSwapExoModal(${i},this)" title="Remplacer" style="${e._replacedFrom?'color:var(--amber)':''}"><span class="ico-swap">🔄</span></button>
     <button class="lg-pill" onclick="showIntensificationPicker(${i},'log')" title="Options">···</button>`;
 }
 // Tiroirs (réutilisent la modale de l'app, qui monte déjà depuis le bas)
@@ -5245,7 +5501,7 @@ function showManagePresets(){
   const list=(S.correctionPresets||[]).map(p=>
     `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:13px">${escapeHtml(p.label)}</span>
-      <button onclick="deletePreset('${p.id}')" style="background:transparent;border:none;color:var(--red);font-size:14px;cursor:pointer">🗑️</button>
+      <button onclick="shakeIcon(this);deletePreset('${p.id}')" style="background:transparent;border:none;color:var(--red);font-size:14px;cursor:pointer"><span class="ico-fx">🗑️</span></button>
     </div>`
   ).join('');
   openModal(`
@@ -5820,7 +6076,7 @@ function showWeeklyRecap(clientId, periodOffset){
   openModal(html);
 }
 
-function showSwapExoModal(ei){
+function showSwapExoModal(ei,btn){
   const exo=S.logSeance?.exercices[ei];if(!exo)return;
   const cats=[...new Set(S.exercices.map(e=>e.cat))].sort();
   const listHtml=cats.map(cat=>{
@@ -5836,7 +6092,7 @@ function showSwapExoModal(ei){
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Valable uniquement pour la séance en cours, le programme n'est pas modifié.</div>
     <input class="form-inp" id="swap-search" placeholder="Rechercher un exercice…" oninput="filterSwapList(this.value)" style="margin-bottom:12px"/>
     <div id="swap-list" style="max-height:55vh;overflow-y:auto">${listHtml}</div>
-  `);
+  `,{from:btn});
   setTimeout(()=>document.getElementById('swap-search')?.focus(),300);
   window._swapListHtml=listHtml;
   window._swapEi=ei;
@@ -5855,7 +6111,7 @@ function filterSwapList(q){
 }
 
 // Remplacement DÉFINITIF d'un exercice dans la séance type (éditeur de programme)
-function showSwapExoSeanceModal(ei){
+function showSwapExoSeanceModal(ei,btn){
   const exo=S.seanceType?.exercices[ei];if(!exo)return;
   const cats=[...new Set(S.exercices.map(e=>e.cat))].sort();
   const listHtml=cats.map(cat=>{
@@ -5871,7 +6127,7 @@ function showSwapExoSeanceModal(ei){
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Remplacement définitif : le programme est modifié.</div>
     <input class="form-inp" id="swap-search" placeholder="Rechercher un exercice…" oninput="filterSwapList(this.value)" style="margin-bottom:12px"/>
     <div id="swap-list" style="max-height:55vh;overflow-y:auto">${listHtml}</div>
-  `);
+  `,{from:btn});
   setTimeout(()=>document.getElementById('swap-search')?.focus(),300);
   window._swapListHtml=listHtml;
   window._swapEi=ei;
@@ -6271,7 +6527,15 @@ function confirmAddExo(exoId){
     });
     saveActiveLog(S.logSeance);
   }
-  persist();saveSeanceTypeToSupa(S.seanceType);closeModal();render.seance();toast(`✓ ${exo.nom} ajouté`);
+  persist();saveSeanceTypeToSupa(S.seanceType);closeModal();
+  sansFondu(900);              // les autres cartes ne bougent pas
+  render.seance();
+  toast(`✓ ${exo.nom} ajouté`);
+  // Seule la nouvelle carte arrive, en rebondissant avec un flash vert
+  setTimeout(()=>{
+    const carte=document.getElementById('exo-card-'+insertAt);
+    if(carte) amenerPuisAnimer(carte,popInRow);
+  },40);
 }
 
 // ─────────────────────────────────────────
@@ -6665,7 +6929,7 @@ function renderExoListResults(filter=''){
       // (ils sont codés dans l'appli, donc on les marque supprimés côté Supabase
       // plutôt que de les effacer pour de vrai).
       const videoBtn=exo.video?'<a href="'+exo.video+'" target="_blank" class="icon-btn" style="text-decoration:none;font-size:16px">🎬</a>':'';
-      const deleteBtn='<button class="icon-btn" onclick="_deleteExo(\''+exo.id+'\')">🗑</button>';
+      const deleteBtn='<button class="icon-btn" onclick="shakeIcon(this);_deleteExo(\''+exo.id+'\')"><span class="ico-fx">🗑</span></button>';
       const imgThumb=exo.image?'<div style="width:40px;height:40px;border-radius:6px;overflow:hidden;flex-shrink:0;margin-right:8px"><img src="'+exo.image+'" style="width:100%;height:100%;object-fit:cover" /></div>':'';
       html+='<div class="exo-list-row">'+
         imgThumb+
@@ -6827,7 +7091,7 @@ function renderBhDetailPhotos(bilan){
     const img=bilan.photos[s.key];
     if(img){
       html+='<div class="photo-slot filled" onclick="triggerPhotoUpload(\''+bilan.id+'\',\''+s.key+'\')">'
-        +'<img src="'+img+'" alt="'+s.label+'"/>'
+        +'<img src="'+img+'" alt="'+s.label+'"'+_photoAnimClass(bilan.id,s.key)+'/>'
         +'<div class="photo-overlay"><span style="color:#fff;font-size:11px;font-weight:600">'+s.label+'</span>'
         +'<button onclick="event.stopPropagation();deletePhoto(\''+bilan.id+'\',\''+s.key+'\')" style="background:rgba(0,0,0,.45);border:none;color:#fff;border-radius:99px;padding:3px 10px;font-size:11px;cursor:pointer">🗑</button></div>'
         +'</div>';
@@ -7048,7 +7312,7 @@ function renderBhPhotos(bilan, allWeeks){
   slots.forEach(s=>{
     const img=bilan.photos[s.key];
     const overlay=img?'<div class="photo-overlay"><span style="color:#fff;font-size:11px;font-weight:600">'+s.label+'</span><button onclick="event.stopPropagation();_deletePhoto(\''+bilan.id+'\',\''+s.key+'\') " style="background:rgba(0,0,0,.5);border:none;border-radius:50%;width:24px;height:24px;color:#fff;cursor:pointer;font-size:12px">✕</button></div>':'';
-    const imgTag=img?'<img src="'+img+'" alt="'+s.label+'" />':'';
+    const imgTag=img?'<img src="'+img+'" alt="'+s.label+'"'+_photoAnimClass(bilan.id,s.key)+' />':'';
     const icon=img?'':'<div class="photo-slot-icon">'+s.icon+'</div><div class="photo-slot-label">'+s.label+'</div>';
     html+='<div class="photo-slot'+(img?' filled':'')+'" onclick="triggerPhotoUpload(\''+bilan.id+'\',\''+s.key+'\')">'+imgTag+icon+overlay+'<input type="file" id="photo-input-'+bilan.id+'-'+s.key+'-cam" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoUpload(\''+bilan.id+'\',\''+s.key+'\',this)" /><input type="file" id="photo-input-'+bilan.id+'-'+s.key+'-gal" accept="image/*" style="display:none" onchange="handlePhotoUpload(\''+bilan.id+'\',\''+s.key+'\',this)" /></div>';
   });
@@ -7376,6 +7640,12 @@ function triggerPhotoUpload(bilanId, slot){
   openModal(`<div class="modal-title">Ajouter une photo</div><div style="display:flex;flex-direction:column;gap:12px;padding:8px 0"><button class="btn-primary" onclick="closeModal();document.getElementById('photo-input-${bilanId}-${slot}-cam')?.click()">📷 Prendre une photo</button><button class="btn-secondary" onclick="closeModal();document.getElementById('photo-input-${bilanId}-${slot}-gal')?.click()">🖼️ Choisir depuis la galerie</button></div>`);
 }
 
+// Mémorise la photo qui vient d'être ajoutée, pour la faire apparaître en zoom
+let _photoJusteAjoutee=null;
+function _photoAnimClass(bilanId,slot){
+  return _photoJusteAjoutee===bilanId+'|'+slot?' class="photo-in"':'';
+}
+
 function handlePhotoUpload(bilanId, slot, input){
   const file=input.files[0];if(!file)return;
   const reader=new FileReader();
@@ -7390,7 +7660,12 @@ function handlePhotoUpload(bilanId, slot, input){
       canvas.getContext('2d').drawImage(tmpImg,0,0,canvas.width,canvas.height);
       const compressed=canvas.toDataURL('image/jpeg',0.75);
       const b=S.bilansHebdo.find(x=>x.id===bilanId);
-      if(b){b.photos[slot]=compressed;persist();saveBilanHebdoToSupa(b);render.bilanHebdo();toast('📸 Photo ajoutée');}
+      if(b){
+        b.photos[slot]=compressed;persist();saveBilanHebdoToSupa(b);
+        _photoJusteAjoutee=bilanId+'|'+slot; // pour l'animation d'apparition
+        render.bilanHebdo();toast('📸 Photo ajoutée');
+        setTimeout(()=>{_photoJusteAjoutee=null;},1200);
+      }
     };
     tmpImg.src=e.target.result;
   };
@@ -8718,6 +8993,105 @@ function dPickFood(mi,ii,name,cat){
 }
 // ─── Micro-animations : ressort (tap réussi) et secousse (erreur) ───
 function springPop(el){if(!el)return;el.classList.remove('spring-pop');void el.offsetWidth;el.classList.add('spring-pop');}
+// L'utilisateur a demandé « moins d'animations » dans les réglages de son téléphone ?
+function _animOff(){try{return matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}}
+
+// Coupe momentanément l'animation d'apparition de TOUTES les cartes, pour qu'on
+// ne voie que celle qui nous intéresse (sinon la liste entière clignote et on
+// ne remarque plus rien).
+function sansFondu(ms){
+  document.body.classList.add('no-fade');
+  clearTimeout(sansFondu._t);
+  sansFondu._t=setTimeout(()=>document.body.classList.remove('no-fade'),ms||600);
+}
+
+// Une ligne glisse vers la droite et se replie, PUIS on la supprime pour de vrai.
+// Animation pilotée en JS (Web Animations) : elle passe avant toutes les autres.
+function slideOutRow(el,apres){
+  let fait=false;
+  const finir=()=>{if(fait)return;fait=true;apres();};
+  if(!el||_animOff()||!el.animate){finir();return;}
+  const h=el.offsetHeight;
+  const cs=getComputedStyle(el);
+  const mt=cs.marginTop, mb=cs.marginBottom;
+  el.style.overflow='hidden';
+  el.style.pointerEvents='none';
+  const a=el.animate([
+    {transform:'translateX(0)',opacity:1,maxHeight:h+'px',marginTop:mt,marginBottom:mb},
+    {transform:'translateX(90px)',opacity:0,maxHeight:h+'px',marginTop:mt,marginBottom:mb,offset:.6},
+    {transform:'translateX(90px)',opacity:0,maxHeight:'0px',marginTop:'0px',marginBottom:'0px'}
+  ],{duration:400,easing:'cubic-bezier(.4,0,.6,1)',fill:'forwards'});
+  a.onfinish=finir;
+  setTimeout(finir,700); // filet de sécurité si l'animation ne se termine pas
+}
+
+// Une ligne qui vient d'être ajoutée entre par la droite (le miroir exact de la
+// suppression, qui sort par la droite), avec un contour vert qui pulse.
+function popInRow(el){
+  if(!el||_animOff()||!el.animate)return;
+  el.style.outlineStyle='solid';el.style.outlineWidth='2px';
+  el.animate([
+    {transform:'translateX(95px) scale(.94)',opacity:0,outlineColor:'rgba(29,158,117,0)',outlineOffset:'0px'},
+    {transform:'translateX(-10px) scale(1.02)',opacity:1,outlineColor:'rgba(29,158,117,.95)',outlineOffset:'5px',offset:.45},
+    {transform:'translateX(3px) scale(1)',opacity:1,outlineColor:'rgba(29,158,117,.55)',outlineOffset:'3px',offset:.72},
+    {transform:'none',opacity:1,outlineColor:'rgba(29,158,117,0)',outlineOffset:'0px'}
+  ],{duration:760,easing:'cubic-bezier(.25,.9,.3,1)',fill:'both'});
+  setTimeout(()=>{el.style.outlineStyle='';el.style.outlineWidth='';},820);
+}
+
+// Amène un élément bien en vue, PUIS joue l'animation (sinon elle se déroule
+// pendant que la page défile encore, et on ne la voit pas).
+function amenerPuisAnimer(el,anim){
+  if(!el){return;}
+  const r=el.getBoundingClientRect();
+  const dejaVisible=r.top>60 && r.bottom<window.innerHeight-60;
+  if(dejaVisible){anim(el);return;}
+  try{el.scrollIntoView({behavior:'smooth',block:'center'});}catch(_){el.scrollIntoView();}
+  // On attend que le défilement se stabilise (max ~700 ms)
+  let derniere=null,stable=0,tours=0;
+  const verifier=()=>{
+    const y=Math.round(el.getBoundingClientRect().top);
+    if(y===derniere) stable++; else {stable=0;derniere=y;}
+    tours++;
+    if(stable>=3||tours>42){anim(el);return;}
+    requestAnimationFrame(verifier);
+  };
+  requestAnimationFrame(verifier);
+}
+
+// Une icône qui frémit (la poubelle au moment du clic)
+function shakeIcon(btn){
+  const el=(btn&&btn.querySelector&&btn.querySelector('.ico-fx'))||btn;
+  if(!el||_animOff())return;
+  el.classList.remove('icon-shake');void el.offsetWidth;el.classList.add('icon-shake');
+}
+
+// De mini étincelles qui jaillissent d'un élément (l'étoile favori)
+function sparkle(el,couleur){
+  if(!el||_animOff())return;
+  const r=el.getBoundingClientRect();
+  const cx=r.left+r.width/2, cy=r.top+r.height/2;
+  for(let i=0;i<7;i++){
+    const p=document.createElement('span');
+    p.className='sparkle';
+    const ang=(-90+(i-3)*32+(Math.random()*18-9))*Math.PI/180;
+    const d=15+Math.random()*15;
+    p.style.left=cx+'px';p.style.top=cy+'px';
+    p.style.background=couleur||'#f5c451';
+    p.style.setProperty('--dx',(Math.cos(ang)*d).toFixed(1)+'px');
+    p.style.setProperty('--dy',(Math.sin(ang)*d).toFixed(1)+'px');
+    p.style.animationDelay=(i*16)+'ms';
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),750);
+  }
+}
+
+// Fait faire un tour complet à une icône au moment du clic (ex. le 🔄 « Remplacer »)
+function spinIcon(btn){
+  const el=(btn&&btn.querySelector&&btn.querySelector('.ico-swap'))||btn;
+  if(!el)return;
+  el.classList.remove('icon-spin');void el.offsetWidth;el.classList.add('icon-spin');
+}
 function shakeNo(el){if(!el)return;el.classList.remove('shake-no');void el.offsetWidth;el.classList.add('shake-no');}
 
 
@@ -9900,6 +10274,8 @@ async function syncClients(){
     if(row.block_plan!==undefined){ row.blockPlan=row.block_plan; delete row.block_plan; }
     if(row.calculs_perte!==undefined){ row.calculsPerte=row.calculs_perte; delete row.calculs_perte; }
     if(row.jour_bilan!==undefined){ row.jourBilan=row.jour_bilan; delete row.jour_bilan; }
+    if(row.bilan_statut!==undefined){ row.bilanStatut=row.bilan_statut; delete row.bilan_statut; }
+    if(row.bilan_statut_semaine!==undefined){ row.bilanStatutSemaine=row.bilan_statut_semaine; delete row.bilan_statut_semaine; }
     if(row.diet_mode!==undefined){ row.dietMode=row.diet_mode; delete row.diet_mode; }
     if(!row.dietMode){ row.dietMode='flexible'; }
     return row;
@@ -10197,6 +10573,8 @@ async function saveClientToSupa(client){
     block_plan:client.blockPlan||null,
     calculs_perte:client.calculsPerte||null,
     jour_bilan:client.jourBilan||null,
+    bilan_statut:client.bilanStatut||null,
+    bilan_statut_semaine:client.bilanStatutSemaine||null,
     formule:client.formule||'suivi'
   };
   const existing=await supa('GET','clients','',`?id=eq.${client.id}`);
