@@ -178,6 +178,16 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 .section-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;padding:10px 16px 5px}
 .exo-cat-header{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--green-dark);text-transform:uppercase;letter-spacing:.04em;padding:9px 16px;margin-top:6px;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:2}
 .exo-cat-count{margin-left:auto;font-size:11px;font-weight:700;color:var(--text2);background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1px 8px;text-transform:none;letter-spacing:0}
+.exo-pat-header{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:var(--green-dark);text-transform:uppercase;letter-spacing:.05em;padding:14px 16px 9px;margin-top:12px;border-top:1.5px dashed var(--border2)}
+.exo-pat-header::before{content:'';width:4px;height:15px;border-radius:2px;background:var(--green);flex-shrink:0}
+.exo-pat-header.premier{margin-top:0;border-top:none;padding-top:11px}
+.exo-niv{display:inline-block;font-size:9.5px;font-weight:800;padding:1px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.exo-niv.deb{background:var(--green-light);color:var(--green-dark)}
+.exo-niv.inter{background:var(--amber-light);color:var(--amber)}
+.exo-niv-seg{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.exo-vue-seg{display:flex;gap:6px;margin-bottom:10px}
+.exo-vue-btn{flex:1;padding:7px 10px;font-size:12px;font-weight:700;border-radius:10px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+.exo-vue-btn.active{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
 .copy-client-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto}
 .copy-client-row{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);cursor:pointer;font-size:14px;color:var(--text);text-align:left}
 .copy-client-row:hover{border-color:var(--green);background:var(--green-light)}
@@ -2429,118 +2439,118 @@ function dedupeFullBody(exos){
 
 function defaultExos(){return [
   // ── JAMBES ──
-  {id:'e1',nom:'Squat barre',cat:'Jambes',desc:"Barre sur le dos, pieds largeur épaules, descente cuisses parallèles au sol. Genoux dans l'axe des orteils."},
-  {id:'e2',nom:'Squat bulgare',cat:'Jambes',desc:"Pied arrière posé sur un banc, descente en fente. Excellente isolation du quadriceps et du fessier. Haltères ou barre."},
-  {id:'e3',nom:'Squat gobelet',cat:'Jambes',desc:"Haltère tenu devant la poitrine. Idéal pour apprendre le squat ou travailler en haute répétition."},
-  {id:'e4',nom:'Squat sumo',cat:'Jambes',desc:"Pieds très écartés, orteils vers l'extérieur. Sollicite davantage les adducteurs et les fessiers."},
-  {id:'e5',nom:'Presse à cuisses',cat:'Jambes',desc:"Presse horizontale ou inclinée. Pieds haut = fessiers/ischios, pieds bas = quadriceps."},
-  {id:'e6',nom:'Fentes marchées',cat:'Jambes',desc:"Fentes en avançant, haltères ou barre. Travaille l'équilibre et la coordination en plus des jambes."},
-  {id:'e7',nom:'Fentes statiques',cat:'Jambes',desc:"Position de fente fixe, descente verticale. Plus stable que les fentes marchées."},
-  {id:'e8',nom:'Fentes latérales',cat:'Jambes',desc:"Pas latéral avec flexion d'un genou, l'autre jambe tendue. Sollicite les adducteurs et le fessier médian."},
-  {id:'e9',nom:'Leg curl couché',cat:'Jambes',desc:"Isolation des ischio-jambiers allongé. Bien contrôler la descente (phase excentrique)."},
-  {id:'e10',nom:'Leg curl assis',cat:'Jambes',desc:"Isolation des ischio-jambiers assis. Étirement plus long qu'en version couchée."},
-  {id:'e11',nom:'Leg extension',cat:'Jambes',desc:"Isolation des quadriceps. Extension complète en haut, contrôler la descente. Ne pas verrouiller le genou."},
-  {id:'e12',nom:'Mollets debout',cat:'Jambes',desc:"Élévations sur la pointe des pieds, jambes tendues. Talons qui descendent bien pour étirer."},
-  {id:'e13',nom:'Mollets assis',cat:'Jambes',desc:"Élévations en position assise, genou à 90°. Sollicite le soléaire davantage."},
-  {id:'e14',nom:'Good morning',cat:'Jambes',desc:"Barre sur le dos, inclinaison du buste en avant. Renforce les ischios et les érecteurs spinaux."},
-  {id:'e15',nom:'Hack squat',cat:'Jambes',desc:"Machine hack squat ou barre derrière les mollets. Cible le vaste médial (intérieur du quadriceps)."},
-  {id:'e16',nom:'Romanian deadlift',cat:'Jambes',desc:"Barre ou haltères, descente le long des jambes quasi-tendues. Étirement profond ischios et fessiers."},
+  {id:'e1',nom:'Squat barre',cat:'Jambes',niveau:'intermediaire',pattern:'squat',desc:"Barre sur le dos, pieds largeur épaules, descente cuisses parallèles au sol. Genoux dans l'axe des orteils."},
+  {id:'e2',nom:'Squat bulgare',cat:'Jambes',niveau:'intermediaire',pattern:'fente',desc:"Pied arrière posé sur un banc, descente en fente. Excellente isolation du quadriceps et du fessier. Haltères ou barre."},
+  {id:'e3',nom:'Squat gobelet',cat:'Jambes',niveau:'debutant',desc:"Haltère tenu devant la poitrine. Idéal pour apprendre le squat ou travailler en haute répétition."},
+  {id:'e4',nom:'Squat sumo',cat:'Jambes',niveau:'debutant',pattern:'squat',desc:"Pieds très écartés, orteils vers l'extérieur. Sollicite davantage les adducteurs et les fessiers."},
+  {id:'e5',nom:'Presse à cuisses',cat:'Jambes',niveau:'debutant',pattern:'squat',desc:"Presse horizontale ou inclinée. Pieds haut = fessiers/ischios, pieds bas = quadriceps."},
+  {id:'e6',nom:'Fentes marchées',cat:'Jambes',niveau:'intermediaire',pattern:'fente',desc:"Fentes en avançant, haltères ou barre. Travaille l'équilibre et la coordination en plus des jambes."},
+  {id:'e7',nom:'Fentes statiques',cat:'Jambes',niveau:'debutant',pattern:'fente',desc:"Position de fente fixe, descente verticale. Plus stable que les fentes marchées."},
+  {id:'e8',nom:'Fentes latérales',cat:'Jambes',niveau:'debutant',pattern:'fente',desc:"Pas latéral avec flexion d'un genou, l'autre jambe tendue. Sollicite les adducteurs et le fessier médian."},
+  {id:'e9',nom:'Leg curl couché',cat:'Jambes',niveau:'debutant',pattern:'ischios',desc:"Isolation des ischio-jambiers allongé. Bien contrôler la descente (phase excentrique)."},
+  {id:'e10',nom:'Leg curl assis',cat:'Jambes',niveau:'debutant',pattern:'ischios',desc:"Isolation des ischio-jambiers assis. Étirement plus long qu'en version couchée."},
+  {id:'e11',nom:'Leg extension',cat:'Jambes',niveau:'debutant',pattern:'quadri',desc:"Isolation des quadriceps. Extension complète en haut, contrôler la descente. Ne pas verrouiller le genou."},
+  {id:'e12',nom:'Mollets debout',cat:'Jambes',niveau:'debutant',pattern:'mollets',desc:"Élévations sur la pointe des pieds, jambes tendues. Talons qui descendent bien pour étirer."},
+  {id:'e13',nom:'Mollets assis',cat:'Jambes',niveau:'debutant',desc:"Élévations en position assise, genou à 90°. Sollicite le soléaire davantage."},
+  {id:'e14',nom:'Good morning',cat:'Jambes',niveau:'intermediaire',pattern:'charniere',desc:"Barre sur le dos, inclinaison du buste en avant. Renforce les ischios et les érecteurs spinaux."},
+  {id:'e15',nom:'Hack squat',cat:'Jambes',niveau:'debutant',pattern:'squat',desc:"Machine hack squat ou barre derrière les mollets. Cible le vaste médial (intérieur du quadriceps)."},
+  {id:'e16',nom:'Romanian deadlift',cat:'Jambes',niveau:'debutant',desc:"Barre ou haltères, descente le long des jambes quasi-tendues. Étirement profond ischios et fessiers."},
   // ── FESSIERS ──
-  {id:'e20',nom:'Hip thrust',cat:'Fessiers',desc:"Épaules sur un banc, barre sur les hanches. Meilleur exercice d'activation des fessiers. Serrer les fessiers en haut."},
-  {id:'e21',nom:'Hip thrust unilatéral',cat:'Fessiers',desc:"Hip thrust sur une jambe. Correction des déséquilibres gauche/droite."},
-  {id:'e22',nom:'Abduction machine',cat:'Fessiers',desc:"Écart latéral des hanches assis en machine. Cible le fessier médian et petit fessier."},
-  {id:'e23',nom:'Abduction câble',cat:'Fessiers',desc:"Écart de jambe latéral à la poulie basse, debout. Meilleure amplitude que la machine."},
-  {id:'e24',nom:'Donkey kick',cat:'Fessiers',desc:"À quatre pattes, extension de hanche vers le haut. Peut se faire avec élastique ou à la poulie basse."},
-  {id:'e25',nom:'Fire hydrant',cat:'Fessiers',desc:"À quatre pattes, écart latéral de la jambe fléchie. Cible le fessier médian et la rotation externe."},
-  {id:'e26',nom:'Pont fessier',cat:'Fessiers',desc:"Allongée sur le dos, poussée des hanches vers le haut. Version au poids du corps du hip thrust."},
-  {id:'e27',nom:'Step up',cat:'Fessiers',desc:"Montée sur une boîte ou un banc une jambe à la fois. Haltères en mains. Excellent pour les fessiers."},
-  {id:'e28',nom:'Clamshell',cat:'Fessiers',desc:"Allongée sur le côté, genoux fléchis, ouverture du genou supérieur. Idéal avec élastique."},
+  {id:'e20',nom:'Hip thrust',cat:'Fessiers',niveau:'intermediaire',pattern:'hipthrust',desc:"Épaules sur un banc, barre sur les hanches. Meilleur exercice d'activation des fessiers. Serrer les fessiers en haut."},
+  {id:'e21',nom:'Hip thrust unilatéral',cat:'Fessiers',niveau:'debutant',pattern:'hipthrust',desc:"Hip thrust sur une jambe. Correction des déséquilibres gauche/droite."},
+  {id:'e22',nom:'Abduction machine',cat:'Fessiers',niveau:'debutant',pattern:'addabd',desc:"Écart latéral des hanches assis en machine. Cible le fessier médian et petit fessier."},
+  {id:'e23',nom:'Abduction câble',cat:'Fessiers',niveau:'debutant',pattern:'addabd',desc:"Écart de jambe latéral à la poulie basse, debout. Meilleure amplitude que la machine."},
+  {id:'e24',nom:'Donkey kick',cat:'Fessiers',niveau:'debutant',pattern:'hipthrust',desc:"À quatre pattes, extension de hanche vers le haut. Peut se faire avec élastique ou à la poulie basse."},
+  {id:'e25',nom:'Fire hydrant',cat:'Fessiers',niveau:'debutant',pattern:'addabd',desc:"À quatre pattes, écart latéral de la jambe fléchie. Cible le fessier médian et la rotation externe."},
+  {id:'e26',nom:'Pont fessier',cat:'Fessiers',niveau:'debutant',pattern:'hipthrust',desc:"Allongée sur le dos, poussée des hanches vers le haut. Version au poids du corps du hip thrust."},
+  {id:'e27',nom:'Step up',cat:'Fessiers',niveau:'debutant',pattern:'fente',desc:"Montée sur une boîte ou un banc une jambe à la fois. Haltères en mains. Excellent pour les fessiers."},
+  {id:'e28',nom:'Clamshell',cat:'Fessiers',niveau:'debutant',pattern:'addabd',desc:"Allongée sur le côté, genoux fléchis, ouverture du genou supérieur. Idéal avec élastique."},
   // ── PECTORAUX ──
-  {id:'e40',nom:'Développé couché barre',cat:'Pectoraux',desc:"Prise légèrement plus large que les épaules. Descente contrôlée jusqu'à effleurer la poitrine."},
-  {id:'e41',nom:'Développé couché haltères',cat:'Pectoraux',desc:"Amplitude plus grande qu'avec la barre. Meilleur étirement des pectoraux en bas du mouvement."},
-  {id:'e42',nom:'Développé incliné barre',cat:'Pectoraux',desc:"Banc incliné 30-45°. Cible la partie haute des pectoraux et les deltoïdes antérieurs."},
-  {id:'e43',nom:'Développé incliné haltères',cat:'Pectoraux',desc:"Plus d'amplitude que la barre. Idéal pour la partie haute des pectoraux."},
-  {id:'e44',nom:'Écarté haltères couché',cat:'Pectoraux',desc:"Ouverture des bras, légère flexion des coudes. Isolation pectoraux, étirement maximum."},
-  {id:'e45',nom:'Écarté poulie haute',cat:'Pectoraux',desc:"Poulies hautes, adduction des bras vers le bas. Tension constante sur les pectoraux."},
-  {id:'e46',nom:'Écarté poulie basse',cat:'Pectoraux',desc:"Poulies basses, mouvement vers le haut. Cible la partie haute des pectoraux."},
-  {id:'e47',nom:'Pompes',cat:'Pectoraux',desc:"Mains écartées = pectoraux, mains serrées = triceps. Progression : genoux → pointes → lestées."},
-  {id:'e48',nom:'Pompes inclinées',cat:'Pectoraux',desc:"Pieds surélevés sur un banc. Cible la partie haute des pectoraux."},
-  {id:'e49',nom:'Dips pectoraux',cat:'Pectoraux',desc:"Buste incliné en avant, coudes légèrement écartés. Cible la partie basse des pectoraux."},
+  {id:'e40',nom:'Développé couché barre',cat:'Pectoraux',niveau:'debutant',desc:"Prise légèrement plus large que les épaules. Descente contrôlée jusqu'à effleurer la poitrine."},
+  {id:'e41',nom:'Développé couché haltères',cat:'Pectoraux',niveau:'intermediaire',pattern:'dev_horizontal',desc:"Amplitude plus grande qu'avec la barre. Meilleur étirement des pectoraux en bas du mouvement."},
+  {id:'e42',nom:'Développé incliné barre',cat:'Pectoraux',niveau:'debutant',desc:"Banc incliné 30-45°. Cible la partie haute des pectoraux et les deltoïdes antérieurs."},
+  {id:'e43',nom:'Développé incliné haltères',cat:'Pectoraux',niveau:'intermediaire',pattern:'dev_incline',desc:"Plus d'amplitude que la barre. Idéal pour la partie haute des pectoraux."},
+  {id:'e44',nom:'Écarté haltères couché',cat:'Pectoraux',niveau:'intermediaire',pattern:'ecarte',desc:"Ouverture des bras, légère flexion des coudes. Isolation pectoraux, étirement maximum."},
+  {id:'e45',nom:'Écarté poulie haute',cat:'Pectoraux',niveau:'debutant',pattern:'ecarte',desc:"Poulies hautes, adduction des bras vers le bas. Tension constante sur les pectoraux."},
+  {id:'e46',nom:'Écarté poulie basse',cat:'Pectoraux',niveau:'debutant',pattern:'ecarte',desc:"Poulies basses, mouvement vers le haut. Cible la partie haute des pectoraux."},
+  {id:'e47',nom:'Pompes',cat:'Pectoraux',niveau:'debutant',desc:"Mains écartées = pectoraux, mains serrées = triceps. Progression : genoux → pointes → lestées."},
+  {id:'e48',nom:'Pompes inclinées',cat:'Pectoraux',niveau:'debutant',pattern:'dev_horizontal',desc:"Pieds surélevés sur un banc. Cible la partie haute des pectoraux."},
+  {id:'e49',nom:'Dips pectoraux',cat:'Pectoraux',niveau:'debutant',desc:"Buste incliné en avant, coudes légèrement écartés. Cible la partie basse des pectoraux."},
   // ── DOS ──
-  {id:'e60',nom:'Tractions pronation',cat:'Dos',desc:"Prise en pronation large. Cible le grand dorsal. Le roi des exercices de dos."},
-  {id:'e61',nom:'Tractions supination',cat:'Dos',desc:"Prise en supination (paumes vers soi). Plus de biceps impliqués, accessible aux débutantes."},
-  {id:'e62',nom:'Tractions neutres',cat:'Dos',desc:"Prise neutre (paumes face à face). Moins de stress sur les épaules."},
-  {id:'e63',nom:'Rowing barre',cat:'Dos',desc:"Buste penché à 45°, tirer vers l'abdomen. Prise large = grand dorsal, serrée = trapèzes."},
-  {id:'e64',nom:'Rowing haltère',cat:'Dos',desc:"Tirage unilatéral, genou et main sur le banc. Bonne amplitude, corrige les déséquilibres."},
-  {id:'e65',nom:'Rowing câble assis',cat:'Dos',desc:"Poulie basse, tirer vers le ventre prise neutre. Épaisseur du dos et rhomboïdes."},
-  {id:'e66',nom:'Tirage vertical prise large',cat:'Dos',desc:"Poulie haute, prise pronation large. Grand dorsal, mouvement de largeur."},
-  {id:'e67',nom:'Tirage vertical prise serrée',cat:'Dos',desc:"Poulie haute, prise neutre serrée. Plus d'amplitude, bon pour l'épaisseur."},
-  {id:'e68',nom:'Pull-over haltère',cat:'Dos',desc:"Couché sur banc, haltère à deux mains, descente derrière la tête. Étire le grand dorsal."},
-  {id:'e69',nom:'Face pull',cat:'Dos',desc:"Poulie haute avec corde, tirer vers le visage coudes hauts. Excellent pour les trapèzes et deltoïdes postérieurs."},
-  {id:'e70',nom:'Soulevé de terre conventionnel',cat:'Dos',desc:"Tirage depuis le sol, dos droit. Exercice complet : dos, jambes, hanches. Technique irréprochable obligatoire."},
-  {id:'e71',nom:'Soulevé de terre sumo',cat:'Dos',desc:"Pieds très écartés, prise serrée. Plus de hanches et adducteurs, moins de bas du dos."},
-  {id:'e72',nom:'Hyperextensions',cat:'Dos',desc:"Banc à lombaires, inclinaison du buste puis remontée. Renforce les érecteurs spinaux et fessiers."},
-  {id:'e73',nom:'Shrugs',cat:'Dos',desc:"Haussements d'épaules avec barre ou haltères lourds. Cible les trapèzes supérieurs."},
+  {id:'e60',nom:'Tractions pronation',cat:'Dos',niveau:'intermediaire',pattern:'tirage_vertical',desc:"Prise en pronation large. Cible le grand dorsal. Le roi des exercices de dos."},
+  {id:'e61',nom:'Tractions supination',cat:'Dos',niveau:'intermediaire',pattern:'tirage_vertical',desc:"Prise en supination (paumes vers soi). Plus de biceps impliqués, accessible aux débutantes."},
+  {id:'e62',nom:'Tractions neutres',cat:'Dos',niveau:'intermediaire',pattern:'tirage_vertical',desc:"Prise neutre (paumes face à face). Moins de stress sur les épaules."},
+  {id:'e63',nom:'Rowing barre',cat:'Dos',niveau:'intermediaire',pattern:'rowing',desc:"Buste penché à 45°, tirer vers l'abdomen. Prise large = grand dorsal, serrée = trapèzes."},
+  {id:'e64',nom:'Rowing haltère',cat:'Dos',niveau:'debutant',pattern:'rowing',desc:"Tirage unilatéral, genou et main sur le banc. Bonne amplitude, corrige les déséquilibres."},
+  {id:'e65',nom:'Rowing câble assis',cat:'Dos',niveau:'debutant',pattern:'rowing',desc:"Poulie basse, tirer vers le ventre prise neutre. Épaisseur du dos et rhomboïdes."},
+  {id:'e66',nom:'Tirage vertical prise large',cat:'Dos',niveau:'debutant',pattern:'tirage_vertical',desc:"Poulie haute, prise pronation large. Grand dorsal, mouvement de largeur."},
+  {id:'e67',nom:'Tirage vertical prise serrée',cat:'Dos',niveau:'debutant',pattern:'tirage_vertical',desc:"Poulie haute, prise neutre serrée. Plus d'amplitude, bon pour l'épaisseur."},
+  {id:'e68',nom:'Pull-over haltère',cat:'Dos',niveau:'intermediaire',pattern:'pullover',desc:"Couché sur banc, haltère à deux mains, descente derrière la tête. Étire le grand dorsal."},
+  {id:'e69',nom:'Face pull',cat:'Dos',niveau:'debutant',pattern:'arriere_epaule',desc:"Poulie haute avec corde, tirer vers le visage coudes hauts. Excellent pour les trapèzes et deltoïdes postérieurs."},
+  {id:'e70',nom:'Soulevé de terre conventionnel',cat:'Dos',niveau:'intermediaire',pattern:'charniere',desc:"Tirage depuis le sol, dos droit. Exercice complet : dos, jambes, hanches. Technique irréprochable obligatoire."},
+  {id:'e71',nom:'Soulevé de terre sumo',cat:'Dos',niveau:'intermediaire',pattern:'charniere',desc:"Pieds très écartés, prise serrée. Plus de hanches et adducteurs, moins de bas du dos."},
+  {id:'e72',nom:'Hyperextensions',cat:'Dos',niveau:'debutant',desc:"Banc à lombaires, inclinaison du buste puis remontée. Renforce les érecteurs spinaux et fessiers."},
+  {id:'e73',nom:'Shrugs',cat:'Dos',niveau:'debutant',pattern:'shrug',desc:"Haussements d'épaules avec barre ou haltères lourds. Cible les trapèzes supérieurs."},
   // ── ÉPAULES ──
-  {id:'e80',nom:'Développé militaire barre',cat:'Épaules',desc:"Presse verticale debout ou assis. Cible deltoïdes antérieurs et médians."},
-  {id:'e81',nom:'Développé militaire haltères',cat:'Épaules',desc:"Plus d'amplitude qu'avec la barre. Meilleure activation des stabilisateurs."},
-  {id:'e82',nom:'Élévations latérales haltères',cat:'Épaules',desc:"Isolation du deltoïde médian. Légèrement penché en avant, montée jusqu'à l'horizontal. Poids léger."},
-  {id:'e83',nom:'Élévations latérales câble',cat:'Épaules',desc:"Poulie basse, tension constante. Excellent pour finir le deltoïde médian."},
-  {id:'e84',nom:'Élévations frontales',cat:'Épaules',desc:"Montée des bras devant soi. Isole le deltoïde antérieur. Haltères alternés ou barre."},
-  {id:'e85',nom:'Oiseau haltères',cat:'Épaules',desc:"Buste penché à 90°, élévations latérales. Cible le deltoïde postérieur et trapèzes."},
-  {id:'e86',nom:'Oiseau câble',cat:'Épaules',desc:"Poulie haute croisée, tirage vers l'arrière. Tension constante sur le deltoïde postérieur."},
-  {id:'e87',nom:'Arnold press',cat:'Épaules',desc:"Rotation des paumes pendant la pression. Travaille les trois faisceaux du deltoïde."},
+  {id:'e80',nom:'Développé militaire barre',cat:'Épaules',niveau:'debutant',desc:"Presse verticale debout ou assis. Cible deltoïdes antérieurs et médians."},
+  {id:'e81',nom:'Développé militaire haltères',cat:'Épaules',niveau:'intermediaire',pattern:'dev_vertical',desc:"Plus d'amplitude qu'avec la barre. Meilleure activation des stabilisateurs."},
+  {id:'e82',nom:'Élévations latérales haltères',cat:'Épaules',niveau:'debutant',pattern:'elev_lat',desc:"Isolation du deltoïde médian. Légèrement penché en avant, montée jusqu'à l'horizontal. Poids léger."},
+  {id:'e83',nom:'Élévations latérales câble',cat:'Épaules',niveau:'debutant',pattern:'elev_lat',desc:"Poulie basse, tension constante. Excellent pour finir le deltoïde médian."},
+  {id:'e84',nom:'Élévations frontales',cat:'Épaules',niveau:'debutant',pattern:'dev_vertical',desc:"Montée des bras devant soi. Isole le deltoïde antérieur. Haltères alternés ou barre."},
+  {id:'e85',nom:'Oiseau haltères',cat:'Épaules',niveau:'debutant',pattern:'arriere_epaule',desc:"Buste penché à 90°, élévations latérales. Cible le deltoïde postérieur et trapèzes."},
+  {id:'e86',nom:'Oiseau câble',cat:'Épaules',niveau:'debutant',pattern:'arriere_epaule',desc:"Poulie haute croisée, tirage vers l'arrière. Tension constante sur le deltoïde postérieur."},
+  {id:'e87',nom:'Arnold press',cat:'Épaules',niveau:'intermediaire',pattern:'dev_vertical',desc:"Rotation des paumes pendant la pression. Travaille les trois faisceaux du deltoïde."},
   // ── BICEPS ──
-  {id:'e90',nom:'Curl haltères alterné',cat:'Biceps',desc:"Flexion alternée. Concentration sur chaque bras. Supination en haut du mouvement."},
-  {id:'e91',nom:'Curl barre droite',cat:'Biceps',desc:"Prise supination, coudes fixes. Exercice de base des biceps."},
-  {id:'e92',nom:'Curl barre EZ',cat:'Biceps',desc:"Moins de contrainte sur les poignets que la barre droite."},
-  {id:'e93',nom:'Curl marteau',cat:'Biceps',desc:"Prise neutre (pouce en haut). Sollicite le brachial antérieur et le brachio-radial."},
-  {id:'e94',nom:'Curl incliné',cat:'Biceps',desc:"Assis sur banc incliné, bras tendus vers le bas. Étirement maximal du biceps."},
-  {id:'e95',nom:'Curl concentré',cat:'Biceps',desc:"Coude appuyé sur la cuisse, mouvement isolé. Excellent pour le pic du biceps."},
-  {id:'e96',nom:'Curl câble bas',cat:'Biceps',desc:"Poulie basse, tension constante. Bon exercice de finition."},
-  {id:'e97',nom:'Curl pupitre',cat:'Biceps',desc:"Coudes posés sur le pupitre, isolation totale. Empêche de tricher avec les épaules."},
+  {id:'e90',nom:'Curl haltères alterné',cat:'Biceps',niveau:'debutant',pattern:'bi_court',desc:"Flexion alternée. Concentration sur chaque bras. Supination en haut du mouvement."},
+  {id:'e91',nom:'Curl barre droite',cat:'Biceps',niveau:'debutant',pattern:'bi_court',desc:"Prise supination, coudes fixes. Exercice de base des biceps."},
+  {id:'e92',nom:'Curl barre EZ',cat:'Biceps',niveau:'debutant',pattern:'bi_court',desc:"Moins de contrainte sur les poignets que la barre droite."},
+  {id:'e93',nom:'Curl marteau',cat:'Biceps',niveau:'debutant',pattern:'brachial',desc:"Prise neutre (pouce en haut). Sollicite le brachial antérieur et le brachio-radial."},
+  {id:'e94',nom:'Curl incliné',cat:'Biceps',niveau:'debutant',pattern:'bi_long',desc:"Assis sur banc incliné, bras tendus vers le bas. Étirement maximal du biceps."},
+  {id:'e95',nom:'Curl concentré',cat:'Biceps',niveau:'debutant',pattern:'bi_court',desc:"Coude appuyé sur la cuisse, mouvement isolé. Excellent pour le pic du biceps."},
+  {id:'e96',nom:'Curl câble bas',cat:'Biceps',niveau:'debutant',pattern:'bi_court',desc:"Poulie basse, tension constante. Bon exercice de finition."},
+  {id:'e97',nom:'Curl pupitre',cat:'Biceps',niveau:'debutant',pattern:'bi_court',desc:"Coudes posés sur le pupitre, isolation totale. Empêche de tricher avec les épaules."},
   // ── TRICEPS ──
-  {id:'e100',nom:'Triceps poulie haute corde',cat:'Triceps',desc:"Extension avec corde. Écarter les mains en bas pour plus d'amplitude."},
-  {id:'e101',nom:'Triceps poulie haute barre',cat:'Triceps',desc:"Extension avec barre droite ou EZ. Coudes fixes le long du corps."},
-  {id:'e102',nom:'Triceps poulie basse',cat:'Triceps',desc:"Extension vers le haut depuis une poulie basse. Travaille le long chef différemment."},
-  {id:'e103',nom:'Dips triceps banc',cat:'Triceps',desc:"Mains sur un banc, corps tendu. Plus facile que les dips parallèles."},
-  {id:'e104',nom:'Barre au front',cat:'Triceps',desc:"Allongée, barre EZ qui descend vers le front. Coudes fixes."},
-  {id:'e105',nom:'Extension haltère bilatérale',cat:'Triceps',desc:"Haltère à deux mains derrière la tête. Isolation du long chef du triceps."},
-  {id:'e106',nom:'Extension haltère unilatérale',cat:'Triceps',desc:"Haltère d'une main derrière la tête. Corrige les déséquilibres."},
-  {id:'e107',nom:'Kickback triceps',cat:'Triceps',desc:"Buste penché, extension du coude vers l'arrière. Garder le coude haut et fixe."},
+  {id:'e100',nom:'Triceps poulie haute corde',cat:'Triceps',niveau:'debutant',pattern:'tri_lateral',desc:"Extension avec corde. Écarter les mains en bas pour plus d'amplitude."},
+  {id:'e101',nom:'Triceps poulie haute barre',cat:'Triceps',niveau:'debutant',pattern:'tri_lateral',desc:"Extension avec barre droite ou EZ. Coudes fixes le long du corps."},
+  {id:'e102',nom:'Triceps poulie basse',cat:'Triceps',niveau:'debutant',pattern:'tri_long',desc:"Extension vers le haut depuis une poulie basse. Travaille le long chef différemment."},
+  {id:'e103',nom:'Dips triceps banc',cat:'Triceps',niveau:'debutant',desc:"Mains sur un banc, corps tendu. Plus facile que les dips parallèles."},
+  {id:'e104',nom:'Barre au front',cat:'Triceps',niveau:'intermediaire',pattern:'tri_long',desc:"Allongée, barre EZ qui descend vers le front. Coudes fixes."},
+  {id:'e105',nom:'Extension haltère bilatérale',cat:'Triceps',niveau:'debutant',pattern:'tri_long',desc:"Haltère à deux mains derrière la tête. Isolation du long chef du triceps."},
+  {id:'e106',nom:'Extension haltère unilatérale',cat:'Triceps',niveau:'debutant',pattern:'tri_long',desc:"Haltère d'une main derrière la tête. Corrige les déséquilibres."},
+  {id:'e107',nom:'Kickback triceps',cat:'Triceps',niveau:'debutant',pattern:'tri_lateral',desc:"Buste penché, extension du coude vers l'arrière. Garder le coude haut et fixe."},
   // ── ABDOMINAUX ──
-  {id:'e110',nom:'Crunch',cat:'Abdominaux',desc:"Flexion partielle du tronc. Ne pas tirer sur la nuque. Expirer en montant."},
-  {id:'e111',nom:'Crunch inversé',cat:'Abdominaux',desc:"Ramener les genoux vers la poitrine. Cible le bas des abdominaux."},
-  {id:'e112',nom:'Planche ventrale',cat:'Abdominaux',desc:"Appui avant-bras et orteils. Corps parfaitement aligné, pas de cambre."},
-  {id:'e113',nom:'Gainage latéral',cat:'Abdominaux',desc:"Appui sur un avant-bras, corps aligné. Cible les obliques et le carré des lombes."},
-  {id:'e114',nom:'Relevé de jambes suspendu',cat:'Abdominaux',desc:"Suspendu à une barre, ramener les jambes. Très intense pour le bas du ventre."},
-  {id:'e115',nom:'Russian twist',cat:'Abdominaux',desc:"Assis, pieds décollés, rotation du buste. Avec ou sans poids. Cible les obliques."},
-  {id:'e116',nom:'Bicycle crunch',cat:'Abdominaux',desc:"Alterner coude droit/genou gauche. Un des meilleurs pour les obliques."},
-  {id:'e117',nom:'Mountain climbers',cat:'Abdominaux',desc:"En position de pompe, genoux vers la poitrine rapidement. Cardio + gainage."},
-  {id:'e118',nom:'Dead bug',cat:'Abdominaux',desc:"Allongée, extension alternée bras/jambe opposés. Gainage profond, parfait pour débuter."},
-  {id:'e119',nom:'Pallof press',cat:'Abdominaux',desc:"À la poulie, pousser et ramener sans rotation. Gainage anti-rotation."},
+  {id:'e110',nom:'Crunch',cat:'Abdominaux',niveau:'debutant',pattern:'flexion',desc:"Flexion partielle du tronc. Ne pas tirer sur la nuque. Expirer en montant."},
+  {id:'e111',nom:'Crunch inversé',cat:'Abdominaux',niveau:'debutant',desc:"Ramener les genoux vers la poitrine. Cible le bas des abdominaux."},
+  {id:'e112',nom:'Planche ventrale',cat:'Abdominaux',niveau:'debutant',pattern:'anti_ext',desc:"Appui avant-bras et orteils. Corps parfaitement aligné, pas de cambre."},
+  {id:'e113',nom:'Gainage latéral',cat:'Abdominaux',niveau:'debutant',pattern:'anti_incl',desc:"Appui sur un avant-bras, corps aligné. Cible les obliques et le carré des lombes."},
+  {id:'e114',nom:'Relevé de jambes suspendu',cat:'Abdominaux',niveau:'debutant',desc:"Suspendu à une barre, ramener les jambes. Très intense pour le bas du ventre."},
+  {id:'e115',nom:'Russian twist',cat:'Abdominaux',niveau:'debutant',pattern:'rotation',desc:"Assis, pieds décollés, rotation du buste. Avec ou sans poids. Cible les obliques."},
+  {id:'e116',nom:'Bicycle crunch',cat:'Abdominaux',niveau:'debutant',pattern:'rotation',desc:"Alterner coude droit/genou gauche. Un des meilleurs pour les obliques."},
+  {id:'e117',nom:'Mountain climbers',cat:'Abdominaux',niveau:'debutant',pattern:'anti_ext',desc:"En position de pompe, genoux vers la poitrine rapidement. Cardio + gainage."},
+  {id:'e118',nom:'Dead bug',cat:'Abdominaux',niveau:'debutant',pattern:'anti_ext',desc:"Allongée, extension alternée bras/jambe opposés. Gainage profond, parfait pour débuter."},
+  {id:'e119',nom:'Pallof press',cat:'Abdominaux',niveau:'debutant',pattern:'anti_rot',desc:"À la poulie, pousser et ramener sans rotation. Gainage anti-rotation."},
   // ── FULL BODY ──
   // ── CARDIO ──
-  {id:'ec1',nom:'Course à pied',cat:'Cardio',desc:"Running extérieur ou tapis. Travail cardiovasculaire, endurance. Varier allure et durée selon l'objectif."},
-  {id:'ec2',nom:'Vélo (cardio)',cat:'Cardio',desc:"Vélo stationnaire ou spinning. Faible impact articulaire, idéal pour récupération active ou cardio intense."},
-  {id:'ec3',nom:'Escaliers',cat:'Cardio',desc:"Montée et descente d'escaliers. Excellent cardio + sollicitation des fessiers et quadriceps. En continu ou par intervalles."},
-  {id:'ec4',nom:'Rameur',cat:'Cardio',desc:"Machine rameur. Cardio complet mobilisant dos, bras et jambes. Très efficace pour brûler des calories."},
-  {id:'ec5',nom:'Elliptique',cat:'Cardio',desc:"Machine elliptique. Sans impact, préserve les articulations. Idéal en récupération ou pour débutants."},
-  {id:'ec6',nom:'Corde à sauter',cat:'Cardio',desc:"Sauts à la corde, simple ou double. Cardio intense, coordination et explosivité. Excellente chauffe."},
-  {id:'ec7',nom:'Natation',cat:'Cardio',desc:"Nage en piscine. Cardio complet et sans impact. Travail de tout le corps, idéal pour récupération active."},
-  {id:'ec8',nom:'Marche rapide',cat:'Cardio',desc:"Marche à allure soutenue, extérieur ou tapis incliné. Cardio doux, parfait pour les jours de récupération."},
-  {id:'ec9',nom:'HIIT',cat:'Cardio',desc:"Intervalles haute intensité. Alterner effort maximal (20-40s) et récupération (10-20s). Brûle beaucoup en peu de temps."},
-  {id:'ec10',nom:'Jumping jacks',cat:'Cardio',desc:"Sauts avec écart des jambes et lever des bras simultané. Cardio simple sans matériel, bonne mise en chauffe."},
-  {id:'ec11',nom:'Stepper',cat:'Cardio',desc:"Machine à marches. Cardio ciblant fessiers et jambes. Excellent pour sculpter les cuisses en faisant du cardio."},
-  {id:'ec12',nom:'Sprint',cat:'Cardio',desc:"Course à vitesse maximale sur courte distance (20-100m). Pliométrie et cardio explosif. Brûle les graisses efficacement."},
-  {id:'ec13',nom:'Marche',cat:'Cardio',desc:"Marche à allure normale, extérieur ou tapis. Cardio très doux, idéal pour les jours off ou la récupération légère."},
+  {id:'ec1',nom:'Course à pied',cat:'Cardio',niveau:'debutant',desc:"Running extérieur ou tapis. Travail cardiovasculaire, endurance. Varier allure et durée selon l'objectif."},
+  {id:'ec2',nom:'Vélo (cardio)',cat:'Cardio',niveau:'debutant',desc:"Vélo stationnaire ou spinning. Faible impact articulaire, idéal pour récupération active ou cardio intense."},
+  {id:'ec3',nom:'Escaliers',cat:'Cardio',niveau:'debutant',desc:"Montée et descente d'escaliers. Excellent cardio + sollicitation des fessiers et quadriceps. En continu ou par intervalles."},
+  {id:'ec4',nom:'Rameur',cat:'Cardio',niveau:'debutant',desc:"Machine rameur. Cardio complet mobilisant dos, bras et jambes. Très efficace pour brûler des calories."},
+  {id:'ec5',nom:'Elliptique',cat:'Cardio',niveau:'debutant',desc:"Machine elliptique. Sans impact, préserve les articulations. Idéal en récupération ou pour débutants."},
+  {id:'ec6',nom:'Corde à sauter',cat:'Cardio',niveau:'debutant',desc:"Sauts à la corde, simple ou double. Cardio intense, coordination et explosivité. Excellente chauffe."},
+  {id:'ec7',nom:'Natation',cat:'Cardio',niveau:'debutant',desc:"Nage en piscine. Cardio complet et sans impact. Travail de tout le corps, idéal pour récupération active."},
+  {id:'ec8',nom:'Marche rapide',cat:'Cardio',niveau:'debutant',desc:"Marche à allure soutenue, extérieur ou tapis incliné. Cardio doux, parfait pour les jours de récupération."},
+  {id:'ec9',nom:'HIIT',cat:'Cardio',niveau:'intermediaire',desc:"Intervalles haute intensité. Alterner effort maximal (20-40s) et récupération (10-20s). Brûle beaucoup en peu de temps."},
+  {id:'ec10',nom:'Jumping jacks',cat:'Cardio',niveau:'debutant',desc:"Sauts avec écart des jambes et lever des bras simultané. Cardio simple sans matériel, bonne mise en chauffe."},
+  {id:'ec11',nom:'Stepper',cat:'Cardio',niveau:'debutant',desc:"Machine à marches. Cardio ciblant fessiers et jambes. Excellent pour sculpter les cuisses en faisant du cardio."},
+  {id:'ec12',nom:'Sprint',cat:'Cardio',niveau:'intermediaire',desc:"Course à vitesse maximale sur courte distance (20-100m). Pliométrie et cardio explosif. Brûle les graisses efficacement."},
+  {id:'ec13',nom:'Marche',cat:'Cardio',niveau:'debutant',desc:"Marche à allure normale, extérieur ou tapis. Cardio très doux, idéal pour les jours off ou la récupération légère."},
   // ── FULL BODY ──
-  {id:'e130',nom:'Burpee',cat:'Full body',desc:"Squat thrust + pompe + saut. Exercice complet cardio-musculaire."},
-  {id:'e131',nom:'Thrusters',cat:'Full body',desc:"Squat + développé militaire enchaînés. Haltères ou barre. Très intense."},
-  {id:'e132',nom:'Kettlebell swing',cat:'Full body',desc:"Balancé de kettlebell entre les jambes puis vers l'avant. Pousse avec les hanches. Fessiers + cardio."},
-  {id:'e133',nom:'Farmer walk',cat:'Full body',desc:"Marcher avec des poids lourds dans les mains. Renforce la poigne, les trapèzes, le gainage."},
-  {id:'e134',nom:'Jump squat',cat:'Full body',desc:"Squat avec saut explosif. Pliométrie pour développer la puissance des jambes."},
-  {id:'e135',nom:'Box jump',cat:'Full body',desc:"Saut sur une boîte pliométrique. Développe la puissance explosive."},
+  {id:'e130',nom:'Burpee',cat:'Full body',niveau:'intermediaire',desc:"Squat thrust + pompe + saut. Exercice complet cardio-musculaire."},
+  {id:'e131',nom:'Thrusters',cat:'Full body',niveau:'intermediaire',desc:"Squat + développé militaire enchaînés. Haltères ou barre. Très intense."},
+  {id:'e132',nom:'Kettlebell swing',cat:'Full body',niveau:'intermediaire',desc:"Balancé de kettlebell entre les jambes puis vers l'avant. Pousse avec les hanches. Fessiers + cardio."},
+  {id:'e133',nom:'Farmer walk',cat:'Full body',niveau:'debutant',pattern:'anti_incl',desc:"Marcher avec des poids lourds dans les mains. Renforce la poigne, les trapèzes, le gainage."},
+  {id:'e134',nom:'Jump squat',cat:'Full body',niveau:'intermediaire',desc:"Squat avec saut explosif. Pliométrie pour développer la puissance des jambes."},
+  {id:'e135',nom:'Box jump',cat:'Full body',niveau:'intermediaire',desc:"Saut sur une boîte pliométrique. Développe la puissance explosive."},
 ]}
 
 // ─────────────────────────────────────────
@@ -5936,6 +5946,79 @@ function updateLogSerie(ei,si,field,val,inputEl){
 // ─────────────────────────────────────────
 // RÉCAP HEBDOMADAIRE COACH
 // ─────────────────────────────────────────
+
+// ── SCORE DE FORCE D'UNE SÉRIE ───────────────────────────────────────────
+// Regarder la charge et les répétitions chacune de leur côté n'a pas de sens :
+// passer de 20kg×10 à 25kg×8 est une progression, même si les reps baissent ;
+// passer de 25kg×8 à 20kg×12 n'en est pas une, même si les reps montent.
+// On combine donc les deux en UN seul score (formule d'Epley, la charge que la
+// cliente pourrait soulever une seule fois), et c'est lui qu'on compare.
+//   20kg × 10 → 26,7   |   25kg × 8 → 31,7   |   20kg × 12 → 28,0
+function scoreSerie(s){
+  const p=parseFloat(String((s&&s.poids)||'').replace(',','.'))||0;
+  const r=parseInt((s&&s.reps)||0,10)||0;
+  if(!p&&!r) return 0;
+  return (p>0?p:1)*(1+r/30); // sans charge (poids du corps), seules les reps comptent
+}
+// En dessous de 1,5 % d'écart, on considère que c'est stable : inutile de
+// crier victoire pour 200g de plus.
+const SEUIL_PROGRESSION=0.015;
+
+// ── DÉTECTION DE STAGNATION ──────────────────────────────────────────────
+// Pour chaque exercice on relève le meilleur score de chaque séance passée.
+// Si le record personnel n'a pas été battu depuis au moins 4 séances ET
+// 3 semaines, il y a stagnation. Les deux conditions ensemble évitent les
+// fausses alertes : personne ne bat un record à chaque séance.
+// On distingue ensuite deux situations, qui n'appellent pas la même décision :
+//   · plateau   → les dernières séances restent proches du record
+//   · en baisse → elles sont nettement en dessous (plus de 5 %)
+const STAG_SEANCES_MIN=4;   // séances écoulées depuis le record
+const STAG_JOURS_MIN=21;    // ... et au moins 3 semaines
+const STAG_SEUIL_BAISSE=0.95;
+
+// Meilleur score d'un exercice sur une séance (la durée fait foi en cardio)
+function scoreExoDansLog(exo){
+  if(!exo) return 0;
+  const series=exo.series||[];
+  if(exo.cat==='Cardio') return Math.max(0,...series.map(x=>parseFloat(String(x.duree||'').replace(',','.'))||0));
+  return Math.max(0,...series.map(scoreSerie));
+}
+
+// Renvoie null si tout va bien, sinon {type,semaines,seances}
+function analyseStagnation(allLogs,exoId,dateRef){
+  if(!exoId) return null;
+  const refT=new Date(dateRef).getTime();
+  const hist=[];
+  (allLogs||[]).forEach(l=>{
+    if(new Date(l.date).getTime()>refT) return; // on ignore l'avenir
+    const sc=scoreExoDansLog((l.exercices||[]).find(x=>x.exo_id===exoId));
+    if(sc>0) hist.push({date:l.date,score:sc});
+  });
+  if(hist.length<STAG_SEANCES_MIN+1) return null; // pas assez de recul
+  hist.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  let record=0,iRecord=0;
+  hist.forEach((h,i)=>{ if(h.score>record){record=h.score;iRecord=i;} });
+  const seancesDepuis=hist.length-1-iRecord;
+  const jours=Math.round((new Date(hist[hist.length-1].date)-new Date(hist[iRecord].date))/86400000);
+  if(seancesDepuis<STAG_SEANCES_MIN||jours<STAG_JOURS_MIN) return null;
+  const dernieres=hist.slice(-3);
+  const moyenne=dernieres.reduce((a,h)=>a+h.score,0)/dernieres.length;
+  return {
+    type: moyenne<record*STAG_SEUIL_BAISSE?'baisse':'plateau',
+    semaines: Math.max(1,Math.round(jours/7)),
+    seances: seancesDepuis
+  };
+}
+
+function chipStagnation(st){
+  if(!st) return '';
+  const baisse=st.type==='baisse';
+  const col=baisse?'var(--red)':'var(--amber)';
+  const bg=baisse?'var(--red-light)':'var(--amber-light)';
+  const txt=baisse?'↓ En baisse':'⏸ Plateau';
+  return `<span title="Record personnel non battu depuis ${st.seances} séances (${st.semaines} semaines)" style="display:inline-block;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:99px;background:${bg};color:${col}">${txt} · ${st.semaines} sem</span>`;
+}
+
 function showWeeklyRecap(clientId, periodOffset){
   const cid=clientId||S.client?.id;
   const offset=periodOffset||0; // 0=7 derniers jours, -1=7j avant, etc.
@@ -5999,6 +6082,8 @@ function showWeeklyRecap(clientId, periodOffset){
       const prevExo=prevLog?(prevLog.exercices||[]).find(e=>e.exo_id===exo.exo_id):null;
 
       let perfLine=''; let badge='';
+      // Plateau / baisse sur cet exercice, vu depuis la date de cette séance
+      const stagChip=chipStagnation(analyseStagnation(allLogs,exo.exo_id,log.date));
 
       if(isCardio){
         const dur=Math.max(...(exo.series||[]).map(s=>parseFloat(s.duree)||0).filter(v=>v>0),0);
@@ -6024,34 +6109,41 @@ function showWeeklyRecap(clientId, periodOffset){
           perfLine=`<div>${seriesLines}</div><span style="color:var(--text3);font-size:11px">1ère fois</span>`;
           badge='🆕';
         } else {
-          const diffP=maxPoids-prevMaxPoids; const diffR=maxReps-prevMaxReps;
-          const seriesLines=series.map((s,i)=>{
-            const prevSerie=prevExo?.series?.[i];
-            const pDiff=prevSerie?(parseFloat(s.poids)||0)-(parseFloat(prevSerie.poids)||0):0;
-            const rDiff=prevSerie?(parseInt(s.reps)||0)-(parseInt(prevSerie.reps)||0):0;
-            let pDisplay='', rDisplay='';
-
-            if(s.poids){
-              let pArrow='';
-              if(pDiff>0) pArrow=` <span style="color:var(--green)">▲ +${pDiff.toFixed(1)}kg</span>`;
-              else if(pDiff<0) pArrow=` <span style="color:var(--red)">▼ ${pDiff.toFixed(1)}kg</span>`;
-              else pArrow=` <span style="color:var(--text3)">=</span>`;
-              pDisplay=`${s.poids}kg${pArrow}`;
+          // Une seule flèche par série, décidée par le SCORE (charge + reps
+          // combinées). On garde les chiffres bruts à côté pour le détail.
+          // On parcourt exo.series avec son index d'origine : la série 3
+          // d'aujourd'hui se compare bien à la série 3 de la fois d'avant.
+          const seriesLines=(exo.series||[]).map((s,i)=>{
+            const poidsNum=parseFloat(String(s.poids||'').replace(',','.'))||0;
+            const repsNum=parseInt(s.reps,10)||0;
+            if(!poidsNum&&!repsNum) return '';
+            const chiffres=`${s.poids?s.poids+'kg':''}${s.poids&&s.reps?' × ':''}${s.reps?s.reps:''}`;
+            const prevSerie=prevExo&&prevExo.series?prevExo.series[i]:null;
+            const sc=scoreSerie(s), scPrev=prevSerie?scoreSerie(prevSerie):0;
+            let verdict='';
+            if(sc>0&&scPrev>0){
+              const pDiff=poidsNum-(parseFloat(String(prevSerie.poids||'').replace(',','.'))||0);
+              const rDiff=repsNum-(parseInt(prevSerie.reps,10)||0);
+              const detail=[];
+              if(pDiff) detail.push((pDiff>0?'+':'')+(Math.round(pDiff*10)/10)+'kg');
+              if(rDiff) detail.push((rDiff>0?'+':'')+rDiff+' rep');
+              const txt=detail.length?' '+detail.join(' · '):'';
+              const ecart=(sc-scPrev)/scPrev;
+              if(ecart>SEUIL_PROGRESSION) verdict=` <span style="color:var(--green)">▲${txt}</span>`;
+              else if(ecart<-SEUIL_PROGRESSION) verdict=` <span style="color:var(--red)">▼${txt}</span>`;
+              else verdict=` <span style="color:var(--text3)">=${txt}</span>`;
             }
-
-            if(s.reps){
-              let rArrow='';
-              if(rDiff>0) rArrow=` <span style="color:var(--green)">▲ +${rDiff}</span>`;
-              else if(rDiff<0) rArrow=` <span style="color:var(--red)">▼ ${rDiff}</span>`;
-              else rArrow=` <span style="color:var(--text3)">=</span>`;
-              rDisplay=`${s.reps}${rArrow}`;
-            }
-
-            return `<div style="font-size:11px;padding:4px 0">S${i+1}: ${pDisplay}${pDisplay&&rDisplay?' × ':''}${rDisplay}</div>`;
-          }).join('');
+            return `<div style="font-size:11px;padding:4px 0">S${i+1}: ${chiffres}${verdict}</div>`;
+          }).filter(Boolean).join('');
           perfLine=`<div>${seriesLines}</div>`;
-          if(diffP>0||diffR>0) badge='🏆';
-          else if(diffP<0||diffR<0) badge='📉';
+          // Verdict de l'exercice : meilleure série du jour vs meilleure d'avant
+          const best=Math.max(0,...(exo.series||[]).map(scoreSerie));
+          const bestPrev=Math.max(0,...((prevExo.series)||[]).map(scoreSerie));
+          if(best>0&&bestPrev>0){
+            const ecartExo=(best-bestPrev)/bestPrev;
+            if(ecartExo>SEUIL_PROGRESSION) badge='🏆';
+            else if(ecartExo<-SEUIL_PROGRESSION) badge='📉';
+          }
         }
       }
 
@@ -6062,6 +6154,7 @@ function showWeeklyRecap(clientId, periodOffset){
           <div>
             <span style="font-size:13px;font-weight:600">${exo.nom}</span>
             ${exo._replacedFrom?`<span style="font-size:10px;color:var(--amber);margin-left:5px">🔄 remplace ${exo._replacedFrom}</span>`:''}
+            ${stagChip?`<div style="margin-top:4px">${stagChip}</div>`:''}
           </div>
           <div style="display:flex;align-items:center;gap:5px">${prevDateStr}${badge?`<span style="font-size:14px">${badge}</span>`:''}</div>
         </div>
@@ -6405,29 +6498,83 @@ function createSeanceType(progId){
 // MODAL: AJOUT EXERCICE
 // ─────────────────────────────────────────
 function showAddExoModal(){
-  S.exoFilter='';S.exoCatFilter='';
-  const cats=[...new Set(S.exercices.map(e=>e.cat))].sort();
+  S.exoFilter='';S.exoCatFilter='';S.exoSecFilter='';S.exoNiveauFilter='';
   openModal(`
     <div class="modal-title">Ajouter un exercice</div>
+    <div id="exo-vue-wrap">${exoVueSegHtml('setExoVuePicker')}</div>
     <div class="form-group" style="margin-bottom:10px">
       <input class="form-inp form-inp-sm" id="exo-search" placeholder="🔍 Rechercher…" oninput="filterExoPicker(this.value)" />
     </div>
-    <div class="exo-picker-cat" id="exo-cats">
-      <button class="cat-pill active" onclick="filterExoPickerCat('',this)">Tous</button>
-      ${cats.map(c=>`<button class="cat-pill" onclick="filterExoPickerCat('${c}',this)">${c}</button>`).join('')}
-    </div>
+    <div class="exo-niv-seg" id="exo-nivs-picker">${niveauPillsHtml('setExoNiveauPicker')}</div>
+    <div class="exo-picker-cat" id="exo-cats">${exoPickerPillsHtml()}</div>
     <div id="exo-picker-list" style="margin-top:10px;max-height:320px;overflow-y:auto">${renderExoPicker()}</div>
   `);
 }
 
+// Bascule groupe musculaire / pattern depuis le sélecteur d'exercice :
+// on redessine seulement les pastilles et la liste, la recherche reste en place.
+function setExoVuePicker(v){
+  lsSet('c_exoVue',v);
+  S.exoCatFilter='';S.exoSecFilter='';
+  const w=document.getElementById('exo-vue-wrap'); if(w) w.innerHTML=exoVueSegHtml('setExoVuePicker');
+  const c=document.getElementById('exo-cats');    if(c) c.innerHTML=exoPickerPillsHtml();
+  const el=document.getElementById('exo-picker-list'); if(el) el.innerHTML=renderExoPicker();
+}
+
+// Pastilles de filtre : groupes musculaires, ou sections de patterns
+function exoPickerPillsHtml(){
+  if(getExoVue()==='pattern'){
+    const secs=PATTERNS.filter(sec=>sec.pats.some(([k])=>S.exercices.some(e=>e.pattern===k)));
+    return '<button class="cat-pill active" onclick="filterExoPickerSec(\'\',this)">Tous</button>'
+      +secs.map(sec=>'<button class="cat-pill" onclick="filterExoPickerSec(\''+sec.sec+'\',this)">'+sec.icon+' '+sec.sec+'</button>').join('');
+  }
+  const cats=[...new Set(S.exercices.map(e=>e.cat))].sort();
+  return '<button class="cat-pill active" onclick="filterExoPickerCat(\'\',this)">Tous</button>'
+    +cats.map(c=>'<button class="cat-pill" onclick="filterExoPickerCat(\''+c+'\',this)">'+c+'</button>').join('');
+}
+
 function renderExoPicker(){
   let list=S.exercices;
-  if(S.exoCatFilter)list=list.filter(e=>e.cat===S.exoCatFilter);
-  if(S.exoFilter)list=list.filter(e=>e.nom.toLowerCase().includes(S.exoFilter.toLowerCase()));
-  return list.map(e=>`<div class="exo-pick-row" onclick="pickExo('${e.id}')">
-    <div style="flex:1"><div class="exo-pick-name">${e.nom}</div><div class="exo-pick-cat">${e.cat}</div></div>
-    <div style="font-size:20px;color:var(--green)">+</div>
-  </div>`).join('')||`<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Aucun exercice trouvé</div>`;
+  if(S.exoFilter){
+    const f=S.exoFilter.toLowerCase();
+    list=list.filter(e=>e.nom.toLowerCase().includes(f)||(PATTERN_LABEL[e.pattern]||'').toLowerCase().includes(f));
+  }
+  if(S.exoNiveauFilter) list=list.filter(e=>(e.niveau||'')===S.exoNiveauFilter);
+  const vide='<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Aucun exercice trouvé</div>';
+  const enPattern=getExoVue()==='pattern';
+  const ligne=e=>'<div class="exo-pick-row" onclick="pickExo(\''+e.id+'\')">'
+    +'<div style="flex:1"><div class="exo-pick-name">'+e.nom+niveauBadgeHtml(e)+'</div>'
+    +'<div class="exo-pick-cat">'+(enPattern?(e.cat||''):(PATTERN_LABEL[e.pattern]||e.cat||''))+'</div></div>'
+    +'<div style="font-size:20px;color:var(--green)">+</div></div>';
+
+  if(enPattern){
+    let html='';const vus=new Set();
+    let premier=true;
+    PATTERNS.forEach(sec=>{
+      if(S.exoSecFilter&&S.exoSecFilter!==sec.sec) return;
+      sec.pats.forEach(([cle,label])=>{
+        const ex=list.filter(e=>e.pattern===cle);
+        if(!ex.length) return;
+        ex.forEach(e=>vus.add(e.id));
+        html+='<div class="exo-pat-header'+(premier?' premier':'')+'">'+label+' <span class="exo-cat-count">'+ex.length+'</span></div>'+ex.map(ligne).join('');
+        premier=false;
+      });
+    });
+    if(!S.exoSecFilter){
+      const restants=list.filter(e=>!vus.has(e.id));
+      if(restants.length) html+='<div class="exo-pat-header'+(premier?' premier':'')+'">Sans pattern <span class="exo-cat-count">'+restants.length+'</span></div>'+restants.map(ligne).join('');
+    }
+    return html||vide;
+  }
+  if(S.exoCatFilter) list=list.filter(e=>e.cat===S.exoCatFilter);
+  return list.map(ligne).join('')||vide;
+}
+
+function filterExoPickerSec(sec,btn){
+  S.exoSecFilter=sec;
+  document.getElementById('exo-cats').querySelectorAll('.cat-pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const el=document.getElementById('exo-picker-list');if(el)el.innerHTML=renderExoPicker();
 }
 
 
@@ -6440,6 +6587,8 @@ function showCreateExoFromPicker(){
       '<div class="modal-title">Créer un exercice</div>'+
       '<div class="form-group"><label class="form-label">Nom</label><input class="form-inp" id="nef-nom" placeholder="ex : Squat bulgare" /></div>'+
       '<div class="form-group"><label class="form-label">Catégorie</label><select class="form-inp form-inp-sm form-select" id="nef-cat">'+catOptions+'</select></div>'+
+      '<div class="form-group"><label class="form-label">Pattern de mouvement</label><select class="form-inp form-inp-sm form-select" id="nef-pattern">'+patternOptionsHtml('')+'</select></div>'+
+      '<div class="form-group"><label class="form-label">Niveau</label><select class="form-inp form-inp-sm form-select" id="nef-niveau">'+niveauOptionsHtml('')+'</select></div>'+
       '<div class="form-group"><label class="form-label">Description (optionnel)</label><textarea class="form-inp form-inp-sm" id="nef-desc" rows="2" placeholder="Technique, points clés..."></textarea></div>'+
       '<div class="form-group"><label class="form-label">Lien vidéo YouTube (optionnel)</label><input class="form-inp form-inp-sm" id="nef-video" placeholder="https://youtube.com/..." /></div>'+
       '<button class="btn btn-primary" onclick="createExoFromPicker()">Créer et ajouter à la séance</button>'+
@@ -6456,6 +6605,8 @@ function createExoFromPicker(){
     id:'c'+uid(),
     nom,
     cat:document.getElementById('nef-cat').value,
+    pattern:document.getElementById('nef-pattern')?.value||'',
+    niveau:document.getElementById('nef-niveau')?.value||'debutant',
     desc:document.getElementById('nef-desc').value.trim()||'',
     video:document.getElementById('nef-video').value.trim()||''
   };
@@ -6886,6 +7037,103 @@ render.historique=function(){
 // ─────────────────────────────────────────
 // RENDER: CRÉATEUR D'EXERCICES
 // ─────────────────────────────────────────
+// ── CLASSEMENT PAR PATTERN DE MOUVEMENT ──────────────────────────────────
+// Un même geste se travaille sur des machines différentes. Le pattern regroupe
+// les exercices par MOUVEMENT (squat, charnière de hanche, tirage vertical…)
+// plutôt que par muscle : c'est ce qui permet de trouver une alternative à un
+// exercice quand la machine est prise ou qu'on veut varier.
+const PATTERNS=[
+  {sec:'Jambes', icon:'🦵', pats:[
+    ['squat','Squat (dominante genou)'],
+    ['charniere','Charnière de hanche'],
+    ['hipthrust','Hip thrust / extension de hanche'],
+    ['fente','Fente (unilatéral)'],
+    ['quadri','Isolation quadriceps'],
+    ['ischios','Isolation ischios'],
+    ['addabd','Adducteurs / abducteurs'],
+    ['mollets','Mollets']]},
+  {sec:'Pecs', icon:'💪', pats:[
+    ['dev_incline','Développé incliné (chef claviculaire)'],
+    ['dev_horizontal','Développé horizontal'],
+    ['dev_decline','Développé décliné / dips'],
+    ['ecarte','Écarté']]},
+  {sec:'Épaules', icon:'🤸', pats:[
+    ['dev_vertical','Développé vertical (faisceau antérieur)'],
+    ['elev_lat','Élévation latérale (faisceau latéral)'],
+    ['arriere_epaule',"Arrière d'épaule (faisceau postérieur)"],
+    ['coiffe','Rotateurs / coiffe']]},
+  {sec:'Dos', icon:'🔙', pats:[
+    ['tirage_vertical','Tirage vertical'],
+    ['rowing','Tirage horizontal / rowing'],
+    ['pullover','Pullover'],
+    ['lombaire','Extension lombaire'],
+    ['shrug','Shrug']]},
+  {sec:'Biceps / avant-bras', icon:'💪', pats:[
+    ['bi_long','Chef long (position étirée)'],
+    ['bi_court','Global / chef court'],
+    ['brachial','Brachial (prise marteau / inversée)'],
+    ['avantbras','Avant-bras']]},
+  {sec:'Triceps', icon:'💪', pats:[
+    ['tri_long','Chef long (bras au-dessus de la tête)'],
+    ['tri_lateral','Chef latéral (bras le long du corps)'],
+    ['tri_medial','Chef médial (prise inversée)']]},
+  {sec:'Tronc', icon:'🧘', pats:[
+    ['anti_ext','Anti-extension'],
+    ['anti_rot','Anti-rotation'],
+    ['anti_incl','Anti-inclinaison'],
+    ['flexion','Flexion'],
+    ['rotation','Rotation'],
+    ['respiratoire','Respiratoire / transverse']]}
+];
+const PATTERN_LABEL={};
+PATTERNS.forEach(sec=>sec.pats.forEach(([k,l])=>{PATTERN_LABEL[k]=l;}));
+
+// ── NIVEAU DE L'EXERCICE ─────────────────────────────────────────────────
+// Deux niveaux seulement : machine guidée / mouvement simple = débutant,
+// poids libre ou geste technique = intermédiaire. Ce n'est pas un classement
+// de plus : c'est un FILTRE qui se superpose au classement affiché, pour
+// pouvoir demander « les exercices de squat accessibles à une débutante ».
+const NIVEAUX={
+  debutant:     {label:'Débutant',     court:'Déb.',   cls:'deb'},
+  intermediaire:{label:'Intermédiaire',court:'Inter.', cls:'inter'}
+};
+function niveauBadgeHtml(exo){
+  const n=NIVEAUX[exo&&exo.niveau];
+  return n?' <span class="exo-niv '+n.cls+'">'+n.court+'</span>':'';
+}
+function niveauPillsHtml(fn){
+  const cur=S.exoNiveauFilter||'';
+  let h='<button class="cat-pill'+(cur?'':' active')+'" onclick="'+fn+'(\'\')">Tous niveaux</button>';
+  Object.keys(NIVEAUX).forEach(k=>{
+    h+='<button class="cat-pill'+(cur===k?' active':'')+'" onclick="'+fn+'(\''+k+'\')">'+NIVEAUX[k].label+'</button>';
+  });
+  return h;
+}
+function setExoNiveau(n){
+  S.exoNiveauFilter=n;
+  const w=document.getElementById('exo-nivs'); if(w) w.innerHTML=niveauPillsHtml('setExoNiveau');
+  renderExoListResults(document.getElementById('exo-list-search')?.value||'');
+}
+function setExoNiveauPicker(n){
+  S.exoNiveauFilter=n;
+  const w=document.getElementById('exo-nivs-picker'); if(w) w.innerHTML=niveauPillsHtml('setExoNiveauPicker');
+  const el=document.getElementById('exo-picker-list'); if(el) el.innerHTML=renderExoPicker();
+}
+
+// Vue courante de la bibliothèque : 'muscle' (groupe musculaire) ou 'pattern'
+function getExoVue(){return lsGet('c_exoVue')==='pattern'?'pattern':'muscle';}
+function setExoVue(v){
+  lsSet('c_exoVue',v);
+  if(S.screen==='exercices') render.exercices(document.getElementById('exo-list-search')?.value||'');
+}
+function exoVueSegHtml(onclickPrefix){
+  const v=getExoVue();
+  return '<div class="exo-vue-seg">'
+    +'<button class="exo-vue-btn'+(v==='muscle'?' active':'')+'" onclick="'+onclickPrefix+'(\'muscle\')">Groupe musculaire</button>'
+    +'<button class="exo-vue-btn'+(v==='pattern'?' active':'')+'" onclick="'+onclickPrefix+'(\'pattern\')">Pattern</button>'
+    +'</div>';
+}
+
 render.exercices=function(filter=''){
   setTopbar("Exercices",'',`<div class="icon-btn" onclick="showNewExoModal()">＋</div>`);
   const el=document.getElementById('exercices-content');if(!el)return;
@@ -6894,6 +7142,8 @@ render.exercices=function(filter=''){
   // redessinée quand on tape → le curseur ne saute plus.
   el.innerHTML=
     '<div style="padding:10px 16px 0">'+
+      exoVueSegHtml('setExoVue')+
+      '<div class="exo-niv-seg" id="exo-nivs">'+niveauPillsHtml('setExoNiveau')+'</div>'+
       '<input class="form-inp form-inp-sm" id="exo-list-search" placeholder="Rechercher un exercice..." '+
       'oninput="renderExoListResults(this.value)" style="margin-bottom:12px" />'+
     '</div>'+
@@ -6902,49 +7152,85 @@ render.exercices=function(filter=''){
 };
 
 // Dessine uniquement la liste filtrée (sans toucher au champ de recherche).
+// Deux classements possibles : par groupe musculaire, ou par pattern de mouvement.
 function renderExoListResults(filter=''){
   const box=document.getElementById('exo-list-results');if(!box)return;
-  // Ordre fixe et logique des groupes musculaires (et pas alphabétique).
+  let list=S.exercices;
+  if(filter){
+    const f=filter.toLowerCase();
+    list=list.filter(e=>e.nom.toLowerCase().includes(f)
+      ||(e.cat||'').toLowerCase().includes(f)
+      ||(PATTERN_LABEL[e.pattern]||'').toLowerCase().includes(f));
+  }
+  // Le niveau est un filtre, pas un regroupement : il s'applique par-dessus.
+  if(S.exoNiveauFilter) list=list.filter(e=>(e.niveau||'')===S.exoNiveauFilter);
+  let html = getExoVue()==='pattern' ? _exoListeParPattern(list) : _exoListeParMuscle(list);
+  if(!list.length) html='<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Aucun exercice trouvé</div></div>';
+  html+='<div style="padding:16px"><button class="btn btn-primary" onclick="showNewExoModal()">+ Créer un exercice</button></div>';
+  box.innerHTML=html;
+}
+
+// Une ligne d'exercice (identique dans les deux classements)
+function _exoLigneHtml(exo){
+  const isCustom=exo.id.startsWith('c');
+  const videoBtn=exo.video?'<a href="'+exo.video+'" target="_blank" class="icon-btn" style="text-decoration:none;font-size:16px">🎬</a>':'';
+  const deleteBtn='<button class="icon-btn" onclick="shakeIcon(this);_deleteExo(\''+exo.id+'\')"><span class="ico-fx">🗑</span></button>';
+  const imgThumb=exo.image?'<div style="width:40px;height:40px;border-radius:6px;overflow:hidden;flex-shrink:0;margin-right:8px"><img src="'+exo.image+'" style="width:100%;height:100%;object-fit:cover" /></div>':'';
+  // En vue pattern on rappelle le groupe musculaire, et inversement : on ne perd
+  // jamais l'autre information en changeant de classement.
+  const second=getExoVue()==='pattern'?(exo.cat||''):(PATTERN_LABEL[exo.pattern]||'');
+  const meta=[second,exo.desc||'',exo.video?'🎬 vidéo':'',exo.image?'📸 image':''].filter(Boolean).join(' · ');
+  return '<div class="exo-list-row">'+
+    imgThumb+
+    '<div class="exo-list-info" onclick="showExoDetailModal(\''+exo.id+'\')">'+
+    '<div class="exo-list-name">'+exo.nom+niveauBadgeHtml(exo)+(isCustom?' <span class="badge badge-green" style="font-size:10px;padding:1px 6px">perso</span>':'')+'</div>'+
+    '<div class="exo-list-meta">'+meta+'</div>'+
+    '</div><div class="exo-list-actions">'+videoBtn+
+    '<button class="icon-btn" onclick="showEditExoModal(\''+exo.id+'\')">✏️</button>'+
+    deleteBtn+'</div></div>';
+}
+
+// Classement historique : par groupe musculaire
+function _exoListeParMuscle(list){
   const ordreCats=['Jambes','Fessiers','Pectoraux','Dos','Épaules','Biceps','Triceps','Abdominaux','Full body','Cardio','Autre'];
   const presentes=[...new Set(S.exercices.map(e=>e.cat))];
-  const cats=[
-    ...ordreCats.filter(c=>presentes.includes(c)),
-    ...presentes.filter(c=>!ordreCats.includes(c)).sort()
-  ];
-  let list=S.exercices;
-  if(filter) list=list.filter(e=>e.nom.toLowerCase().includes(filter.toLowerCase())||e.cat.toLowerCase().includes(filter.toLowerCase()));
-
-  // Petites icônes par groupe musculaire pour aider à les distinguer d'un coup d'œil.
+  const cats=[...ordreCats.filter(c=>presentes.includes(c)),...presentes.filter(c=>!ordreCats.includes(c)).sort()];
   const catIcon={'Jambes':'🦵','Fessiers':'🍑','Pectoraux':'💪','Dos':'🔙','Épaules':'🤸','Biceps':'💪','Triceps':'💪','Abdominaux':'🧘','Full body':'🔥','Cardio':'🏃','Autre':'⭐'};
-
   let html='';
   cats.forEach(cat=>{
     const catExos=list.filter(e=>e.cat===cat);
     if(!catExos.length) return;
     html+='<div class="exo-cat-header">'+(catIcon[cat]||'')+' '+cat+' <span class="exo-cat-count">'+catExos.length+'</span></div>';
-    catExos.forEach(exo=>{
-      const isCustom=exo.id.startsWith('c');
-      // Poubelle visible pour tous les exercices, y compris ceux de la liste de
-      // base : _deleteExo() sait maintenant "cacher" définitivement ces derniers
-      // (ils sont codés dans l'appli, donc on les marque supprimés côté Supabase
-      // plutôt que de les effacer pour de vrai).
-      const videoBtn=exo.video?'<a href="'+exo.video+'" target="_blank" class="icon-btn" style="text-decoration:none;font-size:16px">🎬</a>':'';
-      const deleteBtn='<button class="icon-btn" onclick="shakeIcon(this);_deleteExo(\''+exo.id+'\')"><span class="ico-fx">🗑</span></button>';
-      const imgThumb=exo.image?'<div style="width:40px;height:40px;border-radius:6px;overflow:hidden;flex-shrink:0;margin-right:8px"><img src="'+exo.image+'" style="width:100%;height:100%;object-fit:cover" /></div>':'';
-      html+='<div class="exo-list-row">'+
-        imgThumb+
-        '<div class="exo-list-info" onclick="showExoDetailModal(\''+exo.id+'\')">'+
-        '<div class="exo-list-name">'+exo.nom+(isCustom?' <span class="badge badge-green" style="font-size:10px;padding:1px 6px">perso</span>':'')+'</div>'+
-        '<div class="exo-list-meta">'+(exo.desc||'')+(exo.video?' · 🎬 vidéo':'')+(exo.image?' · 📸 image':'')+'</div>'+
-        '</div><div class="exo-list-actions">'+videoBtn+
-        '<button class="icon-btn" onclick="showEditExoModal(\''+exo.id+'\')">✏️</button>'+
-        deleteBtn+'</div></div>';
-    });
+    catExos.forEach(exo=>{html+=_exoLigneHtml(exo);});
   });
+  return html;
+}
 
-  if(!list.length) html+='<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Aucun exercice trouvé</div></div>';
-  html+='<div style="padding:16px"><button class="btn btn-primary" onclick="showNewExoModal()">+ Créer un exercice</button></div>';
-  box.innerHTML=html;
+// Classement par pattern de mouvement : section (Jambes, Pecs…) puis pattern
+function _exoListeParPattern(list){
+  let html='';
+  const classes=new Set();
+  PATTERNS.forEach(sec=>{
+    const blocs=[];
+    let total=0;
+    sec.pats.forEach(([cle,label])=>{
+      const ex=list.filter(e=>e.pattern===cle);
+      if(!ex.length) return;
+      ex.forEach(e=>classes.add(e.id));
+      total+=ex.length;
+      blocs.push('<div class="exo-pat-header'+(blocs.length?'':' premier')+'">'+label+' <span class="exo-cat-count">'+ex.length+'</span></div>'
+        +ex.map(_exoLigneHtml).join(''));
+    });
+    if(!blocs.length) return;
+    html+='<div class="exo-cat-header">'+sec.icon+' '+sec.sec+' <span class="exo-cat-count">'+total+'</span></div>'+blocs.join('');
+  });
+  // Tout ce qui n'a pas encore de pattern (cardio, full body, exercices récents)
+  const restants=list.filter(e=>!classes.has(e.id));
+  if(restants.length){
+    html+='<div class="exo-cat-header">❓ Sans pattern <span class="exo-cat-count">'+restants.length+'</span></div>';
+    restants.forEach(exo=>{html+=_exoLigneHtml(exo);});
+  }
+  return html;
 }
 
 
@@ -6973,6 +7259,7 @@ render.bilanHebdo=function(){
   } else {
     setTopbar('Bilan hebdomadaire', c.prenom+' '+c.nom, '');
     el.innerHTML=renderBhAccueil(c,thisWeek);
+    bhGenererThumbsManquants(c.id);
   }
 };
 
@@ -6994,6 +7281,56 @@ function bhCompteurs(b){
   return {ph,me,no};
 }
 function bhAContenu(b){if(!b)return false;const k=bhCompteurs(b);return b.completed===true||k.ph>0||k.me>0||k.no;}
+
+// ── MINIATURES DES BILANS ────────────────────────────────────────────────
+// Les photos sont stockées en 1200 px. Les afficher telles quelles dans la
+// liste des bilans obligeait le téléphone à décoder des dizaines de grandes
+// images d'un coup → l'écran se bloquait. On fabrique donc une mini-version
+// (120 px, ~4 Ko) rangée dans bilan.photos.thumbs, et c'est elle qu'on affiche.
+const BH_SLOTS=['face','gauche','droit','dos'];
+function bhThumb(b,slot){return (b&&b.photos&&b.photos.thumbs&&b.photos.thumbs[slot])||null;}
+
+function bhMiniature(dataUrl,max){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const sc=Math.min(1,(max||120)/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas');
+      cv.width=Math.max(1,Math.round(img.width*sc));
+      cv.height=Math.max(1,Math.round(img.height*sc));
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      try{resolve(cv.toDataURL('image/jpeg',0.6));}catch(e){resolve(null);}
+    };
+    img.onerror=()=>resolve(null);
+    img.src=dataUrl;
+  });
+}
+
+// Fabrique en tâche de fond les miniatures manquantes des anciens bilans,
+// un bilan à la fois pour laisser l'écran respirer, puis rafraîchit la liste.
+let _bhThumbsEnCours=false;
+async function bhGenererThumbsManquants(clientId){
+  if(_bhThumbsEnCours) return;
+  const aFaire=(S.bilansHebdo||[]).filter(b=>b.client_id===clientId&&b.photos&&
+    BH_SLOTS.some(k=>b.photos[k]&&!bhThumb(b,k)));
+  if(!aFaire.length) return;
+  _bhThumbsEnCours=true;
+  let modifie=false;
+  try{
+    for(const b of aFaire){
+      if(!b.photos.thumbs) b.photos.thumbs={};
+      for(const k of BH_SLOTS){
+        if(b.photos[k]&&!b.photos.thumbs[k]){
+          const t=await bhMiniature(b.photos[k],120);
+          if(t){b.photos.thumbs[k]=t;modifie=true;}
+        }
+      }
+      saveBilanHebdoToSupa(b);
+      await new Promise(r=>setTimeout(r,60));
+    }
+  }finally{_bhThumbsEnCours=false;}
+  if(modifie&&S.screen==='bilanHebdo'&&S.bhView==='accueil') render.bilanHebdo();
+}
 
 // ── ACCUEIL : bilan de la semaine + outils + liste de tous les bilans ──
 function renderBhAccueil(c,thisWeek){
@@ -7038,7 +7375,11 @@ function renderBhAccueil(c,thisWeek){
       const bw=getBilanHebdo(c.id,w);
       if(bhAContenu(bw)){
         const kk=bhCompteurs(bw);
-        const thumbs=['face','gauche','droit','dos'].map(s=>bw.photos&&bw.photos[s]?`<div class="bh2-th"><img src="${bw.photos[s]}" alt=""/></div>`:`<div class="bh2-th">·</div>`).join('');
+        const thumbs=BH_SLOTS.map(s=>{
+          const t=bhThumb(bw,s);
+          if(t) return `<div class="bh2-th"><img src="${t}" alt="" loading="lazy" decoding="async"/></div>`;
+          return `<div class="bh2-th">${bw.photos&&bw.photos[s]?'…':'·'}</div>`;
+        }).join('');
         return `<div class="bh2-card" onclick="bhOuvreBilan('${w}')">
           <div class="bh2-card-date"><b>${bw.completed&&bw.dateFait?'Bilan fait le '+bhDateLongue(bw.dateFait):'Bilan du '+bhDateLongue(w)}</b><span>${bw.completed?'sauvegardé':'en cours'}</span></div>
           <div class="bh2-thumbs">${thumbs}</div>
@@ -7661,7 +8002,16 @@ function handlePhotoUpload(bilanId, slot, input){
       const compressed=canvas.toDataURL('image/jpeg',0.75);
       const b=S.bilansHebdo.find(x=>x.id===bilanId);
       if(b){
-        b.photos[slot]=compressed;persist();saveBilanHebdoToSupa(b);
+        b.photos[slot]=compressed;
+        // mini-version pour la liste des bilans (évite de charger la grande photo)
+        const cvMini=document.createElement('canvas');
+        const scMini=Math.min(1,120/Math.max(canvas.width,canvas.height));
+        cvMini.width=Math.max(1,Math.round(canvas.width*scMini));
+        cvMini.height=Math.max(1,Math.round(canvas.height*scMini));
+        cvMini.getContext('2d').drawImage(canvas,0,0,cvMini.width,cvMini.height);
+        if(!b.photos.thumbs) b.photos.thumbs={};
+        try{b.photos.thumbs[slot]=cvMini.toDataURL('image/jpeg',0.6);}catch(e){}
+        persist();saveBilanHebdoToSupa(b);
         _photoJusteAjoutee=bilanId+'|'+slot; // pour l'animation d'apparition
         render.bilanHebdo();toast('📸 Photo ajoutée');
         setTimeout(()=>{_photoJusteAjoutee=null;},1200);
@@ -7679,7 +8029,7 @@ function deletePhoto(bilanId, slot){
 }
 function _deletePhoto(bilanId,slot){
   const b=S.bilansHebdo.find(x=>x.id===bilanId);
-  if(b){b.photos[slot]=null;persist();saveBilanHebdoToSupa(b);render.bilanHebdo();toast('Photo supprimée');}
+  if(b){b.photos[slot]=null;if(b.photos.thumbs)b.photos.thumbs[slot]=null;persist();saveBilanHebdoToSupa(b);render.bilanHebdo();toast('Photo supprimée');}
 }
 
 function updateMensuration(bilanId, key, val){
@@ -10346,7 +10696,7 @@ async function syncExercices(){
   if(res&&res.length){
     // Index des exos présents côté serveur, par id (custom OU défaut enrichi)
     const remoteById={};
-    res.forEach(e=>{remoteById[e.id]={id:e.id,nom:e.nom,cat:e.cat,desc:e.desc_exercice||'',video:e.video||'',image:e.image||null,is_custom:!!e.is_custom,deleted:!!e.deleted};});
+    res.forEach(e=>{remoteById[e.id]={id:e.id,nom:e.nom,cat:e.cat,desc:e.desc_exercice||'',video:e.video||'',image:e.image||null,pattern:e.pattern||'',niveau:e.niveau||'',is_custom:!!e.is_custom,deleted:!!e.deleted};});
     // Index des vidéos/images déjà présentes localement, par id
     const localById={};
     S.exercices.forEach(e=>{localById[e.id]=e;});
@@ -10363,9 +10713,15 @@ async function syncExercices(){
       const r=remoteById[d.id];const l=localById[d.id];
       const video=(r&&r.video)||(l&&l.video)||d.video||'';
       const image=(r&&r.image)||(l&&l.image)||d.image||null;
+      // Le pattern d'un exercice de base est codé dans l'appli, mais la coach
+      // peut l'avoir changé : la valeur enregistrée sur Supabase prime alors.
+      const pattern=(r&&r.pattern)||(l&&l.pattern)||d.pattern||'';
+      const niveau=(r&&r.niveau)||(l&&l.niveau)||d.niveau||'';
       const out={...d};
       if(video) out.video=video;
       if(image) out.image=image;
+      if(pattern) out.pattern=pattern;
+      if(niveau) out.niveau=niveau;
       return out;
     });
 
@@ -10373,7 +10729,7 @@ async function syncExercices(){
     //    (préfixe 'c') : certains exercices custom ont pu être mal étiquetés par le
     //    passé (bug corrigé) et rester coincés avec is_custom=false sur Supabase.
     //    Sans ce filet de sécurité, ils disparaîtraient définitivement de la liste.
-    const remoteCustom=res.filter(e=>!e.deleted&&(e.is_custom||e.id.startsWith('c'))).map(e=>({id:e.id,nom:e.nom,cat:e.cat,desc:e.desc_exercice||'',video:e.video||'',image:e.image||null}));
+    const remoteCustom=res.filter(e=>!e.deleted&&(e.is_custom||e.id.startsWith('c'))).map(e=>({id:e.id,nom:e.nom,cat:e.cat,desc:e.desc_exercice||'',video:e.video||'',image:e.image||null,pattern:e.pattern||'',niveau:e.niveau||''}));
     const remoteIds=new Set(res.map(e=>e.id));
     // 3) Custom locaux pas encore arrivés sur le serveur → on retente l'envoi
     const pendingLocal=localCustom.filter(e=>!remoteIds.has(e.id));
@@ -10793,9 +11149,9 @@ async function saveRecetteToSupa(recette){
 async function saveExoCustomToSupa(exo){
   const existing=await supa('GET','exercices','',`?id=eq.${exo.id}`);
   if(!existing||!existing.length){
-    await supa('POST','exercices',{id:exo.id,nom:exo.nom,cat:exo.cat,desc_exercice:exo.desc||'',video:exo.video||'',image:exo.image||null,is_custom:true});
+    await supa('POST','exercices',{id:exo.id,nom:exo.nom,cat:exo.cat,pattern:exo.pattern||null,niveau:exo.niveau||null,desc_exercice:exo.desc||'',video:exo.video||'',image:exo.image||null,is_custom:true});
   }else{
-    await supa('PATCH','exercices',{nom:exo.nom,cat:exo.cat,desc_exercice:exo.desc||'',video:exo.video||'',image:exo.image||null},`?id=eq.${exo.id}`);
+    await supa('PATCH','exercices',{nom:exo.nom,cat:exo.cat,pattern:exo.pattern||null,niveau:exo.niveau||null,desc_exercice:exo.desc||'',video:exo.video||'',image:exo.image||null},`?id=eq.${exo.id}`);
   }
 }
 
@@ -11009,6 +11365,24 @@ function showEditExoModal(id){
   if(exo)showExoForm(exo);
 }
 
+// Liste déroulante des patterns, groupée par section (Jambes, Pecs, …)
+function niveauOptionsHtml(courant){
+  const cur=courant||'debutant';
+  return Object.keys(NIVEAUX).map(k=>'<option value="'+k+'"'+(cur===k?' selected':'')+'>'+NIVEAUX[k].label+'</option>').join('');
+}
+
+function patternOptionsHtml(courant){
+  let h='<option value=""'+(courant?'':' selected')+'>— Aucun —</option>';
+  PATTERNS.forEach(sec=>{
+    h+='<optgroup label="'+sec.sec+'">';
+    sec.pats.forEach(([cle,label])=>{
+      h+='<option value="'+cle+'"'+(courant===cle?' selected':'')+'>'+label+'</option>';
+    });
+    h+='</optgroup>';
+  });
+  return h;
+}
+
 function showExoForm(exo){
   const cats=['Jambes','Fessiers','Pectoraux','Dos','Épaules','Biceps','Triceps','Abdominaux','Full body','Cardio','Autre'];
   const catOptions=cats.map(c=>'<option value="'+c+'"'+(exo&&exo.cat===c?' selected':'')+'>'+c+'</option>').join('');
@@ -11021,6 +11395,8 @@ function showExoForm(exo){
     '<div class="modal-title">'+title+'</div>'+
     '<div class="form-group"><label class="form-label">Nom</label><input class="form-inp" id="ef-nom" value="'+(exo?exo.nom:'')+'" placeholder="ex : Squat barre" /></div>'+
     '<div class="form-group"><label class="form-label">Catégorie</label><select class="form-inp form-inp-sm form-select" id="ef-cat">'+catOptions+'</select></div>'+
+    '<div class="form-group"><label class="form-label">Pattern de mouvement</label><select class="form-inp form-inp-sm form-select" id="ef-pattern">'+patternOptionsHtml(exo&&exo.pattern)+'</select></div>'+
+    '<div class="form-group"><label class="form-label">Niveau</label><select class="form-inp form-inp-sm form-select" id="ef-niveau">'+niveauOptionsHtml(exo&&exo.niveau)+'</select></div>'+
     '<div class="form-group"><label class="form-label">Description (optionnel)</label><textarea class="form-inp form-inp-sm" id="ef-desc" rows="2" placeholder="Technique, points clés...">'+( exo&&exo.desc?exo.desc:'')+'</textarea></div>'+
     '<div class="form-group"><label class="form-label">Lien vidéo YouTube (optionnel)</label><input class="form-inp form-inp-sm" id="ef-video" value="'+(exo&&exo.video?exo.video:'')+'" placeholder="https://youtube.com/..." /></div>'+
     '<div class="form-group">'+imgBtn+'<input type="file" id="ef-img-input" accept="image/*" style="display:none" onchange="handleExoImageUpload(this)" /></div>'+
@@ -11038,6 +11414,8 @@ function createExo(){
     id:'c'+uid(),
     nom,
     cat:document.getElementById('ef-cat').value,
+    pattern:document.getElementById('ef-pattern')?.value||'',
+    niveau:document.getElementById('ef-niveau')?.value||'debutant',
     desc:document.getElementById('ef-desc').value.trim()||'',
     video:document.getElementById('ef-video').value.trim()||''
   };
@@ -11053,6 +11431,8 @@ async function saveExo(id){
   const exo=S.exercices.find(e=>e.id===id);if(!exo)return;
   exo.nom=document.getElementById('ef-nom').value.trim()||exo.nom;
   exo.cat=document.getElementById('ef-cat').value;
+  exo.pattern=document.getElementById('ef-pattern')?.value||'';
+  exo.niveau=document.getElementById('ef-niveau')?.value||'debutant';
   exo.desc=document.getElementById('ef-desc').value.trim()||'';
   exo.video=document.getElementById('ef-video').value.trim()||'';
   persist();
@@ -11063,7 +11443,7 @@ async function saveExo(id){
   // sur Supabase. Un simple PATCH ne modifierait alors aucune ligne et la
   // vidéo ne serait jamais sauvegardée côté serveur → on la perdrait à la
   // prochaine synchro. On crée donc la ligne si elle n'existe pas.
-  const updateData={nom:exo.nom,cat:exo.cat,desc_exercice:exo.desc,video:exo.video};
+  const updateData={nom:exo.nom,cat:exo.cat,pattern:exo.pattern||null,niveau:exo.niveau||null,desc_exercice:exo.desc,video:exo.video};
   if(exo.image) updateData.image=exo.image;
   try{
     const existing=await supa('GET','exercices','',`?id=eq.${id}`);
