@@ -6,7 +6,7 @@
 //    Change le numéro ci-dessous (v1 -> v2 -> v3…) avant d'uploader sur GitHub.
 //    Ça force l'appli à jeter l'ancien cache et à prendre la nouvelle version.
 
-const CACHE_NAME = 'coaching-app-v4';
+const CACHE_NAME = 'coaching-app-v5';
 
 // Réception d'une notification push envoyée par le serveur (rappels check-in / bilan)
 self.addEventListener('push', event => {
