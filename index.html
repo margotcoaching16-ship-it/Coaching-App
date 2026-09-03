@@ -2373,7 +2373,10 @@ function persist(){
   lsSet('c_checkins',S.checkIns||[]);
   // Les photos de bilans (base64) saturent le localStorage : on les exclut du cache.
   // Elles restent sur Supabase et sont rechargées via syncBilansThisWeek / syncClientData.
-  lsSet('c_bilansHebdo',(S.bilansHebdo||[]).map(b=>({...b,photos:undefined})));
+  // Le cache local ne garde pas les photos (trop lourdes). On marque donc
+  // explicitement les bilans comme « photos non chargées » pour qu'au prochain
+  // démarrage l'appli sache qu'elle doit aller les rechercher.
+  lsSet('c_bilansHebdo',(S.bilansHebdo||[]).map(b=>({...b,photos:undefined,_photosChargees:false,_photosAbsentes:true})));
   lsSet('c_dietes',S.dietes||{});
   lsSet('c_customAliments',S.customAliments||[]);
   lsSet('c_recettes',S.recettes||[]);
@@ -7429,36 +7432,37 @@ function bhMiniature(dataUrl,max){
 // ni à l'ouverture d'une cliente, mais en une fois quand on entre dans
 // l'écran « Bilan hebdo » — c'est le seul endroit qui en a besoin.
 // ─────────────────────────────────────────
-let _bhChargementEnCours=null;
+// Une cliente dont les photos ont déjà été téléchargées pendant cette session.
+const _bhClientsCharges=new Set();
 
 async function bhChargerPhotosClient(clientId){
-  const manquants=(S.bilansHebdo||[]).filter(b=>b.client_id===clientId&&b._photosAbsentes).map(b=>b.id);
-  if(!manquants.length) return false;
-  try{
-    const res=await supa('GET','bilans_hebdo','',`?client_id=eq.${clientId}&select=id,photos`);
-    if(!res) return false;
-    const parId=new Map(res.map(r=>[r.id,r.photos]));
-    let maj=false;
-    (S.bilansHebdo||[]).forEach(b=>{
-      if(b.client_id!==clientId||!b._photosAbsentes) return;
-      if(parId.has(b.id)){
-        b.photos=parId.get(b.id)||{face:null,gauche:null,droit:null,dos:null};
-        b._photosAbsentes=false;
-        maj=true;
-      }
-    });
-    return maj;
-  }catch(e){ console.warn('[bilans] photos:',e); return false; }
+  const res=await supa('GET','bilans_hebdo','',`?client_id=eq.${clientId}&select=id,photos`);
+  if(!res) return false;
+  const parId=new Map(res.map(r=>[r.id,r.photos]));
+  let maj=false;
+  (S.bilansHebdo||[]).forEach(b=>{
+    if(b.client_id!==clientId) return;
+    const p=b.photos||{};
+    const dejaEnMemoire=!!(p.face||p.gauche||p.droit||p.dos);
+    // On n'écrase JAMAIS une photo déjà présente (elle peut être en cours d'ajout)
+    if(!dejaEnMemoire && parId.has(b.id)){
+      b.photos=parId.get(b.id)||{face:null,gauche:null,droit:null,dos:null};
+      maj=true;
+    }
+    b._photosChargees=true;
+    b._photosAbsentes=false;
+  });
+  return maj;
 }
 
-// Appelée au début de render.bilanHebdo : charge ce qu'il faut puis ré-affiche.
+// Appelée au début de render.bilanHebdo : télécharge les photos de la cliente
+// une seule fois par session, puis ré-affiche l'écran.
 function bhAssurerPhotos(clientId){
-  const manque=(S.bilansHebdo||[]).some(b=>b.client_id===clientId&&b._photosAbsentes);
-  if(!manque||_bhChargementEnCours===clientId) return;
-  _bhChargementEnCours=clientId;
+  if(!clientId||_bhClientsCharges.has(clientId)) return;
+  _bhClientsCharges.add(clientId);
   bhChargerPhotosClient(clientId)
     .then(maj=>{ if(maj&&S.screen==='bilanHebdo') render.bilanHebdo(); })
-    .finally(()=>{ _bhChargementEnCours=null; });
+    .catch(e=>{ console.warn('[bilans] photos:',e); _bhClientsCharges.delete(clientId); });
 }
 
 // Fabrique en tâche de fond les miniatures manquantes des anciens bilans,
@@ -11698,10 +11702,12 @@ async function saveBilanHebdoToSupa(bilan){
     modif_diete:bilan.modifDiete||null,
     modif_training:bilan.modifTraining||null
   };
-  // SÉCURITÉ : si les photos de ce bilan n'ont pas été téléchargées (elles ne le
-  // sont plus au démarrage, pour la vitesse), on ne les envoie PAS. Sans ça, un
-  // simple changement de statut effacerait les photos en base.
-  if(bilan._photosAbsentes) delete payload.photos;
+  // SÉCURITÉ : on n'envoie les photos QUE si on est certain de les avoir en
+  // mémoire — soit parce qu'on vient de les télécharger, soit parce qu'il y en a
+  // réellement une. Dans le doute on ne touche pas aux photos déjà en base.
+  const _ph=bilan.photos||{};
+  const _aDesPhotos=!!(_ph.face||_ph.gauche||_ph.droit||_ph.dos);
+  if(bilan._photosChargees!==true && !_aDesPhotos) delete payload.photos;
   if(bilan._supaId){
     await supa('PATCH','bilans_hebdo',payload,`?id=eq.${bilan._supaId}`);
   } else {
