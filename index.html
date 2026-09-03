@@ -7424,84 +7424,41 @@ function bhMiniature(dataUrl,max){
 }
 
 // ─────────────────────────────────────────
-// CHARGEMENT DES PHOTOS DE BILAN À LA DEMANDE
-// Les photos pèsent ~620 Ko par bilan. On ne les télécharge donc plus en bloc
-// à l'ouverture d'une cliente, mais seulement celles dont l'écran a besoin.
+// CHARGEMENT DES PHOTOS DE BILAN
+// Les photos pèsent ~620 Ko par bilan : on ne les télécharge plus au démarrage
+// ni à l'ouverture d'une cliente, mais en une fois quand on entre dans
+// l'écran « Bilan hebdo » — c'est le seul endroit qui en a besoin.
 // ─────────────────────────────────────────
-const _bhEnCours=new Set();
+let _bhChargementEnCours=null;
 
-async function bhChargerPhotos(ids){
-  ids=[...new Set(ids)].filter(id=>id&&!_bhEnCours.has(id));
-  if(!ids.length) return false;
-  ids.forEach(id=>_bhEnCours.add(id));
+async function bhChargerPhotosClient(clientId){
+  const manquants=(S.bilansHebdo||[]).filter(b=>b.client_id===clientId&&b._photosAbsentes).map(b=>b.id);
+  if(!manquants.length) return false;
   try{
-    const res=await supa('GET','bilans_hebdo','',`?id=in.(${ids.join(',')})&select=id,photos`);
+    const res=await supa('GET','bilans_hebdo','',`?client_id=eq.${clientId}&select=id,photos`);
     if(!res) return false;
+    const parId=new Map(res.map(r=>[r.id,r.photos]));
     let maj=false;
-    res.forEach(r=>{
-      const b=(S.bilansHebdo||[]).find(x=>x.id===r.id);
-      if(!b) return;
-      b.photos=r.photos||{face:null,gauche:null,droit:null,dos:null};
-      b._photosAbsentes=false;
-      maj=true;
+    (S.bilansHebdo||[]).forEach(b=>{
+      if(b.client_id!==clientId||!b._photosAbsentes) return;
+      if(parId.has(b.id)){
+        b.photos=parId.get(b.id)||{face:null,gauche:null,droit:null,dos:null};
+        b._photosAbsentes=false;
+        maj=true;
+      }
     });
     return maj;
   }catch(e){ console.warn('[bilans] photos:',e); return false; }
-  finally{ ids.forEach(id=>_bhEnCours.delete(id)); }
 }
 
-// Les miniatures seules : ~15 Ko par bilan au lieu de 620 Ko
-async function bhChargerThumbs(ids){
-  ids=[...new Set(ids)].filter(id=>id&&!_bhEnCours.has(id));
-  if(!ids.length) return false;
-  ids.forEach(id=>_bhEnCours.add(id));
-  try{
-    const res=await supa('GET','bilans_hebdo','',`?id=in.(${ids.join(',')})&select=id,thumbs:photos->thumbs`);
-    let maj=false;
-    (res||[]).forEach(r=>{
-      const b=(S.bilansHebdo||[]).find(x=>x.id===r.id);
-      if(!b) return;
-      b._thumbsDemandes=true;
-      if(r.thumbs){ b.photos={...(b.photos||{}),thumbs:r.thumbs}; maj=true; }
-    });
-    (S.bilansHebdo||[]).forEach(b=>{ if(ids.includes(b.id)) b._thumbsDemandes=true; });
-    return maj;
-  }catch(e){ console.warn('[bilans] miniatures:',e); return false; }
-  finally{ ids.forEach(id=>_bhEnCours.delete(id)); }
-}
-
+// Appelée au début de render.bilanHebdo : charge ce qu'il faut puis ré-affiche.
 function bhAssurerPhotos(clientId){
-  const list=(S.bilansHebdo||[]).filter(b=>b.client_id===clientId);
-  if(!list.length) return;
-  const rerend=maj=>{ if(maj&&S.screen==='bilanHebdo') render.bilanHebdo(); };
-  const v=S.bhView;
-
-  if(v==='detail'){
-    const b=list.find(x=>x.date===S.bhCurrentDate);
-    if(b&&b._photosAbsentes) bhChargerPhotos([b.id]).then(rerend);
-    return;
-  }
-  if(v==='comparaison'||v==='resultats'){
-    const ids=list.filter(b=>b._photosAbsentes).map(b=>b.id);
-    if(ids.length) bhChargerPhotos(ids).then(rerend);
-    return;
-  }
-  // Vue « accueil » : les miniatures suffisent
-  const sansThumbs=list.filter(b=>b._photosAbsentes&&!b._thumbsDemandes);
-  if(sansThumbs.length){
-    bhChargerThumbs(sansThumbs.map(b=>b.id)).then(maj=>{
-      rerend(maj);
-      // Anciens bilans sans miniature : on charge leurs photos 3 par 3, en fond,
-      // pour que les miniatures soient fabriquées et enregistrées une bonne fois.
-      const aReparer=list.filter(b=>b._photosAbsentes&&!(b.photos&&b.photos.thumbs)).slice(0,3);
-      if(aReparer.length){
-        bhChargerPhotos(aReparer.map(b=>b.id)).then(m=>{
-          rerend(m);
-          if(typeof bhGenererThumbsManquants==='function') bhGenererThumbsManquants(clientId);
-        });
-      }
-    });
-  }
+  const manque=(S.bilansHebdo||[]).some(b=>b.client_id===clientId&&b._photosAbsentes);
+  if(!manque||_bhChargementEnCours===clientId) return;
+  _bhChargementEnCours=clientId;
+  bhChargerPhotosClient(clientId)
+    .then(maj=>{ if(maj&&S.screen==='bilanHebdo') render.bilanHebdo(); })
+    .finally(()=>{ _bhChargementEnCours=null; });
 }
 
 // Fabrique en tâche de fond les miniatures manquantes des anciens bilans,
@@ -11471,7 +11428,6 @@ async function syncClientData(clientId){
       id:b.id,client_id:b.client_id,date:b.semaine_debut,
       photos:(dejaLa.get(b.id)||{}).photos||{face:null,gauche:null,droit:null,dos:null},
       _photosAbsentes:dejaLa.get(b.id)?!!dejaLa.get(b.id)._photosAbsentes:true,
-      _thumbsDemandes:!!(dejaLa.get(b.id)||{})._thumbsDemandes,
       mensurations:{poitrine:b.poitrine||'',taille:b.taille||'',epaules:b.epaules||'',fessiers:b.fessiers||'',cuisses:b.cuisses||'',cuisse_d:b.cuisse_d||'',bras:b.bras||'',bras_d:b.bras_d||''},
       notes:b.notes||'',
       completed:b.completed||false,
