@@ -2769,7 +2769,7 @@ render.clients=function(filter=''){
     <button data-sort="alpha" onclick="setClientsSort('alpha')" style="padding:4px 10px;color:${sortMode==='alpha'?'var(--text)':'var(--text3)'}">A→Z</button>
     <button data-sort="jour" onclick="setClientsSort('jour')" style="padding:4px 10px;color:${sortMode==='jour'?'var(--text)':'var(--text3)'}">📅 Jour</button>
   </div>`;
-  setTopbar('Mes clients','',`<div style="display:flex;gap:6px;align-items:center">${sortBtn}<div class="icon-btn" onclick="showCalendrierBilanModal()" title="Calendrier bilans">📅</div><div class="icon-btn" onclick="navigate('archives')" title="Archives">🗂️</div><div class="icon-btn" onclick="showNewClientModal()">＋</div><div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div></div>`);
+  setTopbar('Mes clients','',`<div style="display:flex;gap:6px;align-items:center">${sortBtn}<div class="icon-btn" onclick="showCalendrierBilanModal()" title="Calendrier bilans">📅</div><div class="icon-btn" onclick="navigate('archives')" title="Archives">🗂️</div>${currentIsCoach?`<div class="icon-btn" onclick="exportAllData()" title="Exporter mes données">💾</div>`:''}<div class="icon-btn" onclick="showNewClientModal()">＋</div><div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div></div>`);
   positionClientsSortThumb();
   const baseList=S.clients.filter(c=>`${c.prenom} ${c.nom}`.toLowerCase().includes(filter.toLowerCase()));
   const list=sortMode==='jour'
@@ -12498,6 +12498,137 @@ async function seedProgrammeTheo(){
     console.log('[seed] Programme 2 implanté pour Théo Augustin ✓');
   }catch(e){console.error('[seed] erreur:',e);}
 }
+// ─────────────────────────────────────────
+// EXPORT / SAUVEGARDE DE TOUTES LES DONNÉES
+// Crée un fichier .zip contenant :
+//   - un Excel lisible (une feuille par catégorie)
+//   - un JSON complet (vraie sauvegarde technique)
+// ─────────────────────────────────────────
+const EXPORT_TABLES=[
+  'clients','profiles','programmes','seances_type','exercices','logs_seances',
+  'seances_en_cours','checkins','bilans_hebdo','dietes','aliments_custom',
+  'recettes','videos','correction_presets','push_subscriptions'
+];
+
+function exportOverlay(txt){
+  let o=document.getElementById('export-overlay');
+  if(!o){
+    o=document.createElement('div');
+    o.id='export-overlay';
+    o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:24px';
+    o.innerHTML='<div style="background:var(--card,#fff);color:var(--text,#111);border-radius:16px;padding:26px 30px;max-width:320px;width:100%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.3)">'
+      +'<div style="font-size:30px;margin-bottom:10px">💾</div>'
+      +'<div style="font-weight:700;font-size:16px;margin-bottom:8px">Sauvegarde en cours</div>'
+      +'<div id="export-overlay-txt" style="font-size:13px;opacity:.75;line-height:1.5"></div></div>';
+    document.body.appendChild(o);
+  }
+  document.getElementById('export-overlay-txt').textContent=txt;
+}
+function exportOverlayClose(){
+  const o=document.getElementById('export-overlay');
+  if(o) o.remove();
+}
+
+// Charge une bibliothèque externe une seule fois, au moment du clic
+function loadScriptOnce(src,globalName){
+  return new Promise((resolve,reject)=>{
+    if(window[globalName]) return resolve();
+    const sc=document.createElement('script');
+    sc.src=src;
+    sc.onload=()=>window[globalName]?resolve():reject(new Error('lib non chargée: '+globalName));
+    sc.onerror=()=>reject(new Error('téléchargement impossible: '+src));
+    document.head.appendChild(sc);
+  });
+}
+
+// Récupère TOUTES les lignes d'une table (par paquets de 1000)
+async function fetchAllRows(table){
+  const out=[];
+  let offset=0;
+  for(let i=0;i<200;i++){
+    const rows=await supa('GET',table,'',`?select=*&limit=1000&offset=${offset}`);
+    if(!rows||!rows.length) break;
+    out.push(...rows);
+    if(rows.length<1000) break;
+    offset+=1000;
+  }
+  return out;
+}
+
+// Aplatit une ligne pour Excel (les objets deviennent du texte)
+function flattenRow(row){
+  const o={};
+  for(const k in row){
+    const v=row[k];
+    if(v===null||v===undefined) o[k]='';
+    else if(typeof v==='object') o[k]=JSON.stringify(v);
+    else o[k]=v;
+  }
+  return o;
+}
+
+async function exportAllData(){
+  if(!currentIsCoach){toast('Réservé au coach');return;}
+  try{
+    exportOverlay('Préparation…');
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js','XLSX');
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js','JSZip');
+
+    const data={};
+    let n=0;
+    for(const t of EXPORT_TABLES){
+      n++;
+      exportOverlay(`Récupération ${n}/${EXPORT_TABLES.length} · ${t}`);
+      try{ data[t]=await fetchAllRows(t); }
+      catch(e){ console.warn('[export] échec',t,e); data[t]=[]; }
+    }
+
+    exportOverlay('Création du fichier Excel…');
+    const wb=XLSX.utils.book_new();
+    const resume=[['Catégorie','Nombre de lignes']];
+    for(const t of EXPORT_TABLES) resume.push([t,(data[t]||[]).length]);
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(resume),'Résumé');
+    for(const t of EXPORT_TABLES){
+      const rows=(data[t]||[]).map(flattenRow);
+      const ws=rows.length?XLSX.utils.json_to_sheet(rows):XLSX.utils.aoa_to_sheet([['(vide)']]);
+      XLSX.utils.book_append_sheet(wb,ws,t.slice(0,31));
+    }
+    const xlsxBuf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+
+    exportOverlay('Compression…');
+    const stamp=new Date().toISOString().slice(0,10);
+    const zip=new JSZip();
+    zip.file(`coaching-${stamp}.xlsx`,xlsxBuf);
+    zip.file(`coaching-${stamp}.json`,JSON.stringify({
+      exporte_le:new Date().toISOString(),
+      source:SUPA_URL,
+      tables:data
+    },null,2));
+    zip.file('LISEZ-MOI.txt',
+      "Sauvegarde de l'application Coaching\n"
+      +"Date : "+new Date().toLocaleString('fr-FR')+"\n\n"
+      +"- Le fichier .xlsx s'ouvre dans Excel ou Numbers : une feuille par categorie.\n"
+      +"- Le fichier .json est la sauvegarde technique complete, a garder meme s'il est illisible.\n"
+      +"- Les photos et videos ne sont PAS dans ce fichier : seules leurs adresses y figurent.\n\n"
+      +"Conserve ce zip dans un endroit sur (disque externe, cloud personnel).\n");
+    const blob=await zip.generateAsync({type:'blob'});
+
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`sauvegarde-coaching-${stamp}.zip`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+
+    exportOverlayClose();
+    const total=EXPORT_TABLES.reduce((s,t)=>s+(data[t]||[]).length,0);
+    toast(`✅ Sauvegarde téléchargée · ${total} lignes`);
+  }catch(e){
+    console.error('[export]',e);
+    exportOverlayClose();
+    toast('❌ Export impossible : '+(e.message||e));
+  }
+}
+
 bootstrapAuth();
 
 </script>
