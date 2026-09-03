@@ -7353,6 +7353,7 @@ function _exoListeParPattern(list){
 render.bilanHebdo=function(){
   const c=S.client; if(!c) return;
   if(!S.bhView) S.bhView='accueil';
+  bhAssurerPhotos(c.id);   // charge les photos nécessaires à cette vue, puis ré-affiche
   const el=document.getElementById('bilanHebdo-content');
   const thisWeek=getSemaineBilanStr();
   const existingDates=getClientBilanDates(c.id);
@@ -7420,6 +7421,87 @@ function bhMiniature(dataUrl,max){
     img.onerror=()=>resolve(null);
     img.src=dataUrl;
   });
+}
+
+// ─────────────────────────────────────────
+// CHARGEMENT DES PHOTOS DE BILAN À LA DEMANDE
+// Les photos pèsent ~620 Ko par bilan. On ne les télécharge donc plus en bloc
+// à l'ouverture d'une cliente, mais seulement celles dont l'écran a besoin.
+// ─────────────────────────────────────────
+const _bhEnCours=new Set();
+
+async function bhChargerPhotos(ids){
+  ids=[...new Set(ids)].filter(id=>id&&!_bhEnCours.has(id));
+  if(!ids.length) return false;
+  ids.forEach(id=>_bhEnCours.add(id));
+  try{
+    const res=await supa('GET','bilans_hebdo','',`?id=in.(${ids.join(',')})&select=id,photos`);
+    if(!res) return false;
+    let maj=false;
+    res.forEach(r=>{
+      const b=(S.bilansHebdo||[]).find(x=>x.id===r.id);
+      if(!b) return;
+      b.photos=r.photos||{face:null,gauche:null,droit:null,dos:null};
+      b._photosAbsentes=false;
+      maj=true;
+    });
+    return maj;
+  }catch(e){ console.warn('[bilans] photos:',e); return false; }
+  finally{ ids.forEach(id=>_bhEnCours.delete(id)); }
+}
+
+// Les miniatures seules : ~15 Ko par bilan au lieu de 620 Ko
+async function bhChargerThumbs(ids){
+  ids=[...new Set(ids)].filter(id=>id&&!_bhEnCours.has(id));
+  if(!ids.length) return false;
+  ids.forEach(id=>_bhEnCours.add(id));
+  try{
+    const res=await supa('GET','bilans_hebdo','',`?id=in.(${ids.join(',')})&select=id,thumbs:photos->thumbs`);
+    let maj=false;
+    (res||[]).forEach(r=>{
+      const b=(S.bilansHebdo||[]).find(x=>x.id===r.id);
+      if(!b) return;
+      b._thumbsDemandes=true;
+      if(r.thumbs){ b.photos={...(b.photos||{}),thumbs:r.thumbs}; maj=true; }
+    });
+    (S.bilansHebdo||[]).forEach(b=>{ if(ids.includes(b.id)) b._thumbsDemandes=true; });
+    return maj;
+  }catch(e){ console.warn('[bilans] miniatures:',e); return false; }
+  finally{ ids.forEach(id=>_bhEnCours.delete(id)); }
+}
+
+function bhAssurerPhotos(clientId){
+  const list=(S.bilansHebdo||[]).filter(b=>b.client_id===clientId);
+  if(!list.length) return;
+  const rerend=maj=>{ if(maj&&S.screen==='bilanHebdo') render.bilanHebdo(); };
+  const v=S.bhView;
+
+  if(v==='detail'){
+    const b=list.find(x=>x.date===S.bhCurrentDate);
+    if(b&&b._photosAbsentes) bhChargerPhotos([b.id]).then(rerend);
+    return;
+  }
+  if(v==='comparaison'||v==='resultats'){
+    const ids=list.filter(b=>b._photosAbsentes).map(b=>b.id);
+    if(ids.length) bhChargerPhotos(ids).then(rerend);
+    return;
+  }
+  // Vue « accueil » : les miniatures suffisent
+  const sansThumbs=list.filter(b=>b._photosAbsentes&&!b._thumbsDemandes);
+  if(sansThumbs.length){
+    bhChargerThumbs(sansThumbs.map(b=>b.id)).then(maj=>{
+      rerend(maj);
+      // Anciens bilans sans miniature : on charge leurs photos 3 par 3, en fond,
+      // pour que les miniatures soient fabriquées et enregistrées une bonne fois.
+      const aReparer=list.filter(b=>b._photosAbsentes&&!(b.photos&&b.photos.thumbs)).slice(0,3);
+      if(aReparer.length){
+        bhChargerPhotos(aReparer.map(b=>b.id)).then(m=>{
+          rerend(m);
+          if(typeof bhGenererThumbsManquants==='function') bhGenererThumbsManquants(clientId);
+        });
+      }
+    });
+  }
 }
 
 // Fabrique en tâche de fond les miniatures manquantes des anciens bilans,
@@ -11077,18 +11159,27 @@ function confirmCancel(){
 // SUPABASE SYNC FUNCTIONS
 // ─────────────────────────────────────────
 
+// Toutes les colonnes d'un bilan SAUF « photos » (qui pèse ~620 Ko à elle seule).
+// Au démarrage on n'a besoin que de savoir qui a fait son bilan : inutile de
+// télécharger les images. Elles sont chargées quand on ouvre réellement un bilan.
+const CHAMPS_BILAN_SANS_PHOTOS='id,client_id,semaine_debut,poitrine,taille,epaules,fessiers,cuisses,cuisse_d,bras,bras_d,notes,completed,date_fait,modif_diete,modif_training,created_at';
+
 async function syncBilansThisWeek(){
   // Le samedi et le dimanche, deux semaines sont concernées : celle qui se
   // termine et celle qui commence lundi (où vont les bilans du week-end).
   const monday=getMondayStr();
   const semaineBilan=getSemaineBilanStr();
-  const res=await supa('GET','bilans_hebdo','',`?semaine_debut=gte.${monday}`);
+  const res=await supa('GET','bilans_hebdo','',`?semaine_debut=gte.${monday}&select=${CHAMPS_BILAN_SANS_PHOTOS}`);
   if(!res) return;
   // Retire les bilans de ces semaines en cache, remplace par les frais
+  // On garde en mémoire les photos déjà téléchargées : cette requête ne les
+  // rapporte plus, il ne faut surtout pas les effacer au passage.
+  const photosEnMemoire=new Map((S.bilansHebdo||[]).map(b=>[b.id,{ph:b.photos,ok:!b._photosAbsentes}]));
   S.bilansHebdo=(S.bilansHebdo||[]).filter(b=>b.date!==monday && b.date!==semaineBilan);
   S.bilansHebdo.push(...res.map(b=>({
     id:b.id,client_id:b.client_id,date:b.semaine_debut,
-    photos:b.photos||{face:null,gauche:null,droit:null,dos:null},
+    photos:(photosEnMemoire.get(b.id)||{}).ph||{face:null,gauche:null,droit:null,dos:null},
+    _photosAbsentes:!(photosEnMemoire.get(b.id)||{}).ok,
     mensurations:{poitrine:b.poitrine||'',taille:b.taille||'',epaules:b.epaules||'',fessiers:b.fessiers||'',cuisses:b.cuisses||'',cuisse_d:b.cuisse_d||'',bras:b.bras||'',bras_d:b.bras_d||''},
     notes:b.notes||'',
     completed:b.completed||false,
@@ -11308,7 +11399,7 @@ async function syncClientData(clientId){
     supa('GET','seances_type','',`?order=ordre.asc`),
     supa('GET','logs_seances','',`?client_id=eq.${clientId}&order=date_seance.desc`),
     supa('GET','checkins','',`?client_id=eq.${clientId}&order=date.desc`),
-    supa('GET','bilans_hebdo','',`?client_id=eq.${clientId}&order=semaine_debut.desc`),
+    supa('GET','bilans_hebdo','',`?client_id=eq.${clientId}&order=semaine_debut.desc&select=${CHAMPS_BILAN_SANS_PHOTOS}`),
   ]);
   if(dietes){
     const dON=dietes.find(d=>d.jour==='on');
@@ -11373,10 +11464,14 @@ async function syncClientData(clientId){
     S.checkIns.push(...checkins.map(ci=>({...ci,date:ci.date})),...pendingCheckins);
   }
   if(bilans){
+    // On conserve les photos déjà téléchargées pendant cette session
+    const dejaLa=new Map(S.bilansHebdo.filter(b=>b.client_id===clientId).map(b=>[b.id,b]));
     S.bilansHebdo=S.bilansHebdo.filter(b=>b.client_id!==clientId);
     S.bilansHebdo.push(...bilans.map(b=>({
       id:b.id,client_id:b.client_id,date:b.semaine_debut,
-      photos:b.photos||{face:null,gauche:null,droit:null,dos:null},
+      photos:(dejaLa.get(b.id)||{}).photos||{face:null,gauche:null,droit:null,dos:null},
+      _photosAbsentes:dejaLa.get(b.id)?!!dejaLa.get(b.id)._photosAbsentes:true,
+      _thumbsDemandes:!!(dejaLa.get(b.id)||{})._thumbsDemandes,
       mensurations:{poitrine:b.poitrine||'',taille:b.taille||'',epaules:b.epaules||'',fessiers:b.fessiers||'',cuisses:b.cuisses||'',cuisse_d:b.cuisse_d||'',bras:b.bras||'',bras_d:b.bras_d||''},
       notes:b.notes||'',
       completed:b.completed||false,
@@ -11647,6 +11742,10 @@ async function saveBilanHebdoToSupa(bilan){
     modif_diete:bilan.modifDiete||null,
     modif_training:bilan.modifTraining||null
   };
+  // SÉCURITÉ : si les photos de ce bilan n'ont pas été téléchargées (elles ne le
+  // sont plus au démarrage, pour la vitesse), on ne les envoie PAS. Sans ça, un
+  // simple changement de statut effacerait les photos en base.
+  if(bilan._photosAbsentes) delete payload.photos;
   if(bilan._supaId){
     await supa('PATCH','bilans_hebdo',payload,`?id=eq.${bilan._supaId}`);
   } else {
