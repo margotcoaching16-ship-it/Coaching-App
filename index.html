@@ -1710,6 +1710,11 @@ html.da-chic .topbar-title::after{content:'';display:block;width:36px;height:2px
 <div id="auth-shell" style="position:fixed;inset:0;background:var(--bg2);z-index:3000;display:none;align-items:center;justify-content:center;padding:24px">
   <div style="width:100%;max-width:430px;background:var(--bg);border:1px solid var(--border);border-radius:20px;box-shadow:0 6px 30px rgba(0,0,0,.08);padding:24px">
     <div id="setpw-screen" style="display:none">
+      <div id="inapp-warning" style="display:none;background:#fdf1e5;border:1px solid #e8b884;border-left:4px solid #d4842a;border-radius:12px;padding:13px 15px;margin-bottom:16px;font-size:13.5px;line-height:1.5;color:#7a4a12">
+        <div style="font-weight:800;margin-bottom:5px">⚠️ Ouvre ce lien dans <span id="inapp-navigateur">ton navigateur</span></div>
+        <div>Tu es dans le navigateur de <span id="inapp-appli">cette application</span>. Tu peux créer ton mot de passe ici, mais tu ne pourras pas installer l'appli sur ton écran d'accueil.</div>
+        <button onclick="copierAdresseAppli(this)" style="margin-top:10px;background:#d4842a;color:#fff;border:none;border-radius:9px;padding:9px 14px;font:inherit;font-weight:700;font-size:13px;cursor:pointer;width:100%">📋 Copier l'adresse de l'appli</button>
+      </div>
       <div style="width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;background:var(--green-light);font-size:28px">🔑</div>
       <div style="margin:0 0 6px;font-size:24px;font-weight:700;text-align:center">Créer mon mot de passe</div>
       <div style="margin:0 0 20px;font-size:14px;line-height:1.5;color:var(--text2);text-align:center">Choisis ton mot de passe pour activer ton compte.</div>
@@ -1731,6 +1736,14 @@ html.da-chic .topbar-title::after{content:'';display:block;width:36px;height:2px
       <label class="form-label" for="login-password" style="margin-top:14px">Mot de passe</label>
       <input class="form-inp" id="login-password" type="password" autocomplete="current-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
       <button class="btn btn-primary" id="login-btn" style="margin-top:16px" onclick="doLogin()">Se connecter</button>
+    </div>
+    <div id="install-screen" style="display:none;text-align:center">
+      <img src="/Coaching-App/icon-512.png" alt="" style="width:86px;height:86px;border-radius:20px;margin:0 auto 14px;display:block;box-shadow:0 4px 16px rgba(0,0,0,.12)">
+      <div style="font-size:24px;font-weight:700;margin-bottom:6px">Bienvenue&nbsp;!</div>
+      <div style="font-size:14px;line-height:1.5;color:var(--text2);margin-bottom:20px">Ton compte est prêt. Installe l'appli sur ton écran d'accueil&nbsp;: tu l'ouvriras d'un seul geste, comme une vraie application.</div>
+      <div id="install-etapes" style="text-align:left;background:#fafaf8;border:1px solid var(--border);border-radius:14px;padding:16px 18px;font-size:14px;line-height:1.6;color:var(--text2);margin-bottom:16px"></div>
+      <button class="btn btn-primary" id="install-btn" style="display:none;margin-bottom:10px" onclick="lancerInstallation()">📲 Installer l'application</button>
+      <button onclick="fermerInstallScreen()" style="background:none;border:none;font:inherit;font-size:13.5px;color:var(--text3);text-decoration:underline;cursor:pointer;padding:8px">Plus tard, je me connecte</button>
     </div>
   </div>
 </div>
@@ -2193,6 +2206,7 @@ function checkInviteToken(){
     document.getElementById('auth-shell').style.display='flex';
     document.getElementById('setpw-screen').style.display='block';
     document.getElementById('login-screen').style.display='none';
+    majInAppWarning();
     return true;
   }
   return false;
@@ -2237,9 +2251,9 @@ async function doSetPassword(){
     }
     history.replaceState(null,'',window.location.pathname + window.location.search);
     document.getElementById('setpw-screen').style.display='none';
-    document.getElementById('login-screen').style.display='block';
     document.getElementById('login-email').value=email;
     document.getElementById('login-password').value=pw;
+    showInstallScreen();
     btn.disabled = false; btn.textContent = 'Confirmer';
   } catch(e){
     errEl.textContent = 'Erreur réseau. Réessaie.';
@@ -2639,7 +2653,10 @@ function setTopbar(title,sub='',action=''){
   document.getElementById('topbar-action').innerHTML=action;
   // Palette 🎨 : visible seulement sur la liste des clients (coach) et le menu principal (cliente)
   const pb=document.getElementById('palette-btn');
-  if(pb)pb.style.display=((S.screen==='clients'&&currentIsCoach)||(S.screen==='menu'&&!currentIsCoach))?'':'none';
+  if(pb)pb.style.display=(S.screen==='menu'&&!currentIsCoach)?'':'none';
+  // Côté coach, Thèmes et Jour/Nuit vivent maintenant dans le menu Options (⚙️)
+  const tb=document.getElementById('theme-toggle-btn');
+  if(tb)tb.style.display=currentIsCoach?'none':'';
 }
 
 // ─────────────────────────────────────────
@@ -2769,7 +2786,7 @@ render.clients=function(filter=''){
     <button data-sort="alpha" onclick="setClientsSort('alpha')" style="padding:4px 10px;color:${sortMode==='alpha'?'var(--text)':'var(--text3)'}">A→Z</button>
     <button data-sort="jour" onclick="setClientsSort('jour')" style="padding:4px 10px;color:${sortMode==='jour'?'var(--text)':'var(--text3)'}">📅 Jour</button>
   </div>`;
-  setTopbar('Mes clients','',`<div style="display:flex;gap:6px;align-items:center">${sortBtn}<div class="icon-btn" onclick="showCalendrierBilanModal()" title="Calendrier bilans">📅</div><div class="icon-btn" onclick="navigate('archives')" title="Archives">🗂️</div>${currentIsCoach?`<div class="icon-btn" onclick="exportAllData()" title="Exporter mes données">💾</div>`:''}<div class="icon-btn" onclick="showNewClientModal()">＋</div><div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div></div>`);
+  setTopbar('Mes clients','',`<div style="display:flex;gap:6px;align-items:center">${sortBtn}<div class="icon-btn" onclick="showCalendrierBilanModal()" title="Calendrier bilans">📅</div><div class="icon-btn" onclick="showNewClientModal()">＋</div><div class="icon-btn" onclick="showOptionsModal(this)" title="Options">⚙️</div></div>`);
   positionClientsSortThumb();
   const baseList=S.clients.filter(c=>`${c.prenom} ${c.nom}`.toLowerCase().includes(filter.toLowerCase()));
   const list=sortMode==='jour'
@@ -12627,6 +12644,154 @@ async function exportAllData(){
     exportOverlayClose();
     toast('❌ Export impossible : '+(e.message||e));
   }
+}
+
+// ─────────────────────────────────────────
+// MENU OPTIONS (⚙️) — regroupe Thèmes, Jour/Nuit, Archives,
+// Sauvegarde et Déconnexion pour alléger la barre du haut.
+// ─────────────────────────────────────────
+function optionRow(icone,titre,sousTitre,action,couleur){
+  const c=couleur||'var(--text)';
+  return '<button onclick="'+action+'" style="display:flex;align-items:center;gap:14px;width:100%;text-align:left;'
+    +'background:none;border:none;border-bottom:1px solid var(--border2,#e5e5e5);padding:15px 4px;cursor:pointer;font:inherit;color:'+c+'">'
+    +'<span style="font-size:21px;width:26px;flex-shrink:0;text-align:center">'+icone+'</span>'
+    +'<span style="flex:1;min-width:0">'
+      +'<span style="display:block;font-weight:700;font-size:15px">'+titre+'</span>'
+      +(sousTitre?'<span style="display:block;font-size:12.5px;color:var(--text3,#999);margin-top:2px">'+sousTitre+'</span>':'')
+    +'</span>'
+    +'<span style="font-size:19px;color:var(--text3,#bbb);flex-shrink:0">›</span>'
+  +'</button>';
+}
+
+function showOptionsModal(btn){
+  const nuit=(localStorage.getItem('c_theme')||'day')==='night';
+  openModal(
+    '<div class="modal-title">⚙️ Options</div>'
+    +'<div style="margin-top:6px">'
+    + optionRow('🎨','Thèmes','Style et couleurs de l\'application',
+        "closeModal();setTimeout(openThemeModal,200)")
+    + optionRow(nuit?'☀️':'🌙', nuit?'Passer en mode jour':'Passer en mode nuit',
+        nuit?'Actuellement en mode nuit':'Actuellement en mode jour',
+        "toggleTheme();closeModal()")
+    + optionRow('🗂️','Archives','Clients archivés',
+        "closeModal();setTimeout(function(){navigate('archives')},200)")
+    + optionRow('💾','Sauvegarder mes données','Télécharger une copie de secours',
+        "closeModal();setTimeout(exportAllData,200)")
+    + optionRow('🚪','Déconnexion','','closeModal();setTimeout(logout,200)','var(--red,#c0392b)')
+    +'</div>'
+  ,{from:btn});
+}
+
+// ─────────────────────────────────────────
+// AIDE À L'INSTALLATION SUR L'ÉCRAN D'ACCUEIL
+// Le téléphone s'annonce lui-même au site (navigator.userAgent).
+// On s'en sert pour afficher les bonnes instructions.
+// ─────────────────────────────────────────
+let _promptInstall=null;   // cadeau offert par Android : la fenêtre d'installation
+
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  _promptInstall=e;
+  const b=document.getElementById('install-btn');
+  if(b&&document.getElementById('install-screen').style.display!=='none') b.style.display='';
+});
+
+function detecterTelephone(){
+  const ua=navigator.userAgent||'';
+  const iOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const android=/Android/.test(ua);
+  // Navigateurs intégrés aux applis de messagerie : « Sur l'écran d'accueil » y est absent
+  let appli=null;
+  if(/FBAN|FBAV|FB_IAB/i.test(ua)) appli='Facebook';
+  else if(/Instagram/i.test(ua)) appli='Instagram';
+  else if(/Messenger/i.test(ua)) appli='Messenger';
+  else if(/WhatsApp/i.test(ua)) appli='WhatsApp';
+  else if(/Snapchat/i.test(ua)) appli='Snapchat';
+  else if(/LinkedInApp/i.test(ua)) appli='LinkedIn';
+  else if(/Line\//i.test(ua)) appli='Line';
+  const installee=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+  return {iOS,android,appli,installee};
+}
+
+function majInAppWarning(){
+  const d=detecterTelephone();
+  const el=document.getElementById('inapp-warning');
+  if(!el) return;
+  if(d.appli&&!d.installee){
+    document.getElementById('inapp-appli').textContent=d.appli;
+    document.getElementById('inapp-navigateur').textContent=d.iOS?'Safari':'Chrome';
+    el.style.display='block';
+  } else {
+    el.style.display='none';
+  }
+}
+
+function copierAdresseAppli(btn){
+  const adresse=location.origin+location.pathname;
+  const fini=()=>{const t=btn.textContent;btn.textContent='✅ Adresse copiée !';setTimeout(()=>{btn.textContent=t;},2200);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(adresse).then(fini).catch(()=>{prompt('Copie cette adresse :',adresse);});
+  } else {
+    prompt('Copie cette adresse :',adresse);
+  }
+}
+
+// Petit pictogramme du bouton « Partager » d'iPhone, pour que ce soit clair
+const ICONE_PARTAGE='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1e90f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 16V3"/><polyline points="8 7 12 3 16 7"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+
+function etapeHTML(n,txt){
+  return '<div style="display:flex;gap:11px;align-items:flex-start;margin-bottom:11px">'
+    +'<span style="flex-shrink:0;width:23px;height:23px;border-radius:50%;background:var(--green,#1D9E75);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px">'+n+'</span>'
+    +'<span style="flex:1">'+txt+'</span></div>';
+}
+
+function showInstallScreen(){
+  const d=detecterTelephone();
+  const shell=document.getElementById('auth-shell');
+  if(shell) shell.style.display='flex';
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('install-screen').style.display='block';
+
+  const etapes=document.getElementById('install-etapes');
+  const btn=document.getElementById('install-btn');
+  btn.style.display='none';
+
+  if(d.appli){
+    // Navigateur intégré : impossible d'installer d'ici, on redirige d'abord
+    etapes.innerHTML='<div style="font-weight:800;color:#7a4a12;margin-bottom:10px">Une étape avant d\'installer</div>'
+      +etapeHTML(1,'Tu es dans le navigateur de <b>'+d.appli+'</b>, qui ne sait pas installer d\'application.')
+      +etapeHTML(2,'Touche le menu <b>···</b> en haut, puis <b>« Ouvrir dans '+(d.iOS?'Safari':'Chrome')+' »</b>.')
+      +etapeHTML(3,'Reconnecte-toi, et l\'installation te sera proposée.')
+      +'<button onclick="copierAdresseAppli(this)" style="margin-top:6px;background:#d4842a;color:#fff;border:none;border-radius:9px;padding:9px 14px;font:inherit;font-weight:700;font-size:13px;cursor:pointer;width:100%">📋 Copier l\'adresse de l\'appli</button>';
+  } else if(d.iOS){
+    etapes.innerHTML=etapeHTML(1,'Touche le bouton <b>Partager</b> '+ICONE_PARTAGE+' en bas de l\'écran.')
+      +etapeHTML(2,'Fais défiler puis touche <b>« Sur l\'écran d\'accueil »</b>.')
+      +etapeHTML(3,'Touche <b>Ajouter</b> en haut à droite. C\'est fait&nbsp;!');
+  } else if(d.android){
+    etapes.innerHTML=etapeHTML(1,'Touche le bouton vert ci-dessous.')
+      +etapeHTML(2,'Confirme avec <b>Installer</b>.')
+      +etapeHTML(3,'L\'icône apparaît sur ton écran d\'accueil.')
+      +'<div style="font-size:12.5px;color:var(--text3);margin-top:2px">Si le bouton n\'apparaît pas&nbsp;: menu <b>⋮</b> en haut à droite → <b>Installer l\'application</b>.</div>';
+    if(_promptInstall) btn.style.display='';
+  } else {
+    etapes.innerHTML=etapeHTML(1,'Dans la barre d\'adresse, clique sur l\'icône d\'installation.')
+      +etapeHTML(2,'Confirme avec <b>Installer</b>.')
+      +'<div style="font-size:12.5px;color:var(--text3)">Sur ordinateur, tu peux aussi simplement garder cet onglet ouvert.</div>';
+    if(_promptInstall) btn.style.display='';
+  }
+}
+
+async function lancerInstallation(){
+  if(!_promptInstall){ toast&&toast('Utilise le menu ⋮ de ton navigateur'); return; }
+  _promptInstall.prompt();
+  try{ await _promptInstall.userChoice; }catch(e){}
+  _promptInstall=null;
+  document.getElementById('install-btn').style.display='none';
+}
+
+function fermerInstallScreen(){
+  document.getElementById('install-screen').style.display='none';
+  document.getElementById('login-screen').style.display='block';
 }
 
 bootstrapAuth();
