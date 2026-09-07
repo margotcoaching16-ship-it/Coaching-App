@@ -144,7 +144,14 @@ button,input,select,textarea{font-family:inherit;font-size:inherit}
 /* ── TOPBAR ── */
 .topbar{background:var(--bg);border-bottom:.5px solid var(--border);padding:10px 16px 8px;position:sticky;top:0;z-index:50;flex-shrink:0}
 .topbar-inner{display:flex;align-items:center;gap:10px;min-height:32px}
-.topbar-back{background:none;border:none;cursor:pointer;color:var(--green);font-size:22px;padding:0;line-height:1;flex-shrink:0}
+.topbar-back{background:var(--bg2);border:.5px solid var(--border2);border-radius:50%;width:40px;height:40px;padding:0;cursor:pointer;flex-shrink:0;align-items:center;justify-content:center;overflow:hidden;transition:background .15s,transform .12s;-webkit-tap-highlight-color:transparent}
+.topbar-back:active{background:var(--bg3);transform:scale(.92)}
+.back-arrow{width:30px;height:30px;display:block;pointer-events:none}
+.back-arrow svg{display:block;width:100%;height:100%}
+/* La flèche reprend la couleur verte du thème en cours */
+.back-arrow svg path{stroke:var(--green)!important}
+/* Chevron de secours si Lottie n'a pas pu se charger (réseau coupé) */
+.back-fallback{font-size:26px;line-height:1;color:var(--green);font-weight:300;margin-top:-3px;margin-left:-2px}
 .topbar-titles{flex:1;min-width:0}
 .topbar-title{font-size:16px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .topbar-sub{font-size:12px;color:var(--text2);margin-top:1px}
@@ -1751,7 +1758,7 @@ html.da-chic .topbar-title::after{content:'';display:block;width:36px;height:2px
 <div class="app">
   <div class="topbar" id="topbar">
     <div class="topbar-inner">
-      <button class="topbar-back" id="back-btn" onclick="goBack()" style="display:none">‹</button>
+      <button class="topbar-back" id="back-btn" onclick="goBack()" style="display:none" aria-label="Retour"><span class="back-arrow" id="back-arrow"><span class="back-fallback">‹</span></span></button>
       <div class="topbar-titles">
         <div class="topbar-title" id="topbar-title">Mes clients</div>
         <div class="topbar-sub" id="topbar-sub" style="display:none"></div>
@@ -1891,11 +1898,10 @@ html.da-chic .topbar-title::after{content:'';display:block;width:36px;height:2px
   <div class="whatsnew-card">
     <div class="whatsnew-emoji">✨</div>
     <div class="whatsnew-title">Du nouveau !</div>
-    <div class="whatsnew-sub">Quelques améliorations rien que pour toi :</div>
+    <div class="whatsnew-sub">Deux nouveautés rien que pour toi :</div>
     <ul class="whatsnew-list">
-      <li>🃏 Pendant ta séance, tu peux passer en <b>mode Carte</b> : un exercice par écran, tu fais glisser pour aller au suivant. Le petit bouton Liste / Carte est en haut, tu choisis ce que tu préfères</li>
-      <li>⚡ Nouveau dans le check-in : ton <b>niveau d'énergie</b>. Fais glisser le point, le smiley suit ton humeur du jour</li>
-      <li>📋 Ta séance en mode Liste a aussi été revue : objectifs plus lisibles, et un exercice terminé se replie tout seul</li>
+      <li>🛒 Tout en bas de ta diète, un bouton <b>Générer ma liste de courses</b>. L'appli additionne tous tes aliments de la semaine et te sort la liste complète, rangée par rayon. Les féculents sont même convertis en poids cru, celui que tu achètes. Tu coches au fur et à mesure dans le magasin, et ça reste coché si tu fermes l'appli</li>
+      <li>📅 Sur ton accueil, tu peux maintenant <b>réserver ton coaching</b> sans quitter l'appli. Ton nom et ton email sont déjà remplis : tu n'as plus qu'à choisir ton créneau</li>
     </ul>
     <button class="whatsnew-btn" onclick="closeWhatsNew()">C'est parti 💪</button>
   </div>
@@ -2597,6 +2603,7 @@ function navigate(screen,opts={}){
 }
 function goBack(){
   if(!S.history.length){return;}
+  playBackArrow();
   const prev=S.history.pop();
   S.client=prev.client;S.programme=prev.programme;S.seanceType=prev.seanceType;
   showScreen(prev.screen,{noHistory:true,slide:'back'});
@@ -2621,7 +2628,7 @@ function showScreen(screen,opts={}){
   }
   S.screen=screen;
   const backBtn=document.getElementById('back-btn');
-  backBtn.style.display=S.history.length?'block':'none';
+  backBtn.style.display=S.history.length?'flex':'none';
 
   // Afficher/masquer la barre de raccourcis
   const shortcutBar=document.getElementById('shortcut-bar');
@@ -4073,12 +4080,18 @@ render.menu=function(){
   const checkinCount=S.checkIns.filter(ci=>ci.client_id===c.id).length;
   document.getElementById('topbar-action').innerHTML=`<div style="display:flex;gap:6px;align-items:center">${currentIsCoach?`<button class="client-mini-btn" onclick="openCalculsPerte('${c.id}')" title="Trame">Plan</button>`:''}<div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div></div>`;
   const isPack=c.formule==='pack';
+  const carteResa=`<div class="menu-card" onclick="showReservationModal()" style="grid-column:span 2;border-color:var(--green)">
+      <div class="menu-card-icon">📅</div>
+      <div class="menu-card-label">Réserver un coaching</div>
+      <div class="menu-card-sub">Coaching en salle · choisis ton créneau</div>
+    </div>`;
   document.getElementById('menu-grid').innerHTML=`
     <div class="menu-card" onclick="goTraining()"${isPack?' style="grid-column:span 2"':''}>
       <div class="menu-card-icon">💪</div>
       <div class="menu-card-label">Entraînement</div>
       <div class="menu-card-sub">${countProgs(c.id)} programme(s)</div>
     </div>
+    ${isPack?carteResa:''}
     ${isPack?'':`<div class="menu-card" onclick="navigate('diete')">
       <div class="menu-card-icon">🥗</div>
       <div class="menu-card-label">Diète</div>
@@ -4099,6 +4112,7 @@ render.menu=function(){
       <div class="menu-card-label">Bilan hebdomadaire</div>
       <div class="menu-card-sub">Photos · Mensurations · Comparaison</div>
     </div>
+    ${carteResa}
     ${!currentIsCoach?`<div class="menu-card" style="grid-column:span 2;cursor:default">
       <div style="text-align:left">
         <div class="menu-card-label">🔔 Rappels</div>
@@ -4151,6 +4165,47 @@ render.menu=function(){
 };
 
 function countProgs(clientId){return S.programmes.filter(p=>p.client_id===clientId).length;}
+
+// ─────────────────────────────────────────
+// RÉSERVATION D'UN COACHING (Cal.com)
+// ─────────────────────────────────────────
+const CAL_LIEN='https://cal.com/margot-coaching-h11oia/coaching-en-salle';
+
+// Pré-remplit le formulaire Cal.com avec le nom et l'email de la cliente,
+// pour qu'elle n'ait plus qu'à choisir son créneau et valider.
+function _resaPrefill(){
+  const c=S.client||{};
+  const p=[];
+  const nom=((c.prenom||'')+' '+(c.nom||'')).trim();
+  if(nom) p.push('name='+encodeURIComponent(nom));
+  if(c.email) p.push('email='+encodeURIComponent(String(c.email).trim()));
+  return p.join('&');
+}
+
+function showReservationModal(){
+  const pre=_resaPrefill();
+  openModal(`
+    <div class="modal-title">📅 Réserver un coaching</div>
+    <div id="resa-attente" style="text-align:center;padding:30px 12px;color:var(--text3);font-size:13px;line-height:1.5">⏳ Chargement du calendrier…</div>
+    <iframe id="resa-frame" title="Réservation d'un coaching"
+      src="${CAL_LIEN}?embed=true&layout=month_view${pre?'&'+pre:''}"
+      style="width:100%;height:min(68dvh,600px);border:none;border-radius:var(--radius-lg);background:#fff;display:none"
+      onload="var a=document.getElementById('resa-attente');if(a)a.style.display='none';this.style.display='block'"></iframe>
+    <button class="btn btn-secondary" style="margin-top:10px" onclick="ouvrirReservationNavigateur()">↗ Ouvrir dans le navigateur</button>
+  `,{large:true});
+  // Filet de sécurité : si le calendrier ne s'affiche pas, on oriente vers le navigateur
+  setTimeout(function(){
+    const a=document.getElementById('resa-attente');
+    if(a&&a.style.display!=='none'){
+      a.innerHTML='😕 Le calendrier n\'arrive pas à s\'afficher ici.<br>Touche le bouton ci-dessous pour l\'ouvrir dans ton navigateur.';
+    }
+  },9000);
+}
+
+function ouvrirReservationNavigateur(){
+  const pre=_resaPrefill();
+  window.open(CAL_LIEN+(pre?'?'+pre:''),'_blank','noopener');
+}
 
 function goTraining(){navigate('training');}
 
@@ -5122,7 +5177,7 @@ render.log=function(){
   const mode=getLogView();
   const dateStr=new Date(log.date).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   setTopbar(log.seance_nom,'','');
-  document.getElementById('back-btn').style.display='block';
+  document.getElementById('back-btn').style.display='flex';
   const screen=document.getElementById('screen-log');
   if(screen) screen.classList.toggle('lg-mode-carte',mode==='carte');
   const el=document.getElementById('log-content');
@@ -9283,14 +9338,12 @@ async function _applyGeneratedDiete(dietOn, dietOff){
 
 async function saveClientDiete(){
   persist();
-  // Snapshot as base diet
-  const d=getClientDiete(S.client.id,S.dieteState.day);
-  lsSet('c_baseDiete_'+S.client.id+'_'+S.dieteState.day, JSON.parse(JSON.stringify(d)));
-  // Nettoyer le brouillon sessionStorage puisqu'on a sauvegardé
+  // NB : sauvegarder la diète ne fige PLUS la base de référence.
+  // Seule la coach fige la base, via saveDieteBase().
   sessionStorage.removeItem('c_dieteDraft_'+S.client.id+'_'+S.dieteState.day);
   toast('Sauvegarde…');
   await saveDieteToSupa(S.client.id,S.dieteState.day);
-  toast('✓ Diète sauvegardée comme base');
+  toast('✓ Diète sauvegardée');
   render.diete();
 }
 
@@ -9315,18 +9368,89 @@ async function copyDieteToOtherDay(){
   render.diete();
 }
 
-function resetClientDiete(){
-  const base=lsGet('c_baseDiete_'+S.client.id+'_'+S.dieteState.day);
-  if(!base){toast('⚠ Aucune base sauvegardée');return;}
-  if(!S.dietes[S.client.id]) S.dietes[S.client.id]={};
-  S.dietes[S.client.id][S.dieteState.day]=JSON.parse(JSON.stringify(base));
-  S.dietes[S.client.id][S.dieteState.day].iaModified=false;
-  persist();
-  // Nettoyer le brouillon sessionStorage puisqu'on a réinitialisé
-  sessionStorage.removeItem('c_dieteDraft_'+S.client.id+'_'+S.dieteState.day);
-  toast('↩ Diète réinitialisée');
-  render.diete();
+// ─────────────────────────────────────────
+// DIÈTE DE RÉFÉRENCE (« base ») — figée par la coach
+// ─────────────────────────────────────────
+// Récupère la base du jour affiché : d'abord celle du serveur (_base),
+// sinon l'ancienne base locale (compatibilité avec les versions précédentes).
+function getDieteBase(clientId,day){
+  const d=getClientDiete(clientId,day);
+  if(d&&d._base&&Array.isArray(d._base.meals)&&d._base.meals.length) return d._base;
+  const vieille=lsGet('c_baseDiete_'+clientId+'_'+day);
+  if(vieille&&Array.isArray(vieille.meals)&&vieille.meals.length){
+    return {meals:vieille.meals,targets:vieille.targets};
+  }
+  return null;
 }
+function getDieteBaseDate(clientId,day){
+  const d=getClientDiete(clientId,day);
+  if(!d||!d._baseDate) return '';
+  try{
+    return new Date(d._baseDate).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  }catch(e){return '';}
+}
+
+// Coach uniquement : fige la diète affichée comme base de référence.
+function saveDieteBase(){
+  if(!currentIsCoach){toast('⚠ Réservé à la coach');return;}
+  const clientId=S.client.id, day=S.dieteState.day;
+  const d=getClientDiete(clientId,day);
+  if(!d||!d.meals||!d.meals.length){toast('⚠ Aucune diète à figer');return;}
+  const dejaUne=!!getDieteBase(clientId,day);
+  const label=day==='on'?'Day ON':'Day OFF';
+  confirmDialog(
+    dejaUne?'Remplacer la base '+label+' ?':'Figer la base '+label+' ?',
+    dejaUne
+      ? 'La diète actuellement affichée deviendra la nouvelle référence. L\'ancienne base sera perdue.'
+      : 'La diète actuellement affichée devient ta référence. Tu pourras y revenir à tout moment.',
+    dejaUne?'Remplacer':'Figer la base',
+    async function(){
+      d._base={meals:JSON.parse(JSON.stringify(d.meals)),targets:JSON.parse(JSON.stringify(d.targets))};
+      d._baseDate=new Date().toISOString();
+      persist();
+      toast('Enregistrement…');
+      try{
+        await saveDieteToSupa(clientId,day);      // garantit que la ligne existe
+        await saveDieteBaseToSupa(clientId,day);  // écrit la base sur le serveur
+        toast('📌 Base '+label+' enregistrée');
+      }catch(e){
+        console.error('Sauvegarde base diète:',e);
+        toast('⚠ Base enregistrée localement seulement');
+      }
+      render.diete();
+    }
+  );
+}
+
+// Restaure la base du jour affiché (coach ET cliente).
+function restoreDieteBase(){
+  const clientId=S.client.id, day=S.dieteState.day;
+  const base=getDieteBase(clientId,day);
+  if(!base){toast('⚠ Aucune base enregistrée');return;}
+  const label=day==='on'?'Day ON':'Day OFF';
+  const dateTxt=getDieteBaseDate(clientId,day);
+  confirmDialog(
+    currentIsCoach?'Revenir à la diète de base '+label+' ?':'Revenir à la diète de ta coach ?',
+    'Le '+label+' sera remis exactement comme dans la base'+(dateTxt?' du '+dateTxt:'')+'. Les modifications actuelles seront perdues.',
+    'Restaurer',
+    async function(){
+      const d=ensureClientDiete(clientId,day);
+      d.meals=JSON.parse(JSON.stringify(base.meals));
+      if(base.targets) d.targets=JSON.parse(JSON.stringify(base.targets));
+      d.iaModified=false;
+      d.iaModifiedDate=null;
+      persist();
+      sessionStorage.removeItem('c_dieteDraft_'+clientId+'_'+day);
+      toast('↩ Restauration…');
+      try{ await saveDieteToSupa(clientId,day); }catch(e){console.error('Restauration base:',e);}
+      toast('↩ Diète '+label+' restaurée');
+      render.diete();
+    }
+  );
+}
+
+// Ancien nom conservé au cas où il serait appelé ailleurs
+function resetClientDiete(){ restoreDieteBase(); }
 
 // ─────────────────────────────────────────
 // SAUVEGARDE DE BROUILLON DIÈTE
@@ -9473,11 +9597,175 @@ render.diete=function(){
       </div>
     </div>`).join('')+`
     ${isDietStrict?'':'<button class="btn btn-ghost" style="margin-bottom:10px" onclick="dAddMeal()">+ Ajouter un repas</button>'}
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" style="flex:1" onclick="saveClientDiete()">💾 Sauvegarder la diète</button>
-      <button class="btn btn-secondary" style="flex:1" onclick="resetClientDiete()">↩ Réinitialiser</button>
-    </div>`;
+    ${currentIsCoach?`<button class="btn btn-primary" onclick="saveDieteBase()">📌 Sauvegarder la base</button>`:''}
+    ${getDieteBase(c.id,ds.day)?`<button class="btn btn-secondary" style="margin-top:8px" onclick="restoreDieteBase()">↩ Revenir à la diète de base</button>`:''}
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="showListeCoursesModal(this)">🛒 Générer ma liste de courses</button>`;
 };
+
+// ─────────────────────────────────────────
+// LISTE DE COURSES
+// ─────────────────────────────────────────
+// Jours ON / OFF sur une semaine, déduits du nombre de séances de la cliente
+function lcJoursSemaine(client){
+  let on=parseInt(client&&client.goals&&client.goals.seances)||0;
+  if(!on){
+    const prog=(S.programmes||[]).find(p=>p.client_id===client.id);
+    on=prog?(parseInt(prog.nb_seances)||0):0;
+  }
+  if(!on) on=4;
+  on=Math.max(0,Math.min(7,on));
+  return {on:on,off:7-on};
+}
+
+// Féculents : ratio à appliquer sur le poids cuit pour obtenir le poids cru
+const LC_FECULENTS=[
+  {words:['flocon','muesli','granola','corn flake','pain','biscotte','biscuit','cracker','tortilla','galette'],ratio:null},
+  {words:['riz'],ratio:1/3},
+  {words:['pâtes','pâte','pasta','spaghetti','tagliatelle','fusilli','penne','coquillette','macaroni'],ratio:1/2.5},
+  {words:['semoule','couscous'],ratio:1/2.5},
+  {words:['quinoa'],ratio:1/2.5},
+  {words:['boulgour','bulgur'],ratio:1/2.5},
+  {words:['pomme de terre','patate douce','patate'],ratio:1/1.1},
+  {words:['lentille'],ratio:1/2.5},
+  {words:['haricot','pois chiche','pois cassé'],ratio:1/2.5},
+  {words:['polenta'],ratio:1/3}
+];
+function lcRatioFeculent(nom){
+  const n=(nom||'').toLowerCase();
+  for(const p of LC_FECULENTS){for(const w of p.words){if(n.includes(w))return p.ratio;}}
+  return undefined; // inconnu → pas de conversion
+}
+
+const LC_EMOJI={'Viande':'🥩','Poisson':'🐟','Produits laitiers':'🥛','Œufs':'🥚','Œuf':'🥚',
+  'Féculents':'🍚','Céréales':'🌾','Légumes':'🥦','Fruits':'🍎','Légumineuses':'🫘',
+  'Huile':'🫒','Sauce':'🧴','Produits sucrés':'🍯','Boissons':'🥤','Épices':'🧂',
+  'Condiments':'🧄','Pain':'🍞','Recettes':'👩‍🍳','Autre':'📦'};
+function lcEmoji(cat){return LC_EMOJI[cat]||'🛒';}
+
+function lcQtyTexte(it){
+  if((it.type||'').toUpperCase()==='UNITÉ'){
+    const n=Math.ceil(it.total-0.0001);
+    return {qty:n+' unité'+(n>1?'s':''),note:null};
+  }
+  const q=it.total;
+  if(it.cat==='Féculents'){
+    const r=lcRatioFeculent(it.name);
+    if(r!==null&&r!==undefined){
+      const cru=q*r;
+      const s=cru>=1000?(cru/1000).toFixed(2).replace('.',',')+' kg':Math.round(cru)+' g';
+      return {qty:s+' cru',note:'≈ '+Math.round(q)+' g cuit'};
+    }
+  }
+  const s=q>=1000?(q/1000).toFixed(1).replace('.',',')+' kg':Math.round(q)+' g';
+  return {qty:s,note:null};
+}
+
+// Additionne tous les aliments des diètes ON et OFF × leur nombre de jours
+function lcConstruire(clientId,jours){
+  const map={};
+  [['on',jours.on],['off',jours.off]].forEach(function(pair){
+    const day=pair[0],nb=pair[1];
+    if(nb<=0)return;
+    const d=getClientDiete(clientId,day);
+    if(!d)return;
+    (d.meals||[]).forEach(function(meal){
+      (meal.items||[]).forEach(function(item){
+        if(!item.enabled)return;
+        const key=(item.food||'').toLowerCase().trim();
+        if(!key)return;
+        if(!map[key])map[key]={name:item.food,cat:item.cat||'Autre',type:item.type||null,total:0};
+        map[key].total+=(parseFloat(item.qty)||0)*nb;
+      });
+    });
+  });
+  const items=Object.values(map).filter(function(x){return x.total>0;});
+  items.sort(function(a,b){return a.cat.localeCompare(b.cat,'fr')||a.name.localeCompare(b.name,'fr');});
+  const groups={};
+  items.forEach(function(it){if(!groups[it.cat])groups[it.cat]=[];groups[it.cat].push(it);});
+  return {groups:groups,total:items.length};
+}
+
+// ── Cases cochées (mémorisées par cliente) ──
+function lcId(nom){return nom.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');}
+function lcTousCoches(){return lsGet('c_listeCourses')||{};}
+function lcCochesClient(clientId){const a=lcTousCoches();return a[clientId]||{};}
+let _lcIds=[];
+function lcToggle(id){
+  const cid=S.client&&S.client.id;if(!cid)return;
+  const all=lcTousCoches();
+  if(!all[cid])all[cid]={};
+  all[cid][id]=!all[cid][id];
+  if(!all[cid][id])delete all[cid][id];
+  lsSet('c_listeCourses',all);
+  const el=document.getElementById('lc-'+id);
+  if(el)el.classList.toggle('lc-done',!!all[cid][id]);
+  lcMajCompteur();
+}
+function lcMajCompteur(){
+  const coches=lcCochesClient(S.client&&S.client.id);
+  const n=_lcIds.filter(function(id){return coches[id];}).length;
+  const el=document.getElementById('lc-compteur');
+  if(el)el.textContent=n+' / '+_lcIds.length+' coché'+(n>1?'s':'');
+}
+function lcToutDecocher(){
+  const cid=S.client&&S.client.id;if(!cid)return;
+  const all=lcTousCoches();
+  delete all[cid];
+  lsSet('c_listeCourses',all);
+  document.querySelectorAll('.lc-item').forEach(function(e){e.classList.remove('lc-done');});
+  lcMajCompteur();
+}
+
+function showListeCoursesModal(btn){
+  const c=S.client;if(!c)return;
+  const jours=lcJoursSemaine(c);
+  const res=lcConstruire(c.id,jours);
+  const style='<style>'
+    +'.lc-sub{font-size:12px;color:var(--text2);background:var(--bg2);border:.5px solid var(--border);border-radius:var(--radius);padding:9px 12px;margin-bottom:12px;line-height:1.4}'
+    +'.lc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}'
+    +'.lc-count{font-size:12px;color:var(--text3);font-weight:600}'
+    +'.lc-cat{font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:14px 2px 6px;display:flex;align-items:center;gap:6px}'
+    +'.lc-item{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--radius);margin-bottom:6px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:opacity .2s}'
+    +'.lc-item.lc-done{opacity:.45}'
+    +'.lc-chk{width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;line-height:1}'
+    +'.lc-item.lc-done .lc-chk{background:var(--green);border-color:var(--green)}'
+    +'.lc-chk span{display:none}'
+    +'.lc-item.lc-done .lc-chk span{display:block}'
+    +'.lc-nm{flex:1;font-size:14px;font-weight:500;min-width:0}'
+    +'.lc-item.lc-done .lc-nm{text-decoration:line-through;color:var(--text3)}'
+    +'.lc-q{font-size:13px;font-weight:700;color:var(--text2);background:var(--bg3);padding:3px 8px;border-radius:6px;white-space:nowrap;display:inline-block}'
+    +'.lc-note{font-size:10px;color:var(--text3);text-align:right;margin-top:2px}'
+    +'</style>';
+  const titre='<div class="modal-title">🛒 Liste de courses</div>';
+  const detail='<div class="lc-sub">📅 Pour 7 jours · <b>'+jours.on+' jour'+(jours.on>1?'s':'')+' ON</b> + <b>'+jours.off+' jour'+(jours.off>1?'s':'')+' OFF</b></div>';
+
+  if(!res.total){
+    openModal(style+titre+detail+'<div class="empty"><div class="empty-icon">😕</div><div class="empty-title">Aucun aliment</div><div class="empty-sub">Il faut d\'abord remplir la diète Day ON et Day OFF.</div></div>',{from:btn});
+    return;
+  }
+
+  const coches=lcCochesClient(c.id);
+  _lcIds=[];
+  let html=style+titre+detail;
+  html+='<div class="lc-head"><div class="lc-count">'+res.total+' aliment'+(res.total>1?'s':'')+'</div><div class="lc-count" id="lc-compteur"></div></div>';
+  Object.keys(res.groups).forEach(function(cat){
+    html+='<div class="lc-cat"><span>'+lcEmoji(cat)+'</span>'+escapeHtml(cat)+'</div>';
+    res.groups[cat].forEach(function(it){
+      const id=lcId(it.name);
+      _lcIds.push(id);
+      const q=lcQtyTexte(it);
+      html+='<div class="lc-item'+(coches[id]?' lc-done':'')+'" id="lc-'+id+'" onclick="lcToggle(\''+id+'\')">'
+        +'<div class="lc-chk"><span>✓</span></div>'
+        +'<div class="lc-nm">'+escapeHtml(it.name)+'</div>'
+        +'<div style="text-align:right;flex-shrink:0"><div class="lc-q">'+q.qty+'</div>'
+        +(q.note?'<div class="lc-note">'+q.note+'</div>':'')+'</div>'
+        +'</div>';
+    });
+  });
+  html+='<button class="btn btn-secondary" style="margin-top:14px" onclick="lcToutDecocher()">↺ Tout décocher</button>';
+  openModal(html,{from:btn});
+  lcMajCompteur();
+}
 
 function dSelHTML(mi,ii){
   const ds=S.dieteState;const isCat=ds.sel.tab==='cat';const db=getDieteDB();
@@ -9757,7 +10045,10 @@ async function _processMealBarcodeScan(input,mi){
     }
 
     // Afficher modal de confirmation
-    const isUnit=vals.poids_unite&&vals.poids_unite>0;
+    // Open Food Facts renvoie parfois "30 g" au lieu de 30 : on nettoie, sinon le bouton
+    // « Ajouter au repas » était généré avec du texte invalide et ne réagissait plus.
+    const pu=(parseFloat(vals.poids_unite)>0)?parseFloat(vals.poids_unite):null;
+    vals.poids_unite=pu;
     openModal(`
       <div class="modal-title">📷 Aliment scanné ${vals.source==='barcode'?'(Code-barres)':'(Tableau)'}</div>
       <div class="form-group">
@@ -9774,7 +10065,7 @@ async function _processMealBarcodeScan(input,mi){
         <label class="form-label">Mode de saisie</label>
         <div style="display:flex;gap:6px;margin-bottom:8px">
           <button class="sel-tab-d active" id="ms-mode-gram" onclick="dSetMealScanMode('gram')" style="flex:1">Grammes</button>
-          ${vals.poids_unite?`<button class="sel-tab-d" id="ms-mode-unit" onclick="dSetMealScanMode('unit')" style="flex:1">Unité (${vals.poids_unite}g)</button>`:''}
+          ${pu?`<button class="sel-tab-d" id="ms-mode-unit" onclick="dSetMealScanMode('unit')" style="flex:1">Unité (${pu}g)</button>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <input class="form-inp form-inp-sm" id="ms-qty" type="number" inputmode="decimal" value="100" style="width:80px"/>
@@ -9789,9 +10080,10 @@ async function _processMealBarcodeScan(input,mi){
         </select>
         <input class="form-inp form-inp-sm" id="ms-cat-new" placeholder="Nom de la nouvelle catégorie" style="display:none;margin-top:6px"/>
       </div>
-      <button class="btn btn-primary" onclick="_confirmMealScan(${mi},${vals.poids_unite||null})">✅ Ajouter au repas</button>
+      <button class="btn btn-primary" onclick="_confirmMealScan(${mi},${pu})">✅ Ajouter au repas</button>
     `);
-    document.getElementById('ms-mode-gram').mode='gram';
+    // Repartir en mode « grammes » à chaque scan (sinon le mode du scan précédent restait actif)
+    document.currentMealScanMode='gram';
   } catch(e){
     toast('⚠ Erreur : '+e.message);
   }
@@ -9850,6 +10142,7 @@ function _confirmMealScan(mi,poids_unite){
     qty,enabled:true
   });
   persist();
+  saveDieteDraft();   // sauvegarde serveur automatique, comme les autres modifications
   closeModal();
   render.diete();
   toast(`✓ "${nom}" ajouté au repas !`);
@@ -10109,6 +10402,65 @@ function playSerieCheckAnim(doneEl){
   }catch(e){/* animation bonus, jamais bloquant */}
 }
 
+// ─────────────────────────────────────────
+// BOUTON RETOUR : flèche animée + swipe depuis le bord gauche
+// ─────────────────────────────────────────
+const BACK_ARROW_ANIM={"nm":"left arrow","ddd":0,"h":400,"w":400,"meta":{"g":"@lottiefiles/toolkit-js 0.33.2"},"layers":[{"ty":4,"nm":"Layer 2 Outlines","sr":1,"st":0,"op":32,"ip":0,"hd":false,"ddd":0,"bm":0,"hasMask":false,"ao":0,"ks":{"a":{"a":0,"k":[17.5,17.5,0],"ix":1},"s":{"a":1,"k":[{"o":{"x":0.333,"y":0},"i":{"x":0.667,"y":1},"s":[100,100,100],"t":0},{"o":{"x":0.333,"y":0},"i":{"x":0.667,"y":1},"s":[85,85,100],"t":15},{"s":[100,100,100],"t":30}],"ix":6},"sk":{"a":0,"k":0},"p":{"a":1,"k":[{"o":{"x":0.333,"y":0},"i":{"x":0.667,"y":1},"s":[92.521,199.477,0],"t":0,"ti":[0,0,0],"to":[0,0,0]},{"o":{"x":0.333,"y":0},"i":{"x":0.667,"y":1},"s":[41.521,199.477,0],"t":15,"ti":[0,0,0],"to":[0,0,0]},{"s":[92.521,199.477,0],"t":30}],"ix":2},"r":{"a":0,"k":0,"ix":10},"sa":{"a":0,"k":0},"o":{"a":0,"k":100,"ix":11}},"ef":[],"shapes":[{"ty":"gr","bm":0,"hd":false,"mn":"ADBE Vector Group","nm":"Group 1","ix":1,"cix":2,"np":2,"it":[{"ty":"sh","bm":0,"hd":false,"mn":"ADBE Vector Shape - Group","nm":"Path 1","ix":1,"d":1,"ks":{"a":0,"k":{"c":false,"i":[[0,0],[0,0]],"o":[[0,0],[0,0]],"v":[[17.5,17.5],[250.308,17.5]]},"ix":2}},{"ty":"st","bm":0,"hd":false,"mn":"ADBE Vector Graphic - Stroke","nm":"Stroke 1","lc":2,"lj":2,"ml":1,"o":{"a":0,"k":100,"ix":4},"w":{"a":0,"k":35,"ix":5},"c":{"a":0,"k":[0.1569,0.1569,0.1569],"ix":3}},{"ty":"tr","a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"sk":{"a":0,"k":0,"ix":4},"p":{"a":0,"k":[0,0],"ix":2},"r":{"a":0,"k":0,"ix":6},"sa":{"a":0,"k":0,"ix":5},"o":{"a":0,"k":100,"ix":7}}]}],"ind":1},{"ty":4,"nm":"Layer 3 Outlines","sr":1,"st":0,"op":32,"ip":0,"hd":false,"ddd":0,"bm":0,"hasMask":false,"ao":0,"ks":{"a":{"a":0,"k":[87.5,169.735,0],"ix":1},"s":{"a":1,"k":[{"o":{"x":0.333,"y":0},"i":{"x":0.667,"y":1},"s":[100,100,100],"t":0},{"o":{"x":0.333,"y":0},"i":{"x":0.667,"y":1},"s":[100,85,100],"t":15},{"s":[100,100,100],"t":30}],"ix":6},"sk":{"a":0,"k":0},"p":{"a":0,"k":[-1.065,17.613,0],"ix":2},"r":{"a":0,"k":0,"ix":10},"sa":{"a":0,"k":0},"o":{"a":0,"k":100,"ix":11}},"ef":[],"shapes":[{"ty":"gr","bm":0,"hd":false,"mn":"ADBE Vector Group","nm":"Group 1","ix":1,"cix":2,"np":2,"it":[{"ty":"sh","bm":0,"hd":false,"mn":"ADBE Vector Shape - Group","nm":"Path 1","ix":1,"d":1,"ks":{"a":0,"k":{"c":false,"i":[[0,0],[0,0],[0,0]],"o":[[0,0],[0,0],[0,0]],"v":[[40.557,-82.235],[-40.557,-0.765],[38.814,82.235]]},"ix":2}},{"ty":"st","bm":0,"hd":false,"mn":"ADBE Vector Graphic - Stroke","nm":"Stroke 1","lc":2,"lj":2,"ml":1,"o":{"a":0,"k":100,"ix":4},"w":{"a":0,"k":35,"ix":5},"c":{"a":0,"k":[0.1569,0.1569,0.1569],"ix":3}},{"ty":"tr","a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"sk":{"a":0,"k":0,"ix":4},"p":{"a":0,"k":[128.057,169.735],"ix":2},"r":{"a":0,"k":0,"ix":6},"sa":{"a":0,"k":0,"ix":5},"o":{"a":0,"k":100,"ix":7}}]}],"ind":2,"parent":1}],"v":"5.9.0","fr":25,"op":32,"ip":0,"assets":[]};
+
+let _backAnim=null;
+// La flèche reste figée sur sa première image (bien visible), et ne s'anime
+// que lorsqu'on appuie. Si Lottie n'a pas chargé, le chevron ‹ de secours reste.
+function initBackArrow(){
+  try{
+    if(typeof lottie==='undefined') return;
+    const holder=document.getElementById('back-arrow');
+    if(!holder||_backAnim) return;
+    holder.innerHTML='';
+    _backAnim=lottie.loadAnimation({container:holder,renderer:'svg',loop:false,autoplay:false,animationData:BACK_ARROW_ANIM});
+    _backAnim.addEventListener('DOMLoaded',function(){try{_backAnim.goToAndStop(0,true);}catch(e){}});
+  }catch(e){/* l'animation est un bonus, jamais bloquant */}
+}
+function playBackArrow(){
+  try{
+    if(!_backAnim) return;
+    _backAnim.setSpeed(1.4);
+    _backAnim.goToAndPlay(0,true);
+    _backAnim.addEventListener('complete',function fin(){
+      try{_backAnim.goToAndStop(0,true);_backAnim.removeEventListener('complete',fin);}catch(e){}
+    });
+  }catch(e){}
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initBackArrow);
+else initBackArrow();
+
+// Glisser le doigt vers la droite EN PARTANT DU BORD GAUCHE = revenir en arrière.
+(function(){
+  const BORD=28;        // le doigt doit démarrer dans les 28 premiers pixels
+  const DISTANCE=70;    // distance minimale parcourue vers la droite
+  const ECART_VERT=45;  // au-delà c'est un défilement vertical, pas un retour
+  const DUREE=700;      // au-delà ce n'est plus un geste franc
+  let x0=0,y0=0,t0=0,actif=false;
+  document.addEventListener('touchstart',function(e){
+    actif=false;
+    if(!e.touches||e.touches.length!==1) return;
+    const t=e.touches[0];
+    if(t.clientX>BORD) return;
+    if(typeof S==='undefined'||!S.history||!S.history.length) return;
+    // Pas de retour si une fenêtre est ouverte, ni depuis le carrousel du mode Carte, ni depuis un champ
+    if(document.getElementById('overlay')&&document.getElementById('overlay').classList.contains('open')) return;
+    if(document.getElementById('confirm-overlay')&&document.getElementById('confirm-overlay').classList.contains('open')) return;
+    if(e.target&&e.target.closest&&e.target.closest('.lg-track,input,textarea,select')) return;
+    x0=t.clientX;y0=t.clientY;t0=Date.now();actif=true;
+  },{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(!actif) return;
+    actif=false;
+    const t=e.changedTouches&&e.changedTouches[0];
+    if(!t) return;
+    if(t.clientX-x0>=DISTANCE && Math.abs(t.clientY-y0)<=ECART_VERT && Date.now()-t0<DUREE) goBack();
+  },{passive:true});
+})();
+
 // Animation Lottie jouée sur l'interrupteur Mode Stricte/Flexible de la diète, à chaque bascule.
 const SWITCH_ACTION_ANIM={"v":"5.2.1","fr":30,"ip":0,"op":70,"w":500,"h":280,"nm":"On Off 2","ddd":0,"assets":[],"layers":[{"ddd":0,"ind":1,"ty":4,"nm":"Shape Layer 1","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":0,"k":0,"ix":10},"p":{"a":1,"k":[{"i":{"x":0.19,"y":1},"o":{"x":0.167,"y":0.167},"n":"0p19_1_0p167_0p167","t":0,"s":[480.003,140,0],"e":[20.312,140,0],"to":[-76.6150131225586,0,0],"ti":[76.6150131225586,0,0]},{"t":15.0146484375}],"ix":2},"a":{"a":1,"k":[{"i":{"x":0.833,"y":0.833},"o":{"x":0.167,"y":0.167},"n":"0p833_0p833_0p167_0p167","t":0,"s":[230.345,1,0],"e":[193.923,1,0],"to":[-10.2117099761963,0,0],"ti":[22.4207725524902,0,0]},{"i":{"x":0.833,"y":0.833},"o":{"x":0.167,"y":0.167},"n":"0p833_0p833_0p167_0p167","t":1.001,"s":[193.923,1,0],"e":[129.5,1,0],"to":[-16.3715152740479,0,0],"ti":[20.3041343688965,0,0]},{"i":{"x":0.833,"y":0.833},"o":{"x":0.167,"y":0.167},"n":"0p833_0p833_0p167_0p167","t":2.002,"s":[129.5,1,0],"e":[71.077,1,0],"to":[-18.7302284240723,0,0],"ti":[15.8592376708984,0,0]},{"i":{"x":0.833,"y":0.833},"o":{"x":0.167,"y":0.167},"n":"0p833_0p833_0p167_0p167","t":3.003,"s":[71.077,1,0],"e":[24.655,1,0],"to":[-22.4449729919434,1.11022302462516e-16,0],"ti":[11.4860525131226,0,0]},{"i":{"x":0.19,"y":1},"o":{"x":0.167,"y":0.298},"n":"0p19_1_0p167_0p298","t":4.004,"s":[24.655,1,0],"e":[-12.345,1,0],"to":[-40.4483451843262,0,0],"ti":[6.16666650772095,0,0]},{"t":15.0146484375}],"ix":1},"s":{"a":0,"k":[100,100,100],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"ty":"rc","d":2,"s":{"a":1,"k":[{"i":{"x":[0.833,0.833],"y":[0.833,0.833]},"o":{"x":[0.167,0.167],"y":[0.167,0.167]},"n":["0p833_0p833_0p167_0p167","0p833_0p833_0p167_0p167"],"t":0,"s":[242,242],"e":[360,242]},{"i":{"x":[0.19,0.19],"y":[1,1]},"o":{"x":[0.167,0.167],"y":[0.167,0]},"n":["0p19_1_0p167_0p167","0p19_1_0p167_0"],"t":4.004,"s":[360,242],"e":[242,242]},{"t":15.0146484375}],"ix":2},"p":{"a":0,"k":[0,0],"ix":3},"r":{"a":0,"k":125,"ix":4},"nm":"Rectangle Path 1","mn":"ADBE Vector Shape - Rect","hd":false},{"ty":"fl","c":{"a":0,"k":[1,1,1,1],"ix":4},"o":{"a":0,"k":100,"ix":5},"r":1,"nm":"Fill 1","mn":"ADBE Vector Graphic - Fill","hd":false},{"ty":"tr","p":{"a":0,"k":[-12.5,1],"ix":2},"a":{"a":0,"k":[-121.155,0],"ix":1},"s":{"a":0,"k":[100.285,99.249],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transform"}],"nm":"Rectangle 1","np":2,"cix":2,"ix":1,"mn":"ADBE Vector Group","hd":false}],"ip":0,"op":35.035035035035,"st":0,"bm":0},{"ddd":0,"ind":2,"ty":4,"nm":"Shape Layer 2","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":0,"k":0,"ix":10},"p":{"a":1,"k":[{"i":{"x":0.642,"y":0.549},"o":{"x":0.167,"y":0.167},"n":"0p642_0p549_0p167_0p167","t":35.035,"s":[20.312,140,0],"e":[148.954,140,0],"to":[24.6084365844727,0,0],"ti":[-56.7636909484863,0,0]},{"i":{"x":0.459,"y":1},"o":{"x":0.264,"y":0.837},"n":"0p459_1_0p264_0p837","t":37.037,"s":[148.954,140,0],"e":[481.003,140,0],"to":[42.6401863098145,0,0],"ti":[-33.687686920166,0,0]},{"t":50.049683472535}],"ix":2},"a":{"a":1,"k":[{"i":{"x":0.833,"y":0.833},"o":{"x":0.167,"y":0.167},"n":"0p833_0p833_0p167_0p167","t":35.035,"s":[-229.345,1,0],"e":[-184.923,1,0],"to":[14.4678497314453,0,0],"ti":[-33.1839294433594,0,0]},{"i":{"x":0.833,"y":0.833},"o":{"x":0.167,"y":0.167},"n":"0p833_0p833_0p167_0p167","t":36.036,"s":[-184.923,1,0],"e":[-130.167,1,0],"to":[24.7600917816162,0,0],"ti":[-32.587703704834,0,0]},{"i":{"x":0.833,"y":0.833},"o":{"x":0.167,"y":0.167},"n":"0p833_0p833_0p167_0p167","t":37.037,"s":[-130.167,1,0],"e":[-69.911,1,0],"to":[31.1803569793701,0,0],"ti":[-33.5540733337402,0,0]},{"i":{"x":0.833,"y":0.833},"o":{"x":0.167,"y":0.167},"n":"0p833_0p833_0p167_0p167","t":38.038,"s":[-69.911,1,0],"e":[-18.655,1,0],"to":[47.7203712463379,0,0],"ti":[-11.8169460296631,0,0]},{"i":{"x":0.19,"y":1},"o":{"x":0.167,"y":0.298},"n":"0p19_1_0p167_0p298","t":39.039,"s":[-18.655,1,0],"e":[13.345,1,0],"to":[40.4483451843262,0,0],"ti":[-5.33333873748779,0,0]},{"t":50.049683472535}],"ix":1},"s":{"a":0,"k":[100,100,100],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"ty":"rc","d":2,"s":{"a":1,"k":[{"i":{"x":[0.833,0.833],"y":[0.833,0.833]},"o":{"x":[0.167,0.167],"y":[0.167,0.167]},"n":["0p833_0p833_0p167_0p167","0p833_0p833_0p167_0p167"],"t":35.035,"s":[242,242],"e":[360,242]},{"i":{"x":[0.19,0.19],"y":[1,1]},"o":{"x":[0.167,0.167],"y":[0.167,0]},"n":["0p19_1_0p167_0p167","0p19_1_0p167_0"],"t":39.039,"s":[360,242],"e":[242,242]},{"t":50.049683472535}],"ix":2},"p":{"a":0,"k":[0,0],"ix":3},"r":{"a":0,"k":125,"ix":4},"nm":"Rectangle Path 1","mn":"ADBE Vector Shape - Rect","hd":false},{"ty":"fl","c":{"a":0,"k":[1,1,1,1],"ix":4},"o":{"a":0,"k":100,"ix":5},"r":1,"nm":"Fill 1","mn":"ADBE Vector Graphic - Fill","hd":false},{"ty":"tr","p":{"a":0,"k":[-229.75,1],"ix":2},"a":{"a":0,"k":[-121.155,0],"ix":1},"s":{"a":0,"k":[100.285,99.249],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transform"}],"nm":"Rectangle 1","np":2,"cix":2,"ix":1,"mn":"ADBE Vector Group","hd":false}],"ip":35.035035035035,"op":70.0700700700701,"st":35.035035035035,"bm":0},{"ddd":0,"ind":3,"ty":4,"nm":"Layer 4 Outlines","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":0,"k":0,"ix":10},"p":{"a":0,"k":[250,140,0],"ix":2},"a":{"a":0,"k":[250.25,140.25,0],"ix":1},"s":{"a":0,"k":[100,100,100],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"ind":0,"ty":"sh","ix":1,"ks":{"a":0,"k":{"i":[[77.32,0],[0,0],[0,-77.32],[-77.32,0],[0,0],[0,77.32]],"o":[[0,0],[-77.32,0],[0,77.32],[0,0],[77.32,0],[0,-77.32]],"v":[[110,-140],[-110,-140],[-250,0],[-110,140],[110,140],[250,0]],"c":true},"ix":2},"nm":"Path 1","mn":"ADBE Vector Shape - Group","hd":false},{"ind":1,"ty":"sh","ix":2,"ks":{"a":0,"k":{"i":[[0,0],[-24.554,-24.554],[0,-34.724],[24.554,-24.554],[34.725,0],[0,0],[24.554,24.554],[0,34.725],[-24.554,24.554],[-34.725,0]],"o":[[34.725,0],[24.554,24.554],[0,34.725],[-24.554,24.554],[0,0],[-34.725,0],[-24.554,-24.554],[0,-34.725],[24.554,-24.554],[0,0]],"v":[[110,-130],[201.924,-91.924],[240,0],[201.924,91.924],[110,130],[-110,130],[-201.924,91.924],[-240,0],[-201.924,-91.924],[-110,-130]],"c":true},"ix":2},"nm":"Path 2","mn":"ADBE Vector Shape - Group","hd":false},{"ty":"fl","c":{"a":0,"k":[0.957000014361,0.957000014361,0.957000014361,1],"ix":4},"o":{"a":0,"k":100,"ix":5},"r":1,"nm":"Fill 1","mn":"ADBE Vector Graphic - Fill","hd":false},{"ty":"tr","p":{"a":0,"k":[250.25,140.25],"ix":2},"a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transform"}],"nm":"Group 1","np":3,"cix":2,"ix":1,"mn":"ADBE Vector Group","hd":false}],"ip":0,"op":70,"st":0,"bm":0},{"ddd":0,"ind":4,"ty":4,"nm":"BackGround","sr":1,"ks":{"o":{"a":0,"k":100,"ix":11},"r":{"a":0,"k":0,"ix":10},"p":{"a":0,"k":[250,140,0],"ix":2},"a":{"a":0,"k":[250.25,140.25,0],"ix":1},"s":{"a":0,"k":[98.571,98.571,100],"ix":6}},"ao":0,"shapes":[{"ty":"gr","it":[{"ind":0,"ty":"sh","ix":1,"ks":{"a":0,"k":{"i":[[77.32,0],[0,0],[0,77.32],[-77.32,0],[0,0],[0,-77.32]],"o":[[0,0],[-77.32,0],[0,-77.32],[0,0],[77.32,0],[0,77.32]],"v":[[110,140],[-110,140],[-250,0],[-110,-140],[110,-140],[250,0]],"c":true},"ix":2},"nm":"Path 1","mn":"ADBE Vector Shape - Group","hd":false},{"ty":"fl","c":{"a":1,"k":[{"i":{"x":[0.19],"y":[1]},"o":{"x":[0.167],"y":[0.285]},"n":["0p19_1_0p167_0p285"],"t":0,"s":[0.187999994615,0.819999964097,0.149000010771,1],"e":[0.533333361149,0.533333361149,0.533333361149,1]},{"i":{"x":[0.833],"y":[1]},"o":{"x":[0.8],"y":[0]},"n":["0p833_1_0p8_0"],"t":15.015,"s":[0.533333361149,0.533333361149,0.533333361149,1],"e":[0.533333361149,0.533333361149,0.533333361149,1]},{"i":{"x":[0.19],"y":[1]},"o":{"x":[0.167],"y":[-0.285]},"n":["0p19_1_0p167_-0p285"],"t":35.035,"s":[0.533333361149,0.533333361149,0.533333361149,1],"e":[0.187999994615,0.819999964097,0.149000010771,1]},{"t":50.0498046875}],"ix":4},"o":{"a":0,"k":100,"ix":5},"r":1,"nm":"Fill 1","mn":"ADBE Vector Graphic - Fill","hd":false},{"ty":"tr","p":{"a":0,"k":[250.25,140.25],"ix":2},"a":{"a":0,"k":[0,0],"ix":1},"s":{"a":0,"k":[100,100],"ix":3},"r":{"a":0,"k":0,"ix":6},"o":{"a":0,"k":100,"ix":7},"sk":{"a":0,"k":0,"ix":4},"sa":{"a":0,"k":0,"ix":5},"nm":"Transform"}],"nm":"Group 2","np":2,"cix":2,"ix":1,"mn":"ADBE Vector Group","hd":false}],"ip":0,"op":70,"st":0,"bm":0}],"markers":[]};
 
@@ -10190,7 +10542,7 @@ function hideTrophy(){
 
 // ─── Pop-up "nouveautés", affiché une seule fois par version ───
 // Pour refaire un pop-up à la prochaine mise à jour : change le numéro de version ci-dessous.
-const WHATSNEW_VERSION='2026-07-maj3';
+const WHATSNEW_VERSION='2026-09-maj4';
 function maybeShowWhatsNew(){
   try{
     if(localStorage.getItem('c_whatsnew_seen')===WHATSNEW_VERSION) return; // déjà vu
@@ -11370,7 +11722,7 @@ async function syncClientData(clientId){
     const hasDraft=(day)=>!!sessionStorage.getItem('c_dieteDraft_'+clientId+'_'+day);
     if(dON){
       const keepLocal=hasDraft('on');
-      S.dietes[clientId].on={...S.dietes[clientId].on,_id:dON.id};
+      S.dietes[clientId].on={...S.dietes[clientId].on,_id:dON.id,_base:dON.diete_base||null,_baseDate:dON.base_date||null};
       if(!keepLocal){
         S.dietes[clientId].on.targets={kcal:dON.cible_kcal,prot:dON.cible_prot,gluc:dON.cible_gluc,lip:dON.cible_lip};
         S.dietes[clientId].on.meals=dON.repas;
@@ -11378,7 +11730,7 @@ async function syncClientData(clientId){
     }
     if(dOFF){
       const keepLocal=hasDraft('off');
-      S.dietes[clientId].off={...S.dietes[clientId].off,_id:dOFF.id};
+      S.dietes[clientId].off={...S.dietes[clientId].off,_id:dOFF.id,_base:dOFF.diete_base||null,_baseDate:dOFF.base_date||null};
       if(!keepLocal){
         S.dietes[clientId].off.targets={kcal:dOFF.cible_kcal,prot:dOFF.cible_prot,gluc:dOFF.cible_gluc,lip:dOFF.cible_lip};
         S.dietes[clientId].off.meals=dOFF.repas;
@@ -11681,6 +12033,13 @@ async function saveDieteToSupa(clientId,day){
       S.dietes[clientId][day]._id=res[0].id;
     }
   }
+}
+
+// Écrit UNIQUEMENT la base de référence sur le serveur (sans toucher aux repas courants)
+async function saveDieteBaseToSupa(clientId,day){
+  const d=getClientDiete(clientId,day);
+  if(!d||!d._id) throw new Error('Ligne diète introuvable');
+  await supa('PATCH','dietes',{diete_base:d._base||null,base_date:d._baseDate||null},`?id=eq.${d._id}`);
 }
 
 async function saveBilanHebdoToSupa(bilan){
