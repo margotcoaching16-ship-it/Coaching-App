@@ -1710,6 +1710,38 @@ html.da-chic .topbar-title::after{content:'';display:block;width:36px;height:2px
 .lg-rt b{display:block;font-weight:700;font-size:13px;color:var(--text)}
 .lg-rt span{font-size:11px;color:var(--text3)}
 .lg-rgo{font-size:11px;font-weight:800;color:var(--green-dark);background:var(--green-light);border:none;font-family:inherit;border-radius:999px;padding:4px 9px;cursor:pointer;flex-shrink:0}
+
+/* ══════════════════════════════════════════
+   ENFONCEMENT DES BOUTONS — rendu progressif
+   Jusqu'ici la mise à l'échelle et l'ombre creusée n'avaient aucune durée :
+   le bouton s'enfonçait d'un coup sec. On donne une durée aux deux.
+   Appui : court et net. Relâchement : retour souple, très légèrement élastique.
+   Les deux durées se règlent ci-dessous, une seule fois pour toute l'appli.
+   ══════════════════════════════════════════ */
+:root{
+  --appui:.14s;    /* enfoncement, quand le doigt se pose */
+  --retour:.42s;   /* remontée, quand le doigt se lève */
+}
+.btn,.icon-btn,.topbar-back,.menu-card,.calc-menu-card,.qbtn,.exo-mini-btn,.bilan-chip,.jour-chip,.bulle-opt,.video-pill,.whatsnew-btn,.shortcut-btn,.client-mini-btn,.reorder-btn,.cible-btn,.day-tab,.cat-chip-d,.scan-btn,.scan-btn-inline,.btn-start-block,.client-row,.seance-row,.exo-list-row,.food-row-d{
+  transition:transform var(--retour) cubic-bezier(.22,1.2,.36,1),
+             box-shadow var(--retour) cubic-bezier(.22,1,.36,1),
+             background-color var(--retour) ease,
+             border-color var(--retour) ease,
+             color var(--retour) ease,
+             opacity var(--retour) ease;
+}
+.btn:active,.icon-btn:active,.topbar-back:active,.menu-card:active,.calc-menu-card:active,.qbtn:active,.exo-mini-btn:active,.bilan-chip:active,.jour-chip:active,.bulle-opt:active,.video-pill:active,.whatsnew-btn:active,.shortcut-btn:active,.client-mini-btn:active,.reorder-btn:active,.cible-btn:active,.day-tab:active,.cat-chip-d:active,.scan-btn:active,.scan-btn-inline:active,.btn-start-block:active,.client-row:active,.seance-row:active,.exo-list-row:active,.food-row-d:active{
+  transition:transform var(--appui) cubic-bezier(.3,.7,.4,1),
+             box-shadow var(--appui) ease-out,
+             background-color var(--appui) ease,
+             border-color var(--appui) ease,
+             color var(--appui) ease,
+             opacity var(--appui) ease;
+}
+/* Réglage système « réduire les animations » : on n'anime plus rien */
+@media (prefers-reduced-motion: reduce){
+  .btn,.icon-btn,.topbar-back,.menu-card,.calc-menu-card,.qbtn,.exo-mini-btn,.bilan-chip,.jour-chip,.bulle-opt,.video-pill,.whatsnew-btn,.shortcut-btn,.client-mini-btn,.reorder-btn,.cible-btn,.day-tab,.cat-chip-d,.scan-btn,.scan-btn-inline,.btn-start-block,.client-row,.seance-row,.exo-list-row,.food-row-d,.btn:active,.icon-btn:active,.topbar-back:active,.menu-card:active,.calc-menu-card:active,.qbtn:active,.exo-mini-btn:active,.bilan-chip:active,.jour-chip:active,.bulle-opt:active,.video-pill:active,.whatsnew-btn:active,.shortcut-btn:active,.client-mini-btn:active,.reorder-btn:active,.cible-btn:active,.day-tab:active,.cat-chip-d:active,.scan-btn:active,.scan-btn-inline:active,.btn-start-block:active,.client-row:active,.seance-row:active,.exo-list-row:active,.food-row-d:active{transition:none}
+}
 </style>
 </head>
 <body>
@@ -2309,9 +2341,101 @@ async function supa(method,table,body,query='',opts){
       r=await fetch(url,{method,headers:buildHeaders(),body:body?JSON.stringify(body):undefined});
     }
     if(!r.ok){const e=await r.text();console.error('Supabase error:',e);return null;}
-    if(method==='DELETE'||r.status===204)return true;
-    return r.json();
+    if(r.status===204)return true;
+    // Corps vide (POST/DELETE sans Prefer return=representation) = succès
+    const txt=await r.text();
+    if(!txt)return true;
+    try{return JSON.parse(txt);}catch{return true;}
   }catch(e){console.error('Supabase fetch error:',e);return null;}
+}
+
+// ─────────────────────────────────────────
+// ÉCRITURES FIABLES + FILE D'ATTENTE
+// Toute modification / suppression importante passe par supaWrite().
+// On demande au serveur de RENVOYER la ligne touchée : c'est la preuve que
+// l'écriture a vraiment eu lieu. Si le serveur ne confirme pas (réseau coupé,
+// appli fermée trop vite, session expirée), l'opération est mise de côté dans
+// une file d'attente et renvoyée automatiquement à la prochaine occasion.
+// ─────────────────────────────────────────
+const OUTBOX_KEY='c_outbox';
+const OUTBOX_MAX_AGE=7*24*60*60*1000; // au-delà de 7 jours on abandonne
+
+function _outCle(op){return op.method+'|'+op.table+'|'+(op.query||'')+'|'+((op.body&&op.body.id)||'');}
+function outboxGet(){const a=lsGet(OUTBOX_KEY);return Array.isArray(a)?a:[];}
+function outboxSet(a){lsSet(OUTBOX_KEY,a.slice(-200));}
+function outboxAdd(op){
+  const a=outboxGet(),cle=_outCle(op);
+  const i=a.findIndex(o=>_outCle(o)===cle);
+  if(i>=0)a[i]=op;else a.push(op);
+  outboxSet(a);
+}
+function outboxDrop(cle){
+  const a=outboxGet(),b=a.filter(o=>_outCle(o)!==cle);
+  if(b.length!==a.length)outboxSet(b);
+}
+function outboxCount(){return outboxGet().length;}
+
+// Une tentative d'écriture. true = le serveur a confirmé noir sur blanc.
+async function _supaWriteTry(method,table,body,query,opts){
+  const o=Object.assign({},opts||{});
+  o.prefer=(o.prefer?o.prefer+',':'')+'return=representation';
+  const res=await supa(method,table,body,query||'',o);
+  if(res===null||res===false)return false;
+  if(Array.isArray(res))return method==='DELETE'?true:res.length>0; // DELETE : 0 ligne = déjà supprimé
+  return true;
+}
+
+let _dernierAvertReseau=0;
+function avertirReseau(){
+  if(Date.now()-_dernierAvertReseau<4000)return;
+  _dernierAvertReseau=Date.now();
+  try{if(typeof toast==='function')toast('⚠ Pas de confirmation du serveur — modification mise de côté, elle sera renvoyée automatiquement');}catch{}
+}
+
+// Écriture avec filet de sécurité : renvoie true seulement si c'est vraiment enregistré.
+async function supaWrite(method,table,body,query='',opts){
+  const empreinte=(query||'')+(body?JSON.stringify(body):'');
+  if(empreinte.includes('demo-'))return true; // profil démo : jamais écrit en base
+  const op={method,table,body,query,opts,ts:Date.now()};
+  const ok=await _supaWriteTry(method,table,body,query,opts);
+  if(ok)outboxDrop(_outCle(op)); else outboxAdd(op);
+  return ok;
+}
+
+let _outboxEnCours=false;
+async function flushOutbox(){
+  if(_outboxEnCours)return;
+  const a=outboxGet();
+  if(!a.length)return;
+  _outboxEnCours=true;
+  try{
+    const restants=[];
+    for(const op of a){
+      if(Date.now()-(op.ts||0)>OUTBOX_MAX_AGE)continue;
+      const ok=await _supaWriteTry(op.method,op.table,op.body,op.query,op.opts);
+      if(!ok)restants.push(op);
+    }
+    outboxSet(restants);
+    const renvoyees=a.length-restants.length;
+    if(renvoyees>0){try{if(typeof toast==='function')toast('✓ '+renvoyees+' modification(s) en attente renvoyée(s)');}catch{}}
+  }finally{_outboxEnCours=false;}
+}
+
+// Âge d'un élément d'après son identifiant (uid() = horodatage en base 36 + 5 lettres).
+// Renvoie null si l'identifiant ne contient pas de date lisible (ancien UUID, id manuel…).
+function idAgeMs(id){
+  if(typeof id!=='string'||!/^[0-9a-z]{13}$/.test(id))return null;
+  const ts=parseInt(id.slice(0,8),36);
+  if(!isFinite(ts)||ts<1577836800000||ts>Date.now()+86400000)return null; // hors 2020 → aujourd'hui
+  return Date.now()-ts;
+}
+// Un élément absent du serveur n'est « en attente d'envoi » que s'il vient d'être créé.
+// Sinon c'est un élément supprimé exprès (parfois depuis un autre appareil) :
+// le renvoyer le ferait réapparaître comme un fantôme.
+const DELAI_ENVOI_EN_ATTENTE=7*24*60*60*1000;
+function estEnAttenteDEnvoi(id){
+  const age=idAgeMs(id);
+  return age!==null&&age<DELAI_ENVOI_EN_ATTENTE;
 }
 
 // ─────────────────────────────────────────
@@ -4279,8 +4403,8 @@ async function moveSeance(seanceId, progId, dir){
   render.training();
   // Sauvegarder les deux en Supabase
   await Promise.all([
-    supa('PATCH','seances_type',{ordre:seances[idx].ordre},`?id=eq.${seances[idx].id}`),
-    supa('PATCH','seances_type',{ordre:seances[swapIdx].ordre},`?id=eq.${seances[swapIdx].id}`)
+    saveSeanceTypeToSupa(seances[idx]),
+    saveSeanceTypeToSupa(seances[swapIdx])
   ]);
 }
 
@@ -4300,7 +4424,7 @@ function saveProgName(id){
   const prog=S.programmes.find(p=>p.id===id);if(!prog)return;
   prog.nom=nom;
   persist();closeModal();render.training();
-  supa('PATCH','programmes',{nom},`?id=eq.${id}`);
+  saveProgramToSupa(prog);
   toast('✓ Programme renommé');
 }
 function renameSeance(id){
@@ -4320,7 +4444,7 @@ function saveSeanceName(id){
   s.nom=nom;
   persist();closeModal();
   if(S.seanceType&&S.seanceType.id===id&&S.screen==='seance') render.seance(); else render.training();
-  supa('PATCH','seances_type',{nom},`?id=eq.${id}`);
+  saveSeanceTypeToSupa(s);
   toast('✓ Séance renommée');
 }
 
@@ -4342,8 +4466,8 @@ async function _deleteProg(id){
   S.programmes=S.programmes.filter(p=>p.id!==id);
   S.seancesType=S.seancesType.filter(s=>s.programme_id!==id);
   persist();render.training();
-  await supa('DELETE','programmes','',`?id=eq.${id}`);
-  toast('Programme supprimé');
+  const ok=await supaWrite('DELETE','programmes','',`?id=eq.${id}`);
+  toast(ok?'Programme supprimé':'Programme supprimé ici — suppression serveur en attente de réseau');
 }
 
 function deleteSeance(id,progId){
@@ -4356,8 +4480,8 @@ async function _deleteSeance(id,progId){
   markDeleted('seances',id);
   S.seancesType=S.seancesType.filter(s=>s.id!==id);
   persist();render.training();
-  await supa('DELETE','seances_type','',`?id=eq.${id}`);
-  toast('Séance supprimée');
+  const ok=await supaWrite('DELETE','seances_type','',`?id=eq.${id}`);
+  toast(ok?'Séance supprimée':'Séance supprimée ici — suppression serveur en attente de réseau');
 }
 
 // ─── COPIER UN PROGRAMME VERS UNE AUTRE CLIENTE ───
@@ -4410,9 +4534,9 @@ async function copyProgToClient(progId,targetClientId){
   persist();render.training();
 
   // 3) Sauvegarder en Supabase (programme puis séances)
-  await supa('POST','programmes',{id:newProg.id,client_id:newProg.client_id,nom:newProg.nom,nb_seances:newProg.nb_seances});
+  await saveProgramToSupa(newProg);
   for(const ns of newSeances){
-    await supa('POST','seances_type',{id:ns.id,programme_id:ns.programme_id,nom:ns.nom,ordre:ns.ordre,exercices:ns.exercices});
+    await saveSeanceTypeToSupa(ns);
   }
   toast(`✓ Programme copié vers ${target.prenom}`);
 }
@@ -6580,7 +6704,7 @@ function createProg(){
   const newProg={id:uid(),client_id:S.client.id,nom,nb_seances:nb,_open:true};
   S.programmes.push(newProg);
   persist();closeModal();render.training();
-  supa('POST','programmes',{id:newProg.id,client_id:newProg.client_id,nom:newProg.nom,nb_seances:newProg.nb_seances});
+  saveProgramToSupa(newProg);
   toast('✓ Programme créé');
 }
 
@@ -6608,10 +6732,10 @@ function createSeanceType(progId){
   const prog=S.programmes.find(p=>p.id===progId);
   if(prog && (ordre+1)>prog.nb_seances){
     prog.nb_seances=ordre+1;
-    supa('PATCH','programmes',{nb_seances:prog.nb_seances},`?id=eq.${prog.id}`);
+    saveProgramToSupa(prog);
   }
   persist();closeModal();render.training();
-  supa('POST','seances_type',{id:newST.id,programme_id:newST.programme_id,nom:newST.nom,ordre:newST.ordre,exercices:newST.exercices});
+  saveSeanceTypeToSupa(newST);
   toast('✓ Séance créée');
 }
 
@@ -11706,6 +11830,9 @@ async function syncRecettes(){
 
 async function syncClientData(clientId){
   if(isDemoId(clientId)) return; // profil de démonstration : données locales uniquement
+  // IMPORTANT : on renvoie d'abord les modifications en attente, PUIS on relit le
+  // serveur. Sinon on écraserait les modifs locales avec une version périmée.
+  await flushOutbox();
   const [dietes,progs,seances,logs,checkins,bilans]=await Promise.all([
     supa('GET','dietes','',`?client_id=eq.${clientId}&order=updated_at.desc`),
     supa('GET','programmes','',`?client_id=eq.${clientId}&order=created_at.asc`),
@@ -11739,20 +11866,27 @@ async function syncClientData(clientId){
   }
   if(progs){
     const supaProgIds=new Set(progs.map(p=>p.id));
-    // Conserver les programmes locaux pas encore synchronisés (sauf ceux supprimés volontairement)
-    const pendingProgs=S.programmes.filter(p=>p.client_id===clientId&&!supaProgIds.has(p.id)&&!isDeleted('progs',p.id));
-    pendingProgs.forEach(p=>supa('POST','programmes',{id:p.id,client_id:p.client_id,nom:p.nom,nb_seances:p.nb_seances}));
+    // Programme présent en local mais absent du serveur : on ne le renvoie QUE
+    // s'il vient d'être créé (< 7 jours). Un programme ancien absent du serveur a
+    // été supprimé exprès — peut-être depuis un autre appareil — et le renvoyer
+    // le ferait réapparaître comme un fantôme.
+    const pendingProgs=S.programmes.filter(p=>p.client_id===clientId&&!supaProgIds.has(p.id)&&!isDeleted('progs',p.id)&&estEnAttenteDEnvoi(p.id));
+    pendingProgs.forEach(p=>supaWrite('POST','programmes',{id:p.id,client_id:p.client_id,nom:p.nom,nb_seances:p.nb_seances},'',{prefer:'resolution=merge-duplicates'}));
+    // Un programme supprimé ici ne doit jamais revenir du serveur (sa suppression
+    // est dans la file d'attente et vient d'être retentée).
+    const progsServeur=progs.filter(p=>!isDeleted('progs',p.id));
     S.programmes=S.programmes.filter(p=>p.client_id!==clientId);
-    S.programmes.push(...progs,...pendingProgs);
+    S.programmes.push(...progsServeur,...pendingProgs);
   }
   if(seances){
-    const progIds=new Set((progs||[]).map(p=>p.id));
+    const progIds=new Set((progs||[]).filter(p=>!isDeleted('progs',p.id)).map(p=>p.id));
     const allProgIds=new Set([...progIds,...S.programmes.filter(p=>p.client_id===clientId).map(p=>p.id)]);
     const supaSeanceIds=new Set(seances.map(s=>s.id));
-    // Conserver les séances locales pas encore synchronisées (sauf celles supprimées volontairement)
-    const pendingSeances=S.seancesType.filter(s=>allProgIds.has(s.programme_id)&&!supaSeanceIds.has(s.id)&&!isDeleted('seances',s.id)&&!isDeleted('progs',s.programme_id));
-    pendingSeances.forEach(s=>supa('POST','seances_type',{id:s.id,programme_id:s.programme_id,nom:s.nom,ordre:s.ordre,exercices:s.exercices}));
-    const clientSeances=seances.filter(s=>progIds.has(s.programme_id));
+    // Même règle que pour les programmes : on ne renvoie au serveur que les
+    // séances récemment créées, jamais les anciennes (supprimées exprès).
+    const pendingSeances=S.seancesType.filter(s=>allProgIds.has(s.programme_id)&&!supaSeanceIds.has(s.id)&&!isDeleted('seances',s.id)&&!isDeleted('progs',s.programme_id)&&estEnAttenteDEnvoi(s.id));
+    pendingSeances.forEach(s=>supaWrite('POST','seances_type',{id:s.id,programme_id:s.programme_id,nom:s.nom,ordre:s.ordre,exercices:s.exercices},'',{prefer:'resolution=merge-duplicates'}));
+    const clientSeances=seances.filter(s=>progIds.has(s.programme_id)&&!isDeleted('seances',s.id));
     S.seancesType=S.seancesType.filter(s=>!allProgIds.has(s.programme_id));
     S.seancesType.push(...clientSeances,...pendingSeances);
     // Récupération : les séances gardent une copie du lien vidéo de chaque
@@ -11891,24 +12025,24 @@ async function saveClientToSupa(client){
   }
 }
 
+// Une seule requête « upsert » : crée la ligne si elle n'existe pas, la met à
+// jour sinon. Impossible de se tromper, et on sait si le serveur a confirmé.
 async function saveProgramToSupa(prog){
-  if(!prog.id||isDeleted('progs',prog.id)) return;
-  const existing=await supa('GET','programmes','',`?id=eq.${prog.id}`);
-  if(existing&&existing.length){
-    await supa('PATCH','programmes',{nom:prog.nom,nb_seances:prog.nb_seances},`?id=eq.${prog.id}`);
-  } else {
-    await supa('POST','programmes',{id:prog.id,client_id:prog.client_id,nom:prog.nom,nb_seances:prog.nb_seances});
-  }
+  if(!prog.id||isDeleted('progs',prog.id)) return false;
+  const ok=await supaWrite('POST','programmes',
+    {id:prog.id,client_id:prog.client_id,nom:prog.nom,nb_seances:prog.nb_seances},
+    '',{prefer:'resolution=merge-duplicates'});
+  if(!ok)avertirReseau();
+  return ok;
 }
 
 async function saveSeanceTypeToSupa(seance){
-  if(!seance.id||isDeleted('seances',seance.id)||isDeleted('progs',seance.programme_id)) return;
-  const existing=await supa('GET','seances_type','',`?id=eq.${seance.id}`);
-  if(existing&&existing.length){
-    await supa('PATCH','seances_type',{nom:seance.nom,ordre:seance.ordre,exercices:seance.exercices,notes:seance.notes||null},`?id=eq.${seance.id}`);
-  } else {
-    await supa('POST','seances_type',{id:seance.id,programme_id:seance.programme_id,nom:seance.nom,ordre:seance.ordre,exercices:seance.exercices,notes:seance.notes||null});
-  }
+  if(!seance.id||isDeleted('seances',seance.id)||isDeleted('progs',seance.programme_id)) return false;
+  const ok=await supaWrite('POST','seances_type',
+    {id:seance.id,programme_id:seance.programme_id,nom:seance.nom,ordre:seance.ordre,exercices:seance.exercices,notes:seance.notes||null},
+    '',{prefer:'resolution=merge-duplicates'});
+  if(!ok)avertirReseau();
+  return ok;
 }
 
 async function saveLogToSupa(log){
@@ -12764,6 +12898,8 @@ async function initApp(){
     await restoreActiveSession();
     // Renvoie les séances enregistrées hors-ligne / dont l'envoi avait échoué.
     syncPendingLogs();
+    // Renvoie les modifications / suppressions qui n'étaient pas parties.
+    flushOutbox();
     // Pop-up nouveautés, aussi pour la coach
     setTimeout(maybeShowWhatsNew, 600);
     // À chaque retour d'arrière-plan, re-sync les bilans de la semaine
@@ -12834,6 +12970,8 @@ async function initApp(){
   await restoreActiveSession();
   // Renvoie les séances enregistrées hors-ligne / dont l'envoi avait échoué.
   syncPendingLogs();
+  // Renvoie les modifications / suppressions qui n'étaient pas parties.
+  flushOutbox();
   // Pop-up nouveautés : une seule fois, uniquement côté client (cette branche n'est jamais atteinte par la coach)
   setTimeout(maybeShowWhatsNew, 600);
 }
