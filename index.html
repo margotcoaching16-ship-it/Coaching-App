@@ -9741,6 +9741,44 @@ function lcJoursSemaine(client){
   return {on:on,off:7-on};
 }
 
+// Jours ON / OFF choisis a la main par la coach (memorises par cliente).
+// Tant qu'elle n'a rien change, on propose le calcul automatique ci-dessus.
+function lcJoursTous(){return lsGet('c_lcJours')||{};}
+function lcJours(client){
+  if(!client)return{on:4,off:3};
+  const perso=lcJoursTous()[client.id];
+  if(perso&&typeof perso.on==='number'&&typeof perso.off==='number')return{on:perso.on,off:perso.off};
+  return lcJoursSemaine(client);
+}
+function lcSetJour(type,delta){
+  const c=S.client;if(!c)return;
+  const j=lcJours(c);
+  let v=(type==='on'?j.on:j.off)+delta;
+  v=Math.max(0,Math.min(14,v));
+  if(type==='on')j.on=v;else j.off=v;
+  const all=lcJoursTous();
+  all[c.id]={on:j.on,off:j.off};
+  lsSet('c_lcJours',all);
+  const body=document.getElementById('modal-body');
+  if(body){body.innerHTML=lcHTML(c);lcMajCompteur();}
+}
+function lcResetJours(){
+  const c=S.client;if(!c)return;
+  const all=lcJoursTous();
+  delete all[c.id];
+  lsSet('c_lcJours',all);
+  const body=document.getElementById('modal-body');
+  if(body){body.innerHTML=lcHTML(c);lcMajCompteur();}
+}
+
+// Un feculent n'est converti en poids cru que s'il est ecrit CUIT dans la diete.
+// « Pates crues », « Creme de riz »... s'achetent deja tels quels : aucune conversion.
+function lcEstCuit(nom){
+  const n=(nom||'').toLowerCase();
+  if(/(^|[^a-z\u00e0-\u00ff])crue?s?([^a-z\u00e0-\u00ff]|$)/.test(n))return false;
+  return /(^|[^a-z\u00e0-\u00ff])cuite?s?([^a-z\u00e0-\u00ff]|$)/.test(n);
+}
+
 // Féculents : ratio à appliquer sur le poids cuit pour obtenir le poids cru
 const LC_FECULENTS=[
   {words:['flocon','muesli','granola','corn flake','pain','biscotte','biscuit','cracker','tortilla','galette'],ratio:null},
@@ -9772,7 +9810,7 @@ function lcQtyTexte(it){
     return {qty:n+' unité'+(n>1?'s':''),note:null};
   }
   const q=it.total;
-  if(it.cat==='Féculents'){
+  if(it.cat==='Féculents'&&lcEstCuit(it.name)){
     const r=lcRatioFeculent(it.name);
     if(r!==null&&r!==undefined){
       const cru=q*r;
@@ -9840,12 +9878,21 @@ function lcToutDecocher(){
   lcMajCompteur();
 }
 
-function showListeCoursesModal(btn){
-  const c=S.client;if(!c)return;
-  const jours=lcJoursSemaine(c);
+function lcHTML(c){
+  const jours=lcJours(c);
+  const perso=!!lcJoursTous()[c.id];
   const res=lcConstruire(c.id,jours);
+  _lcIds=[];
   const style='<style>'
     +'.lc-sub{font-size:12px;color:var(--text2);background:var(--bg2);border:.5px solid var(--border);border-radius:var(--radius);padding:9px 12px;margin-bottom:12px;line-height:1.4}'
+    +'.lc-jours{background:var(--bg2);border:.5px solid var(--border);border-radius:var(--radius);padding:8px 12px 10px;margin-bottom:12px}'
+    +'.lc-jrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0}'
+    +'.lc-jlab{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}'
+    +'.lc-jctl{display:flex;align-items:center;gap:10px}'
+    +'.lc-jval{font-size:15px;font-weight:800;min-width:20px;text-align:center;line-height:1}'
+    +'.lc-jtot{font-size:11px;color:var(--text3);display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;border-top:.5px solid var(--border);padding-top:7px}'
+    +'.lc-jtot b{color:var(--text2)}'
+    +'.lc-jauto{background:none;border:none;padding:0;font-size:11px;font-weight:600;color:var(--green-dark);cursor:pointer}'
     +'.lc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}'
     +'.lc-count{font-size:12px;color:var(--text3);font-weight:600}'
     +'.lc-cat{font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:14px 2px 6px;display:flex;align-items:center;gap:6px}'
@@ -9861,15 +9908,27 @@ function showListeCoursesModal(btn){
     +'.lc-note{font-size:10px;color:var(--text3);text-align:right;margin-top:2px}'
     +'</style>';
   const titre='<div class="modal-title">🛒 Liste de courses</div>';
-  const detail='<div class="lc-sub">📅 Pour 7 jours · <b>'+jours.on+' jour'+(jours.on>1?'s':'')+' ON</b> + <b>'+jours.off+' jour'+(jours.off>1?'s':'')+' OFF</b></div>';
+  const total=jours.on+jours.off;
+  const ligne=function(type,emoji,nom,val){
+    return '<div class="lc-jrow"><div class="lc-jlab"><span>'+emoji+'</span>'+nom+'</div>'
+      +'<div class="lc-jctl">'
+      +'<button class="qbtn" onclick="lcSetJour(\''+type+'\',-1)">−</button>'
+      +'<span class="lc-jval">'+val+'</span>'
+      +'<button class="qbtn" onclick="lcSetJour(\''+type+'\',1)">+</button>'
+      +'</div></div>';
+  };
+  const detail='<div class="lc-jours">'
+    +ligne('on','🟢','Jours ON',jours.on)
+    +ligne('off','⚪','Jours OFF',jours.off)
+    +'<div class="lc-jtot"><span>📅 Liste pour <b>'+total+' jour'+(total>1?'s':'')+'</b></span>'
+    +(perso?'<button class="lc-jauto" onclick="lcResetJours()">↺ Auto</button>':'<span></span>')
+    +'</div></div>';
 
   if(!res.total){
-    openModal(style+titre+detail+'<div class="empty"><div class="empty-icon">😕</div><div class="empty-title">Aucun aliment</div><div class="empty-sub">Il faut d\'abord remplir la diète Day ON et Day OFF.</div></div>',{from:btn});
-    return;
+    return style+titre+detail+'<div class="empty"><div class="empty-icon">😕</div><div class="empty-title">Aucun aliment</div><div class="empty-sub">Il faut d\'abord remplir la diète Day ON et Day OFF.</div></div>';
   }
 
   const coches=lcCochesClient(c.id);
-  _lcIds=[];
   let html=style+titre+detail;
   html+='<div class="lc-head"><div class="lc-count">'+res.total+' aliment'+(res.total>1?'s':'')+'</div><div class="lc-count" id="lc-compteur"></div></div>';
   Object.keys(res.groups).forEach(function(cat){
@@ -9887,7 +9946,12 @@ function showListeCoursesModal(btn){
     });
   });
   html+='<button class="btn btn-secondary" style="margin-top:14px" onclick="lcToutDecocher()">↺ Tout décocher</button>';
-  openModal(html,{from:btn});
+  return html;
+}
+
+function showListeCoursesModal(btn){
+  const c=S.client;if(!c)return;
+  openModal(lcHTML(c),{from:btn});
   lcMajCompteur();
 }
 
