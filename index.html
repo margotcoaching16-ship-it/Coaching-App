@@ -4541,6 +4541,119 @@ async function copyProgToClient(progId,targetClientId){
   toast(`✓ Programme copié vers ${target.prenom}`);
 }
 
+// ───────────────────────────────────────
+// DURÉE DES SÉANCES — estimation avant, chrono pendant
+// ───────────────────────────────────────
+// Temps moyen pour faire UNE répétition (montée + descente + installation).
+// 4,5 s : une série de 8 à 12 reps dure environ 45 s, une série de 12 à 15
+// reps environ une minute.
+const SEC_PAR_REP=4.5;
+
+// Nombre de reps moyen d'une série (tient compte des reps personnalisées).
+function _repsMoy(exo,si){
+  const rps=exo.repsPerSeries&&exo.repsPerSeries[si];
+  const mn=parseFloat(rps?rps.min:exo.reps_min);
+  const mx=parseFloat(rps?rps.max:exo.reps_max);
+  const a=isNaN(mn)?0:mn;
+  const b=isNaN(mx)?a:mx;
+  return (a+b)/2;
+}
+
+// Temps d'exécution d'un exercice, en secondes (repos non compris).
+// Le cardio compte sa durée prévue en minutes.
+function _tpsExecution(exo){
+  if(exo.cat==='Cardio') return (parseFloat(exo.duree_min)||0)*60;
+  const n=parseInt(exo.nb_series,10)||0;
+  let t=0;
+  for(let si=0;si<n;si++) t+=_repsMoy(exo,si)*SEC_PAR_REP;
+  return t;
+}
+
+// Temps de transition entre deux exercices (changer de machine, régler la
+// charge, boire…). Un superset ne compte pas de transition à l'intérieur de
+// la paire, puisqu'on enchaîne les deux exercices.
+const SEC_ENTRE_EXOS=120;
+
+// Durée estimée d'une séance, en secondes.
+// Un superset s'enchaîne sans repos : on ne compte qu'un repos pour la paire.
+function estimSeanceSec(exercices){
+  const exos=exercices||[];
+  let total=0, blocs=0;
+  const vus={};
+  for(let i=0;i<exos.length;i++){
+    if(vus[i]) continue;
+    const e=exos[i], j=i+1;
+    const paire=j<exos.length&&e.methode==='superset'&&exos[j].methode==='superset'
+      &&(e.supersetWith===exos[j].exo_id||exos[j].supersetWith===e.exo_id);
+    const r=parseInt(e.repos,10);
+    const repos=(isNaN(r)?90:r)*(parseInt(e.nb_series,10)||0);
+    blocs++;
+    if(paire){
+      vus[i]=vus[j]=true;
+      total+=_tpsExecution(e)+_tpsExecution(exos[j])+repos;
+    }else{
+      vus[i]=true;
+      total+=_tpsExecution(e);
+      if(e.cat!=='Cardio') total+=repos;
+    }
+  }
+  // Transitions : il y en a une de moins que le nombre d'exercices.
+  if(blocs>1) total+=(blocs-1)*SEC_ENTRE_EXOS;
+  return Math.round(total);
+}
+function estimSeanceMin(exercices){
+  const sec=estimSeanceSec(exercices);
+  return sec?Math.max(1,Math.round(sec/60)):0;
+}
+
+// "1 h 05" ou "47 min"
+function fmtDuree(sec){
+  const m=Math.max(0,Math.round((parseFloat(sec)||0)/60));
+  return m>=60?(Math.floor(m/60)+' h '+String(m%60).padStart(2,'0')):(m+' min');
+}
+// "12:34" ou "1:02:03" pour le chrono qui défile
+function fmtChrono(sec){
+  sec=Math.max(0,Math.floor(sec||0));
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), r=sec%60;
+  const p=n=>String(n).padStart(2,'0');
+  return h?(h+':'+p(m)+':'+p(r)):(p(m)+':'+p(r));
+}
+
+// Le chrono se base sur l'heure de départ enregistrée : il continue donc de
+// tourner même si l'app est fermée ou le téléphone verrouillé.
+// (Séances commencées avant cette fonctionnalité : on retombe sur log.date.)
+function logStartMs(log){
+  if(!log) return Date.now();
+  const t=log.startedAt||new Date(log.date).getTime();
+  return isNaN(t)?Date.now():t;
+}
+function logElapsedSec(log){ return Math.max(0,Math.round((Date.now()-logStartMs(log))/1000)); }
+
+let _chronoTimer=null;
+function startChronoTick(){
+  stopChronoTick();
+  _chronoTimer=setInterval(()=>{
+    const log=S.logSeance;
+    const els=document.querySelectorAll('[data-chrono]');
+    if(!log||S.screen!=='log'||!els.length){ stopChronoTick(); return; }
+    const t=fmtChrono(logElapsedSec(log));
+    els.forEach(el=>{ el.textContent=t; });
+  },1000);
+}
+function stopChronoTick(){ if(_chronoTimer){ clearInterval(_chronoTimer); _chronoTimer=null; } }
+
+// Encadré chrono : dernière carte (mode Carte) / tout en bas (mode Liste)
+function chronoHtml(log){
+  const est=estimSeanceMin(log.exercices);
+  return `<div style="display:flex;align-items:center;gap:11px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px 13px">
+    <div style="font-size:21px;line-height:1">⏱️</div>
+    <div style="line-height:1.25;flex:1;min-width:0">
+      <div style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)" data-chrono>${fmtChrono(logElapsedSec(log))}</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3)">temps écoulé${est?' · estimé ~'+fmtDuree(estimSeanceSec(log.exercices)):''}</div>
+    </div>
+  </div>`;
+}
+
 // ─────────────────────────────────────────
 // RENDER: SÉANCE TYPE (configuration)
 // ─────────────────────────────────────────
@@ -4657,7 +4770,11 @@ render.seance=function(){
 
   const connector=`<div class="superset-connector"><div class="superset-connector-line"></div><span class="superset-connector-label">⚡ Superset</span><div class="superset-connector-line"></div></div>`;
 
+  const estMin=estimSeanceMin(exos);
   el.innerHTML=notesHtml+`<div style="padding:12px 16px 10px">
+    ${estMin?`<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;font-size:12px;font-weight:600;color:var(--text3)">
+      <span style="font-size:13px">⏱️</span> Durée estimée : ~${fmtDuree(estimSeanceSec(exos))}
+    </div>`:''}
     <button class="btn-start-block" onclick="${isActiveLog?`navigate('log')`:`startLog('${s.id}')`}">
       <span class="btn-icon">${isActiveLog?'▶️':'🏋️'}</span> ${isActiveLog?'Reprendre la séance':'Commencer la séance'}
     </button>
@@ -5226,6 +5343,7 @@ function _lgRecapHtml(blocs){
   return `<div class="lg-recap">
     <h3>Récap de la séance</h3>
     <div class="lg-recap-sub">${p.done} / ${p.total} séries remplies${manquants?` · ${manquants} exercice(s) incomplet(s)`:' · tout est bon 💪'}</div>
+    <div style="margin:12px 0 14px">${chronoHtml(log)}</div>
     ${lines}
     <div class="form-group" style="margin:14px 0 0">
       <label class="form-label">💬 Commentaire global sur la séance</label>
@@ -5406,13 +5524,15 @@ render.log=function(){
           <textarea class="form-inp" rows="3" placeholder="Ressenti général, énergie, conditions particulières du jour…" style="resize:none" oninput="updateLogSeanceComment(this.value)">${log.commentaireSeance||''}</textarea>
         </div>
       </div>
-      <div style="padding:0 16px;margin-top:8px">
+      <div style="padding:0 16px;margin-top:2px">${chronoHtml(log)}</div>
+      <div style="padding:0 16px;margin-top:10px">
         <button class="btn btn-primary" onclick="springPop(this);setTimeout(saveLog,240)">💾 Terminer la séance</button>
       </div>`;
     S._logBlocs=blocs;
   }
   lgInitToggle();
   refreshLogProgress();
+  startChronoTick();
   // Si un tiroir vidéo est ouvert (ex : après un upload), on rafraîchit son contenu
   const ov=document.getElementById('overlay');
   if(mode==='carte' && S._lgSheet && S._lgSheet.type==='videos' && ov && ov.classList.contains('open')){
@@ -6316,7 +6436,7 @@ function showWeeklyRecap(clientId, periodOffset){
     const logDate=new Date(log.date);
     html+=`<div style="margin-bottom:18px">
       <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)">
-        🏋️ ${logDate.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})} — ${log.seance_nom}
+        🏋️ ${logDate.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})} — ${log.seance_nom}${log.duree_sec?` · ⏱️ ${fmtDuree(log.duree_sec)}`:''}
       </div>`;
 
     (log.exercices||[]).forEach(exo=>{
@@ -6522,6 +6642,9 @@ function updateLogComment(ei, val){
 async function saveLog(){
   const finishedClientId=S.logSeance&&S.logSeance.client_id;
   const logToSave=S.logSeance;
+  // Durée réelle de la séance, figée au moment où on appuie sur "Terminer".
+  if(logToSave) logToSave.duree_sec=logElapsedSec(logToSave);
+  stopChronoTick();
   // 1) Marquer tout de suite la séance comme VALIDÉE : à partir d'ici, plus aucun
   //    envoi "séance en cours" (même retardataire) ne pourra la ressusciter.
   markLogFinished(logToSave&&logToSave.id);
@@ -6551,6 +6674,7 @@ async function saveLog(){
 function confirmCancelLog(){
   confirmDialog('Annuler la séance ?','Les données saisies ne seront pas sauvegardées.','Annuler la séance',()=>{
     const cancelClientId=S.logSeance&&S.logSeance.client_id;
+    stopChronoTick();
     clearTimeout(_pushActiveLogTimer);
     clearActiveLogServer(cancelClientId);
     localStorage.removeItem('c_activeLog');
@@ -7145,6 +7269,7 @@ function startLog(seanceTypeId){
     seance_type_id:seanceTypeId,
     seance_nom:st.nom,
     date:new Date().toISOString(),
+    startedAt:Date.now(),
     exercices:st.exercices.map(exo=>({
       exo_id:exo.exo_id,nom:exo.nom,cat:exo.cat,video:exo.video||'',desc:exo.desc||'',notes:exo.notes||'',duree_min:exo.duree_min||0,
       nb_series:exo.nb_series,reps_min:exo.reps_min,reps_max:exo.reps_max,repos:exo.repos||90,
@@ -11129,14 +11254,18 @@ function applyIaDietModification(modIdx){
         });
         lsSet('c_customAliments',S.customAliments);
 
-        const diete=getClientDiete(S.client.id,S.dieteState.day);
+        const diete=ensureClientDiete(S.client.id,S.dieteState.day);
         diete.meals=newMeals;
         diete.iaModified=true;
         diete.iaModifiedDate=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
         persist();
+        // Le brouillon en sessionStorage contient l'ANCIENNE diète : sans cette ligne,
+        // restoreDieteDraft() (appelé au début de render.diete) écraserait le plan IA.
+        sessionStorage.removeItem('c_dieteDraft_'+S.client.id+'_'+S.dieteState.day);
         saveDieteToSupa(S.client.id,S.dieteState.day);
         toast('✓ Plan mis à jour et sauvegardé !');
-        if(S.screen==='diete') render.diete();
+        // Basculer sur l'écran Diète pour voir immédiatement le résultat
+        if(S.screen==='diete') render.diete(); else navigate('diete');
       }
     );
   } catch(e){
@@ -12118,7 +12247,8 @@ async function saveLogToSupa(log){
     nom:log.seance_nom||log.nom||'Séance',
     date_seance:log.date||new Date().toISOString(),
     exercices_log:log.exercices||[],
-    commentaire_seance:log.commentaireSeance||null
+    commentaire_seance:log.commentaireSeance||null,
+    duree_sec:log.duree_sec||null
   },'',{prefer:'resolution=merge-duplicates'});
   return res;
 }
