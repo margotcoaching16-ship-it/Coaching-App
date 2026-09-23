@@ -1876,6 +1876,16 @@ html.da-chic .topbar-title::after{content:'';display:block;width:36px;height:2px
     <div id="diete-content" style="padding:12px 16px 60px"></div>
   </div>
 
+  <!-- SCREEN: MES GOÛTS (mode menu, test) -->
+  <div class="screen" id="screen-gouts">
+    <div id="gouts-content" style="padding:12px 16px 60px"></div>
+  </div>
+
+  <!-- SCREEN: MENU DE LA SEMAINE (mode menu, test) -->
+  <div class="screen" id="screen-menusemaine">
+    <div id="menusemaine-content" style="padding:12px 16px 60px"></div>
+  </div>
+
   <!-- SCREEN: RECETTES -->
   <div class="screen" id="screen-recettes">
     <div id="recettes-content" style="padding:12px 16px 60px"></div>
@@ -2513,6 +2523,8 @@ function persist(){
   lsSet('c_customCats',S.customCategories||[]);
   lsSet('c_videos',S.videos||[]);
   lsSet('c_correctionPresets',S.correctionPresets||[]);
+  lsSet('c_alimentsAvis',S.alimentsAvis||{});
+  lsSet('c_menusSemaine',S.menusSemaine||{});
 }
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
@@ -3462,6 +3474,12 @@ async function openClient(id){
   navigate('menu');
   // Sync des données du client en arrière-plan, puis mise à jour de l'écran affiché
   syncClientData(id).then(()=>refreshScreenAfterSync(id)).catch(e=>console.warn('Sync error:',e));
+  // Mode menu (test) : prépare ses avis aliments + son menu de la semaine si besoin
+  if(S.client.menu_mode_actif){
+    syncAlimentsAvis(id).then(()=>ensureMenuSemaineAJour(id)).then(()=>{
+      if(S.screen==='menusemaine') render.menusemaine();
+    }).catch(e=>console.warn('Menu mode sync error:',e));
+  }
 }
 
 function openClientById(id){
@@ -4221,6 +4239,16 @@ render.menu=function(){
       <div class="menu-card-label">Diète</div>
       <div class="menu-card-sub">Day ON / Day OFF</div>
     </div>
+    ${c.menu_mode_actif?`<div class="menu-card" onclick="navigate('gouts')">
+      <div class="menu-card-icon">😋</div>
+      <div class="menu-card-label">Mes goûts</div>
+      <div class="menu-card-sub">Dis-nous ce que tu aimes</div>
+    </div>
+    <div class="menu-card" onclick="navigate('menusemaine')">
+      <div class="menu-card-icon">🍽️</div>
+      <div class="menu-card-label">Menu de la semaine</div>
+      <div class="menu-card-sub">Généré selon tes goûts</div>
+    </div>`:''}
     <div class="menu-card" onclick="startFreshCheckin()">
       <div class="menu-card-icon">📋</div>
       <div class="menu-card-label">Check-in quotidien</div>
@@ -9085,7 +9113,7 @@ render.checkin=function(){
   document.getElementById('checkin-content').innerHTML=
     '<div class="checkin-section">'+
       '<div class="form-group"><label class="form-label">Date</label><input class="checkin-inp" type="date" value="'+safe(d.date)+'" onchange="setCheckinField(\'date\',this.value)" /></div>'+
-      '<div class="form-group"><label class="form-label">Poids (à jeun, après passage aux toilettes)</label><input class="checkin-inp" type="number" inputmode="decimal" step="0.1" placeholder="ex : 68.4" value="'+safe(d.poids)+'" oninput="setCheckinField(\'poids\',this.value)" /></div>'+
+      '<div class="form-group"><label class="form-label">Poids (à jeun, après passage aux toilettes)</label><input class="checkin-inp" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" placeholder="ex : 68.4" value="'+safe(d.poids)+'" oninput="setCheckinField(\'poids\',this.value.replace(\',\',\'.\'))" /></div>'+
       '<div class="checkin-section-title">🍫 As tu fais des écarts sur la diète ?</div><div class="radio-group">'+yn('ecarts','oui','Oui')+yn('ecarts','non','Non')+'</div>'+
       '<div class="form-group" style="margin-top:8px"><label class="form-label">Si oui, quoi ?</label><input class="checkin-inp" placeholder="Ex : resto, chocolat, apéro..." value="'+safe(d.ecarts_detail)+'" oninput="setCheckinField(\'ecarts_detail\',this.value)" /></div>'+
       '<div class="form-group"><label class="form-label">As tu eu des problèmes de digestion ? Si oui, quoi ?</label><input class="checkin-inp" value="'+safe(d.digestion)+'" oninput="setCheckinField(\'digestion\',this.value)" /></div>'+
@@ -9097,7 +9125,7 @@ render.checkin=function(){
       '<div class="checkin-section-title">😴 Qualité du sommeil (de très mal à super bien)</div>'+scale('sommeil')+
       '<div class="checkin-section-title">😵‍💫 Niveau de stress (de zen à ultra stressée)</div>'+scale('stress',true)+
       '<div class="form-group"><label class="form-label">Nombre de pas</label><input class="checkin-inp" type="number" inputmode="decimal" value="'+safe(d.pas)+'" oninput="setCheckinField(\'pas\',this.value)" /></div>'+
-      '<div class="form-group"><label class="form-label">Combien de litres d\'eau as tu bu ?</label><input class="checkin-inp" type="number" inputmode="decimal" step="0.1" value="'+safe(d.eau)+'" oninput="setCheckinField(\'eau\',this.value)" /></div>'+
+      '<div class="form-group"><label class="form-label">Combien de litres d\'eau as tu bu ?</label><input class="checkin-inp" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="'+safe(d.eau)+'" oninput="setCheckinField(\'eau\',this.value.replace(\',\',\'.\'))" /></div>'+
       '<div class="checkin-section-title">🩸 As tu eu tes règles ?</div><div class="radio-group">'+yn('regles','oui','Oui')+yn('regles','non','Non')+'</div>'+
       '<div class="form-group" style="margin-top:8px"><label class="form-label">As tu eu des SPM ? Si oui, quoi ?</label><input class="checkin-inp" value="'+safe(d.spm)+'" oninput="setCheckinField(\'spm\',this.value)" /></div>'+
       '<div class="form-group"><label class="form-label">Autres précisions</label><textarea class="checkin-textarea" rows="4" placeholder="Tout ce que tu veux ajouter" oninput="setCheckinField(\'autres\',this.value)">'+safe(d.autres)+'</textarea></div>'+
@@ -9399,6 +9427,8 @@ S.customAliments = lsGet('c_customAliments')||[];
 S.recettes = lsGet('c_recettes')||[];
 S.customCategories = lsGet('c_customCats')||[];
 S.dieteState = { day:'on', sel:null, creatorCat:null, unitOn:false, recetteEnCours:null };
+S.alimentsAvis = lsGet('c_alimentsAvis')||{};
+S.menusSemaine = lsGet('c_menusSemaine')||{};
 
 function getDieteDB(){
   const db={};
@@ -12315,6 +12345,179 @@ async function deleteCheckinFromSupa(ci){
   await supa('DELETE','checkins','',`?client_id=eq.${ci.client_id}&date=eq.${ci.date}`).catch(e=>console.warn('Delete error:',e));
 }
 
+// ─────────────────────────────────────────
+// MODE MENU (test) : avis aliments + menu de la semaine généré auto
+// N'est actif que pour les clients avec menu_mode_actif=true (Emma, pour le test).
+// ─────────────────────────────────────────
+async function syncAlimentsAvis(clientId){
+  const res=await supa('GET','aliments_avis','',`?client_id=eq.${clientId}`);
+  if(res){
+    S.alimentsAvis=S.alimentsAvis||{};
+    const map={};
+    res.forEach(a=>{ map[a.aliment_nom]=a.avis; });
+    S.alimentsAvis[clientId]=map;
+    lsSet('c_alimentsAvis',S.alimentsAvis);
+  }
+}
+
+async function setAlimentAvis(clientId,alimentNom,avis){
+  if(!S.alimentsAvis) S.alimentsAvis={};
+  if(!S.alimentsAvis[clientId]) S.alimentsAvis[clientId]={};
+  S.alimentsAvis[clientId][alimentNom]=avis;
+  lsSet('c_alimentsAvis',S.alimentsAvis);
+  await supa('POST','aliments_avis',{client_id:clientId,aliment_nom:alimentNom,avis,updated_at:new Date().toISOString()},'?on_conflict=client_id,aliment_nom',{prefer:'resolution=merge-duplicates,return=representation'});
+}
+
+function avisAliment(clientId,nom){
+  return (S.alimentsAvis&&S.alimentsAvis[clientId]&&S.alimentsAvis[clientId][nom])||'neutre';
+}
+
+// Choisit un aliment parmi une liste de catégories, en favorisant les "aimés",
+// repliant sur "neutre" si besoin, et en excluant toujours les "détestés".
+function choisirAlimentPourCategorie(clientId,cats){
+  let pool=[];
+  cats.forEach(cat=>{ (DB_BASE[cat]||[]).forEach(f=>pool.push(f)); });
+  const notDeteste=pool.filter(f=>avisAliment(clientId,f.n)!=='deteste');
+  const aimes=notDeteste.filter(f=>avisAliment(clientId,f.n)==='aime');
+  const source=aimes.length?aimes:(notDeteste.length?notDeteste:pool);
+  if(!source.length) return null;
+  return source[Math.floor(Math.random()*source.length)];
+}
+
+// Calcule un poids (g) pour qu'un aliment apporte environ kcalVisees kcal (arrondi à 5g).
+function grammagePourKcal(food,kcalVisees){
+  if(!food||!food.k) return 0;
+  return Math.max(10,Math.round((kcalVisees/food.k)*100/5)*5);
+}
+
+// Construit une journée de menu (4 repas) en respectant grossièrement les cibles du jour.
+// Chaque repas pioche UNIQUEMENT dans des catégories qui ont du sens pour ce moment de la
+// journée (le petit déjeuner ne propose pas de riz ou de viande, le dîner pas de céréales...).
+function construireJourMenu(clientId,targets){
+  const repartition=[
+    {name:'Petit déjeuner',pct:0.25,roles:[
+      {cats:['Céréales'],part:0.5},
+      {cats:['Produits laitiers'],part:0.35},
+      {cats:['Fruits'],part:0.15}
+    ]},
+    {name:'Déjeuner',pct:0.30,roles:[
+      {cats:['Viande','Poisson','Oeuf','Légumineuses'],part:0.45},
+      {cats:['Féculents'],part:0.4},
+      {cats:['Légumes'],part:0.15}
+    ]},
+    {name:'Collation',pct:0.15,roles:[
+      {cats:['Fruits'],part:0.5},
+      {cats:['Produits laitiers'],part:0.5}
+    ]},
+    {name:'Dîner',pct:0.30,roles:[
+      {cats:['Viande','Poisson','Oeuf','Légumineuses'],part:0.45},
+      {cats:['Féculents'],part:0.35},
+      {cats:['Huile'],part:0.2}
+    ]}
+  ];
+  return repartition.map(m=>{
+    const kcalRepas=(targets.kcal||1800)*m.pct;
+    const items=m.roles.map(role=>{
+      const food=choisirAlimentPourCategorie(clientId,role.cats);
+      if(!food) return null;
+      const qty=grammagePourKcal(food,kcalRepas*role.part);
+      const cat=Object.keys(DB_BASE).find(c=>(DB_BASE[c]||[]).some(f=>f.n===food.n))||'';
+      return {food:food.n,cat,type:null,qty,enabled:true};
+    }).filter(Boolean);
+    return {name:m.name,items};
+  });
+}
+
+// Génère le menu complet de la semaine (7 jours) pour un client, à partir de
+// ses avis aliments et des cibles de sa diète Day ON.
+function genererMenuSemaine(clientId){
+  const targets=(S.dietes[clientId]&&S.dietes[clientId].on&&S.dietes[clientId].on.targets)||{kcal:1800,prot:120,gluc:180,lip:50};
+  const jours=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  const meals=jours.map(j=>({jour:j,repas:construireJourMenu(clientId,targets)}));
+  return {meals,targets};
+}
+
+async function syncMenuSemaine(clientId){
+  const semaine=getWeekStartStr(null,1);
+  const res=await supa('GET','menus_semaine','',`?client_id=eq.${clientId}&semaine_debut=eq.${semaine}&limit=1`);
+  if(res&&res.length){
+    S.menusSemaine=S.menusSemaine||{};
+    S.menusSemaine[clientId]=res[0];
+    lsSet('c_menusSemaine',S.menusSemaine);
+  }
+}
+
+// Vérifie que le menu de la semaine en cours existe déjà ; sinon le génère et l'enregistre.
+async function ensureMenuSemaineAJour(clientId){
+  const semaine=getWeekStartStr(null,1);
+  const existant=S.menusSemaine&&S.menusSemaine[clientId];
+  if(existant&&existant.semaine_debut===semaine) return;
+  const {meals,targets}=genererMenuSemaine(clientId);
+  S.menusSemaine=S.menusSemaine||{};
+  S.menusSemaine[clientId]={semaine_debut:semaine,meals,targets};
+  lsSet('c_menusSemaine',S.menusSemaine);
+  await supa('POST','menus_semaine',{client_id:clientId,semaine_debut:semaine,meals,targets},'?on_conflict=client_id,semaine_debut',{prefer:'resolution=merge-duplicates,return=representation'});
+}
+
+async function setAlimentAvisUI(nom,avis){
+  if(!S.client) return;
+  await setAlimentAvis(S.client.id,nom,avis);
+  render.gouts();
+}
+
+render.gouts=function(){
+  const c=S.client;if(!c)return;
+  setTopbar('Mes goûts','Dis-nous ce que tu aimes 😋');
+  const el=document.getElementById('gouts-content');
+  const cats=Object.keys(DB_BASE);
+  el.innerHTML=`<div style="padding:4px 0 14px;color:var(--text3);font-size:12px;line-height:1.4">Note tes aliments : on te proposera surtout ceux que tu aimes, jamais ceux que tu détestes 😉</div>`+
+    cats.map(cat=>{
+      const items=DB_BASE[cat]||[];
+      if(!items.length) return '';
+      return `<div style="margin-bottom:20px">
+        <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${cat}</div>
+        ${items.map(f=>{
+          const nomEsc=f.n.replace(/'/g,"\\'");
+          const avis=avisAliment(c.id,f.n);
+          const btn=(val,emoji)=>`<button onclick="setAlimentAvisUI('${nomEsc}','${val}')" style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid ${avis===val?'var(--green)':'var(--border)'};background:${avis===val?'var(--green)':'var(--bg2)'};color:${avis===val?'#fff':'var(--text)'};font-size:14px">${emoji}</button>`;
+          return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="flex:1;font-size:14px;color:var(--text)">${f.n}</div>
+            <div style="display:flex;gap:5px;width:132px">
+              ${btn('deteste','👎')}
+              ${btn('neutre','😐')}
+              ${btn('aime','👍')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('');
+};
+
+render.menusemaine=function(){
+  const c=S.client;if(!c)return;
+  setTopbar('Menu de la semaine',c.prenom+' '+c.nom);
+  const el=document.getElementById('menusemaine-content');
+  const data=S.menusSemaine&&S.menusSemaine[c.id];
+  if(!data||!data.meals||!data.meals.length){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">🍽️</div><div class="empty-title">Menu pas encore prêt</div><div class="empty-sub">Reviens un peu plus tard, il arrive !</div></div>`;
+    return;
+  }
+  if(S.menuSemaineJour==null||S.menuSemaineJour>=data.meals.length) S.menuSemaineJour=0;
+  const tabs=data.meals.map((j,i)=>`<button onclick="S.menuSemaineJour=${i};render.menusemaine()" style="padding:7px 10px;border-radius:8px;border:1px solid ${i===S.menuSemaineJour?'var(--green)':'var(--border)'};background:${i===S.menuSemaineJour?'var(--green)':'var(--bg2)'};color:${i===S.menuSemaineJour?'#fff':'var(--text)'};font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0">${j.jour.slice(0,3)}</button>`).join('');
+  const jourData=data.meals[S.menuSemaineJour];
+  const repasHtml=jourData.repas.map(r=>{
+    const totKcal=mealKcalD(r.items);
+    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-weight:700;font-size:14px;color:var(--text)">${r.name}</div>
+        <div style="font-size:12px;color:var(--text3)">${totKcal} kcal</div>
+      </div>
+      ${r.items.map(it=>`<div style="font-size:13px;color:var(--text);padding:3px 0">${it.qty}${(it.type||'').toUpperCase()==='UNITÉ'?' pièce(s)':'g'} · ${it.food}</div>`).join('')}
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 14px">${tabs}</div>${repasHtml}`;
+};
+
 function showVideoSourcePicker(cameraInputId, galleryInputId){
   const html=`
     <div style="text-align:center;padding:16px">
@@ -12883,6 +13086,7 @@ function buildDemoData(){
     dietMode:'flexible',
     favori:false,
     archive:false,
+    menu_mode_actif:true,
     goals:{seances:'4',pas:'9000',hydra_jour:'2',hydra_seance:'0.7'},
     notes_coach:"Très régulière. Tendance à sous-manger le week-end → surveiller les protéines du samedi.\nGenou droit sensible : éviter les fentes marchées.",
     blockPlan:{
@@ -13156,6 +13360,11 @@ async function initApp(){
   // sans ça, la cliente ne voyait que la version enregistrée localement sur son appareil.
   await syncExercices();
   await syncClientData(clientRecord.id);
+  if(clientRecord.menu_mode_actif){
+    await syncAlimentsAvis(clientRecord.id);
+    await syncMenuSemaine(clientRecord.id);
+    await ensureMenuSemaineAJour(clientRecord.id);
+  }
 
   document.getElementById('back-btn').style.display='none';
   setTopbar(S.client.prenom+' '+S.client.nom,'');
