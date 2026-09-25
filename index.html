@@ -1742,6 +1742,24 @@ html.da-chic .topbar-title::after{content:'';display:block;width:36px;height:2px
 @media (prefers-reduced-motion: reduce){
   .btn,.icon-btn,.topbar-back,.menu-card,.calc-menu-card,.qbtn,.exo-mini-btn,.bilan-chip,.jour-chip,.bulle-opt,.video-pill,.whatsnew-btn,.shortcut-btn,.client-mini-btn,.reorder-btn,.cible-btn,.day-tab,.cat-chip-d,.scan-btn,.scan-btn-inline,.btn-start-block,.client-row,.seance-row,.exo-list-row,.food-row-d,.btn:active,.icon-btn:active,.topbar-back:active,.menu-card:active,.calc-menu-card:active,.qbtn:active,.exo-mini-btn:active,.bilan-chip:active,.jour-chip:active,.bulle-opt:active,.video-pill:active,.whatsnew-btn:active,.shortcut-btn:active,.client-mini-btn:active,.reorder-btn:active,.cible-btn:active,.day-tab:active,.cat-chip-d:active,.scan-btn:active,.scan-btn-inline:active,.btn-start-block:active,.client-row:active,.seance-row:active,.exo-list-row:active,.food-row-d:active{transition:none}
 }
+
+/* ── Tuto guidé ── */
+#tuto-root{position:fixed;inset:0;z-index:99990;pointer-events:auto}
+#tuto-root .tuto-fond{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+#tuto-root .tuto-spot{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.6);outline:2px solid rgba(255,255,255,.85);transition:left .3s ease,top .3s ease,width .3s ease,height .3s ease;pointer-events:none}
+#tuto-root .tuto-bulle{position:fixed;background:var(--bg);color:var(--text);border-radius:16px;padding:16px 16px 12px;box-shadow:0 12px 36px rgba(0,0,0,.3);transition:left .3s ease,top .3s ease}
+#tuto-root .tuto-bulle.tuto-in .tuto-contenu{animation:tutoIn .25s ease}
+@keyframes tutoIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+#tuto-root .tuto-fleche{position:absolute;width:16px;height:16px;background:var(--bg);transform:rotate(45deg);border-radius:3px}
+#tuto-root .tuto-fleche.haut{top:-7px}
+#tuto-root .tuto-fleche.bas{bottom:-7px}
+#tuto-root .tuto-num{font-size:11px;font-weight:700;color:var(--green);letter-spacing:.04em;margin-bottom:4px}
+#tuto-root .tuto-titre{font-size:16px;font-weight:800;margin-bottom:6px}
+#tuto-root .tuto-texte{font-size:14px;line-height:1.5;color:var(--text2)}
+#tuto-root .tuto-btns{display:flex;align-items:center;gap:8px;margin-top:14px}
+#tuto-root .tuto-passer{background:none;border:none;color:var(--text3);font:inherit;font-size:13px;padding:8px 4px;cursor:pointer}
+#tuto-root .tuto-prec{width:38px;height:38px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:20px;cursor:pointer}
+#tuto-root .tuto-suiv{border:none;border-radius:999px;background:var(--green);color:#fff;font:inherit;font-weight:700;font-size:14px;padding:10px 18px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -2127,6 +2145,10 @@ let authToken=null;
 let authUserId=null;
 let currentUserEmail=null;
 let currentIsCoach=false;
+// Cliente en formule « Appli uniquement » : elle gère seule ses objectifs,
+// son entraînement et sa diète (comme la coach le ferait pour elle).
+function estAutonome(){return !currentIsCoach && !!(typeof S!=='undefined'&&S.client) && S.client.formule==='appli';}
+function peutGerer(){return currentIsCoach || estAutonome();}
 let inviteToken=null;
 
 function getHeaders(){
@@ -2403,7 +2425,14 @@ function avertirReseau(){
 }
 
 // Écriture avec filet de sécurité : renvoie true seulement si c'est vraiment enregistré.
+// Cliente en Suivi complet / Pack séances : elle n'a pas le droit de modifier
+// définitivement ses programmes ou séances type → inutile de garder ces envois en attente.
+function _opInterditeCliente(op){
+  return !peutGerer() && op && (op.table==='seances_type'||op.table==='programmes');
+}
+
 async function supaWrite(method,table,body,query='',opts){
+  if(_opInterditeCliente({table}))return false;
   const empreinte=(query||'')+(body?JSON.stringify(body):'');
   if(empreinte.includes('demo-'))return true; // profil démo : jamais écrit en base
   const op={method,table,body,query,opts,ts:Date.now()};
@@ -2422,6 +2451,7 @@ async function flushOutbox(){
     const restants=[];
     for(const op of a){
       if(Date.now()-(op.ts||0)>OUTBOX_MAX_AGE)continue;
+      if(_opInterditeCliente(op))continue; // vieille modif refusée : on la jette
       const ok=await _supaWriteTry(op.method,op.table,op.body,op.query,op.opts);
       if(!ok)restants.push(op);
     }
@@ -2779,6 +2809,8 @@ function showScreen(screen,opts={}){
   }
 
   try{ if(render[screen]) render[screen](); }catch(err){ console.error(err); const target=document.getElementById(screen+'-content')||el; if(target) target.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Oups</div><div class="empty-sub">'+String(err.message||err)+'</div><button class="btn btn-secondary" style="margin-top:16px" onclick="logout()">Se déconnecter</button></div>'; }
+  // Tuto guidé : 1re ouverture de cet écran (clientes « Appli uniquement »)
+  try{ tutoAuto(screen); }catch(e){}
 
   // Recharge la base d'aliments partagée (customs + recettes) en arrière-plan
   // à l'ouverture de l'écran diète : un aliment créé sur un autre appareil
@@ -2799,10 +2831,10 @@ function setTopbar(title,sub='',action=''){
   document.getElementById('topbar-action').innerHTML=action;
   // Palette 🎨 : visible seulement sur la liste des clients (coach) et le menu principal (cliente)
   const pb=document.getElementById('palette-btn');
-  if(pb)pb.style.display=(S.screen==='menu'&&!currentIsCoach)?'':'none';
+  if(pb)pb.style.display='none'; // Thèmes : dans le menu Options (⚙️)
   // Côté coach, Thèmes et Jour/Nuit vivent maintenant dans le menu Options (⚙️)
   const tb=document.getElementById('theme-toggle-btn');
-  if(tb)tb.style.display=currentIsCoach?'none':'';
+  if(tb)tb.style.display='none'; // Jour/Nuit : dans le menu Options (⚙️)
 }
 
 // ─────────────────────────────────────────
@@ -4209,9 +4241,9 @@ render.menu=function(){
       ${g.hydra_jour?`<div class="goal-chip">💧 <span>${g.hydra_jour}L / jour</span></div>`:''}
       ${g.hydra_seance?`<div class="goal-chip">🏋️ <span>${g.hydra_seance}L / séance</span></div>`:''}
       ${g.seances?`<div class="goal-chip">🗓️ <span>${g.seances} séance${g.seances>1?'s':''} / sem.</span></div>`:''}
-      ${currentIsCoach?`<button class="goal-edit-btn" onclick="showEditGoalsModal('${c.id}')">✏️</button>`:''}
+      ${peutGerer()?`<button class="goal-edit-btn" onclick="showEditGoalsModal('${c.id}')">✏️</button>`:''}
     </div>`
-  :(currentIsCoach?`<div style="text-align:center;margin-top:6px"><button class="btn btn-secondary" style="font-size:12px;padding:6px 14px" onclick="showEditGoalsModal('${c.id}')">+ Ajouter des objectifs</button></div>`:'');
+  :(peutGerer()?`<div style="text-align:center;margin-top:6px"><button class="btn btn-secondary" style="font-size:12px;padding:6px 14px" onclick="showEditGoalsModal('${c.id}')">+ Ajouter des objectifs</button></div>`:'');
   document.getElementById('client-header').innerHTML=`
     <div class="client-avatar-lg" style="background:${bg};color:${text}">${initials(c)}</div>
     <div class="client-fullname">${c.prenom} ${c.nom}</div>
@@ -4220,7 +4252,7 @@ render.menu=function(){
   `;
   const lastCheckin=S.checkIns.filter(ci=>ci.client_id===c.id).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
   const checkinCount=S.checkIns.filter(ci=>ci.client_id===c.id).length;
-  document.getElementById('topbar-action').innerHTML=`<div style="display:flex;gap:6px;align-items:center">${currentIsCoach?`<button class="client-mini-btn" onclick="openCalculsPerte('${c.id}')" title="Trame">Plan</button>`:''}<div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div></div>`;
+  document.getElementById('topbar-action').innerHTML=`<div style="display:flex;gap:6px;align-items:center">${currentIsCoach?`<button class="client-mini-btn" onclick="openCalculsPerte('${c.id}')" title="Trame">Plan</button>`:''}${currentIsCoach?`<div class="icon-btn" onclick="logout()" title="Déconnexion"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>`:`<div class="icon-btn" onclick="showClientMenuOptions(this)" title="Options">⚙️</div>`}</div>`;
   const isPack=c.formule==='pack';
   const carteResa=`<div class="menu-card" onclick="showReservationModal()" style="grid-column:span 2;border-color:var(--green)">
       <div class="menu-card-icon">📅</div>
@@ -4319,9 +4351,311 @@ render.menu=function(){
 function countProgs(clientId){return S.programmes.filter(p=>p.client_id===clientId).length;}
 
 // ─────────────────────────────────────────
+// TUTO GUIDÉ (clientes « Appli uniquement »)
+// Une bulle + une flèche montrent chaque bouton, étape par étape.
+// - Accueil : visite générale, lancée toute seule à la 1re connexion.
+// - Chaque écran : mini-tuto lancé la 1re fois qu'elle l'ouvre.
+// - « Passer » arrête le tuto ; ⚙️ Options → « Revoir le tuto » le relance.
+// Chaque étape vise un bouton (sel = liste de sélecteurs CSS, le 1er visible
+// gagne). Si le bouton n'existe pas à l'écran, l'étape est sautée.
+// ─────────────────────────────────────────
+const TUTO_ETAPES={
+  menu:[
+    {titre:'Bienvenue dans ton appli 👋',texte:'Je te fais faire le tour en une minute. Tu peux passer le tuto quand tu veux, et le revoir plus tard dans ⚙️ Options.'},
+    {sel:['.client-goals-strip','[onclick^="showEditGoalsModal"]'],titre:'Tes objectifs',texte:'Fixe tes objectifs du quotidien : pas, eau, séances par semaine. Appuie sur ✏️ pour les changer quand tu veux.'},
+    {sel:['.menu-card[onclick="goTraining()"]'],titre:'💪 Entraînement',texte:'Crée tes programmes et tes séances, puis lance ta séance du jour. Tes charges et tes répétitions sont gardées pour suivre tes progrès.'},
+    {sel:['.menu-card[onclick="navigate(\'diete\')"]'],titre:'🥗 Diète',texte:'Construis tes repas pour les Day ON (jours d\'entraînement) et les Day OFF (jours de repos). Les calories et les macros se calculent toutes seules.'},
+    {sel:['.menu-card[onclick="startFreshCheckin()"]'],titre:'📋 Check-in quotidien',texte:'Chaque soir, une minute : poids, sommeil, énergie, écarts… C\'est ce qui te permet de comprendre ce qui marche pour toi.'},
+    {sel:['.menu-card[onclick="navigate(\'suivi\')"]'],titre:'📊 Suivi des check-ins',texte:'Tous tes check-ins rangés dans un tableau, semaine par semaine, du lundi au dimanche.'},
+    {sel:['.menu-card[onclick*="bilanHebdo"]'],titre:'📈 Bilan hebdomadaire',texte:'Une fois par semaine : photos, mensurations et poids. Tu pourras comparer tes semaines et voir ton avant / après.'},
+    {sel:['.menu-card[onclick="showReservationModal()"]'],titre:'📅 Réserver un coaching',texte:'Envie d\'une séance en salle avec ta coach ? Choisis ton créneau ici.'},
+    {sel:['#rp-sw-checkin'],cible:el=>el.closest('.menu-card'),titre:'🔔 Rappels',texte:'Active les notifications pour ne jamais oublier ton check-in (21h) et ton bilan (8h, le jour du bilan).'},
+    {sel:['[onclick="showClientMenuOptions(this)"]'],titre:'⚙️ Options',texte:'Thèmes, mode nuit, ton abonnement, la déconnexion… et ce tuto, si tu veux le revoir.'},
+    {titre:'À toi de jouer ! 💪',texte:'La première fois que tu ouvriras chaque écran, un petit guide t\'expliquera ses boutons.'}
+  ],
+  training:[
+    {sel:['[onclick="showNewProgModal()"]'],titre:'Créer un programme',texte:'Appuie sur ＋ pour créer un programme : donne-lui un nom (ex : « Full body 3 jours ») et choisis le nombre de séances.'},
+    {sel:['.prog-card .prog-header'],titre:'Ton programme',texte:'Appuie dessus pour l\'ouvrir ou le fermer. Le ✏️ sert à le renommer.'},
+    {sel:['.seance-row[onclick^="openSeanceType"]'],titre:'Tes séances',texte:'Chaque ligne est une séance. Appuie dessus pour la remplir avec tes exercices. ↑ ↓ pour changer l\'ordre, 🗑 pour la supprimer.'},
+    {sel:['button[onclick^="showAddSeanceModal"]'],titre:'Ajouter une séance',texte:'Pour ajouter une nouvelle séance à ce programme.'},
+    {sel:['[onclick="navigate(\'exercices\')"]'],titre:'📋 Bibliothèque d\'exercices',texte:'Tous les exercices, avec leurs vidéos de démonstration. Tu peux aussi y créer tes propres exercices.'}
+  ],
+  seance:[
+    {sel:['.btn-start-block'],titre:'Commencer la séance',texte:'À la salle, appuie ici : tu noteras tes charges série par série.'},
+    {sel:['.exo-card'],titre:'Un exercice',texte:'Chaque carte est un exercice de ta séance, avec son nombre de séries et de répétitions.'},
+    {sel:['[onclick^="editExoConfig"]'],titre:'✏️ Régler l\'exercice',texte:'Séries, répétitions, temps de repos, notes : c\'est ici.'},
+    {sel:['[onclick*="showSwapExoSeanceModal"]'],titre:'🔄 Remplacer',texte:'Échange cet exercice contre un autre, en gardant les mêmes réglages.'},
+    {sel:['.intens-picker-btn'],titre:'⚙️ Techniques',texte:'Superset, drop set, rest pause… pour corser l\'exercice.'},
+    {sel:['.exo-order-actions'],titre:'Changer l\'ordre',texte:'Monte ou descends l\'exercice avec ↑ ↓, ou fais-le glisser avec ⠿.'},
+    {sel:['[onclick^="openHistorique"]'],titre:'📈 Historique',texte:'Tes performances passées sur cet exercice, pour savoir quoi soulever aujourd\'hui.'},
+    {sel:['#topbar-action [onclick="showAddExoModal()"]','[onclick="showAddExoModal()"]'],titre:'Ajouter un exercice',texte:'Choisis un exercice dans la bibliothèque pour l\'ajouter à ta séance.'}
+  ],
+  log:[
+    {sel:['#log-progress'],titre:'Ta progression',texte:'La barre avance à chaque série terminée.'},
+    {sel:['#lg-seg'],titre:'Deux affichages',texte:'☰ Liste : tous les exercices à la suite. ▢ Carte : un exercice à la fois, en grand.'},
+    {sel:['.serie-row'],titre:'Note tes séries',texte:'Écris le poids et les répétitions : la série se coche toute seule ✓.'},
+    {sel:['[onclick*="showSwapExoModal("]'],titre:'🔄 Machine prise ?',texte:'Remplace l\'exercice juste pour aujourd\'hui. Ton programme ne change pas.'},
+    {sel:['[onclick*="saveLog"]'],titre:'💾 Terminer',texte:'À la fin, appuie ici pour enregistrer ta séance.'}
+  ],
+  exercices:[
+    {sel:['#exo-list-search'],titre:'Chercher un exercice',texte:'Tape le nom d\'un exercice pour le trouver tout de suite.'},
+    {sel:['#exo-nivs'],titre:'Filtres',texte:'Trie par niveau et par matériel pour trouver ce qui te convient.'},
+    {sel:['[onclick="showNewExoModal()"]'],titre:'＋ Créer un exercice',texte:'Il manque un exercice ? Crée-le, avec une vidéo si tu veux.'}
+  ],
+  diete:[
+    {sel:['[onclick="createNewDiete()"]'],titre:'Crée ta diète',texte:'Commence par créer ta diète : tu pourras ensuite ajouter tes repas et tes aliments.'},
+    {sel:['.day-tabs-wrap'],titre:'Day ON / Day OFF',texte:'Day ON : les jours d\'entraînement. Day OFF : les jours de repos. Chaque jour a ses propres repas.'},
+    {sel:['#diete-macros .macro-bar-wrap','#diete-macros'],titre:'Tes macros',texte:'Calories, protéines, glucides, lipides : vert = dans la cible, rouge = trop.'},
+    {sel:['[onclick="showCiblesModal()"]'],titre:'⚙️ Cibles',texte:'Fixe tes calories et tes macros à atteindre.'},
+    {sel:['.diet-toggle-switch[onclick="toggleDietMode()"]'],titre:'Flexible ou stricte',texte:'Vert = flexible : tu changes tes aliments librement. Rouge = stricte : ta diète est figée, tu choisis seulement des équivalents.'},
+    {sel:['#meal-card-0'],titre:'Un repas',texte:'Coche ce que tu as mangé, règle les quantités avec − et +, et appuie sur un aliment pour le changer.'},
+    {sel:['[onclick="dAddMeal()"]'],titre:'Ajouter un repas',texte:'Pour ajouter une collation, un repas en plus…'},
+    {sel:['.diet-icon-btn[onclick="navigate(\'aliments\')"]'],titre:'🥑 Créer un aliment',texte:'Un aliment introuvable ? Crée-le avec ses valeurs nutritionnelles.'},
+    {sel:['.diet-icon-btn[onclick="navigate(\'recettes\')"]'],titre:'👩‍🍳 Recettes',texte:'Enregistre tes recettes pour les ajouter en un geste.'},
+    {sel:['[onclick="saveDieteBase()"]'],titre:'📌 Sauvegarder la base',texte:'Quand ta diète te plaît, fige-la : tu pourras y revenir en un clic après des changements.'},
+    {sel:['[onclick^="showListeCoursesModal"]'],titre:'🛒 Liste de courses',texte:'L\'appli calcule ta liste de courses pour la semaine.'}
+  ],
+  checkin:[
+    {sel:['.checkin-inp[type="date"]'],titre:'La date',texte:'C\'est rempli tout seul avec aujourd\'hui. Tu peux la changer si tu fais le check-in d\'un autre jour.'},
+    {sel:['.checkin-inp[inputmode="decimal"]'],titre:'Ton poids',texte:'Le matin, à jeun, après être passée aux toilettes : c\'est le plus fiable.'},
+    {sel:['.radio-group'],titre:'Les questions',texte:'Réponds simplement par oui ou non, et précise si besoin.'},
+    {sel:['.scale-row'],titre:'Les notes de 1 à 5',texte:'Sommeil, énergie, stress… Note comment tu te sens aujourd\'hui.'},
+    {sel:['[onclick="saveCheckin()"]'],titre:'Enregistrer',texte:'N\'oublie pas d\'appuyer ici à la fin : ton check-in rejoint ton tableau de suivi.'}
+  ],
+  suivi:[
+    {sel:['#suivi-seg'],titre:'Découpage des semaines',texte:'Choisis comment couper tes semaines dans le tableau.'},
+    {sel:['.suivi-week'],titre:'Ta semaine',texte:'Tous tes check-ins de la semaine, jour par jour, avec tes moyennes.'}
+  ],
+  bilanHebdo:[
+    {sel:['.bh2-hero'],titre:'Ton bilan de la semaine',texte:'Ici, tu vois où tu en es pour le bilan de cette semaine.'},
+    {sel:['.bh2-btn-big'],titre:'Faire mon bilan',texte:'Photos (face, profils, dos), mensurations et notes : tout se remplit ici.'},
+    {sel:['[onclick="bhOuvre(\'comparaison\')"]'],titre:'Comparer',texte:'Mets deux semaines côte à côte pour voir tes changements.'},
+    {sel:['[onclick="bhOuvre(\'resultats\')"]'],titre:'Résultats',texte:'L\'évolution de ton poids et de tes mensurations au fil des semaines.'}
+  ],
+  aliments:[
+    {titre:'🥑 Créateur d\'aliments',texte:'Entre le nom et les valeurs nutritionnelles pour 100 g (regarde l\'étiquette), puis enregistre : ton aliment sera disponible dans ta diète.'}
+  ],
+  recettes:[
+    {sel:['#topbar-action [onclick="showNewRecetteModal()"]','[onclick="showNewRecetteModal()"]'],titre:'👩‍🍳 Tes recettes',texte:'Appuie sur ＋ pour créer une recette : ajoute les ingrédients et le nombre de parts, les calories se calculent toutes seules.'}
+  ]
+};
+
+let _tuto=null; // tuto en cours : {cle, etapes, i, root, spot, bulle}
+
+function _tutoCleVu(cle){return 'c_tuto_vu_'+cle;}
+function _tutoDejaVu(cle){try{return localStorage.getItem(_tutoCleVu(cle))==='1';}catch(e){return true;}}
+function _tutoMarquer(cle){try{localStorage.setItem(_tutoCleVu(cle),'1');}catch(e){}}
+
+// Une autre fenêtre est déjà ouverte ? On attend qu'elle se ferme.
+function _tutoOccupe(){
+  if(document.getElementById('overlay')?.classList.contains('open')) return true;
+  if(document.getElementById('whatsnew-overlay')?.classList.contains('show')) return true;
+  if(document.getElementById('confirm-overlay')?.classList.contains('open')) return true;
+  const tr=document.getElementById('trophy-overlay');
+  if(tr && getComputedStyle(tr).display!=='none' && getComputedStyle(tr).opacity!=='0') return true;
+  return false;
+}
+
+// Lancement automatique : la 1re fois qu'une cliente « Appli uniquement » ouvre un écran
+function tutoAuto(ecran){
+  if(!estAutonome()||_tuto||!TUTO_ETAPES[ecran]||_tutoDejaVu(ecran)) return;
+  let essais=0;
+  const tenter=()=>{
+    if(_tuto||S.screen!==ecran||_tutoDejaVu(ecran)) return;
+    if(_tutoOccupe()){ if(++essais<40) setTimeout(tenter,800); return; }
+    tutoLancer(ecran);
+  };
+  setTimeout(tenter,700);
+}
+
+// ⚙️ Options → Revoir le tuto : on efface les « déjà vu » et on repart de l'accueil
+function tutoRevoir(){
+  Object.keys(TUTO_ETAPES).forEach(k=>{try{localStorage.removeItem(_tutoCleVu(k));}catch(e){}});
+  closeModal();
+  setTimeout(()=>{ if(S.screen==='menu') tutoLancer('menu'); else tutoAuto(S.screen); },350);
+}
+
+function _tutoTrouver(etape){
+  if(!etape.sel) return null;
+  for(const s of etape.sel){
+    const els=[...document.querySelectorAll('#screen-'+S.screen+' '+s+', #topbar '+s)];
+    const el=els.find(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden';});
+    if(el) return etape.cible?(etape.cible(el)||el):el;
+  }
+  return null;
+}
+
+function tutoLancer(cle){
+  const etapes=TUTO_ETAPES[cle]; if(!etapes) return;
+  tutoFermer(false);
+  const root=document.createElement('div');
+  root.id='tuto-root';
+  root.innerHTML='<div class="tuto-fond"></div><div class="tuto-spot"></div><div class="tuto-bulle"><div class="tuto-fleche"></div><div class="tuto-contenu"></div></div>';
+  document.body.appendChild(root);
+  _tuto={cle,etapes,i:-1,root,spot:root.querySelector('.tuto-spot'),bulle:root.querySelector('.tuto-bulle'),fond:root.querySelector('.tuto-fond')};
+  window.addEventListener('resize',_tutoPlacer);
+  window.addEventListener('scroll',_tutoPlacer,true);
+  _tutoAller(0,1);
+}
+
+// Va à l'étape n (en sautant celles dont le bouton n'est pas à l'écran)
+function _tutoAller(n,sens){
+  if(!_tuto) return;
+  const E=_tuto.etapes;
+  while(n>=0&&n<E.length&&E[n].sel&&!_tutoTrouver(E[n])) n+=sens;
+  if(n<0){ n=_tuto.i; if(n<0) n=0; }
+  if(n>=E.length){ tutoFermer(true); return; }
+  _tuto.i=n;
+  const etape=E[n];
+  const el=_tutoTrouver(etape);
+  _tuto.el=el;
+  if(el){ el.scrollIntoView({block:'center',behavior:'smooth'}); }
+  // numéro d'étape parmi celles réellement visibles
+  const visibles=E.map((e,k)=>(!e.sel||_tutoTrouver(e))?k:-1).filter(k=>k>=0);
+  const pos=visibles.indexOf(n)+1, total=visibles.length;
+  const dernier=!E.slice(n+1).some(e=>!e.sel||_tutoTrouver(e));
+  const passerLbl=_tuto.cle==='menu'?'Passer le tuto':'Passer';
+  _tuto.bulle.querySelector('.tuto-contenu').innerHTML=
+    '<div class="tuto-num">'+pos+' / '+total+'</div>'
+    +'<div class="tuto-titre">'+etape.titre+'</div>'
+    +'<div class="tuto-texte">'+etape.texte+'</div>'
+    +'<div class="tuto-btns">'
+      +(dernier?'':'<button class="tuto-passer" onclick="tutoPasser()">'+passerLbl+'</button>')
+      +'<span style="flex:1"></span>'
+      +(pos>1?'<button class="tuto-prec" onclick="_tutoAller(_tuto.i-1,-1)" aria-label="Précédent">‹</button>':'')
+      +'<button class="tuto-suiv" onclick="_tutoAller(_tuto.i+1,1)">'+(dernier?'C\'est parti !':'Suivant ›')+'</button>'
+    +'</div>';
+  _tuto.bulle.classList.remove('tuto-in'); void _tuto.bulle.offsetWidth; _tuto.bulle.classList.add('tuto-in');
+  _tutoPlacer();
+  setTimeout(_tutoPlacer,380); // après le défilement
+}
+
+function _tutoPlacer(){
+  if(!_tuto) return;
+  const {spot,bulle,fond}=_tuto, el=_tuto.el;
+  const fleche=bulle.querySelector('.tuto-fleche');
+  const W=window.innerWidth, Hh=window.innerHeight, m=12;
+  const bw=Math.min(340,W-2*m);
+  bulle.style.width=bw+'px';
+  if(!el){
+    spot.style.display='none'; fond.style.display='block'; fleche.style.display='none';
+    bulle.style.left=((W-bw)/2)+'px';
+    bulle.style.top=Math.max(m,(Hh-bulle.offsetHeight)/2)+'px';
+    return;
+  }
+  fond.style.display='none'; spot.style.display='block'; fleche.style.display='block';
+  const r=el.getBoundingClientRect(), p=6;
+  spot.style.left=(r.left-p)+'px'; spot.style.top=(r.top-p)+'px';
+  spot.style.width=(r.width+2*p)+'px'; spot.style.height=(r.height+2*p)+'px';
+  const bh=bulle.offsetHeight;
+  const place=(r.bottom+p+14+bh<=Hh-m)||(r.top-p-14-bh<m)?'bas':'haut';
+  let top=place==='bas'?r.bottom+p+14:r.top-p-14-bh;
+  top=Math.max(m,Math.min(top,Hh-bh-m));
+  const cx=r.left+r.width/2;
+  let left=Math.max(m,Math.min(cx-bw/2,W-bw-m));
+  bulle.style.left=left+'px'; bulle.style.top=top+'px';
+  fleche.className='tuto-fleche '+(place==='bas'?'haut':'bas');
+  fleche.style.left=Math.max(16,Math.min(cx-left-8,bw-32))+'px';
+}
+
+function tutoPasser(){
+  if(!_tuto) return;
+  // Passer depuis l'accueil = on ne veut plus de tuto du tout
+  if(_tuto.cle==='menu') Object.keys(TUTO_ETAPES).forEach(_tutoMarquer);
+  tutoFermer(true);
+}
+
+function tutoFermer(marquer){
+  if(!_tuto) return;
+  if(marquer) _tutoMarquer(_tuto.cle);
+  window.removeEventListener('resize',_tutoPlacer);
+  window.removeEventListener('scroll',_tutoPlacer,true);
+  _tuto.root.remove();
+  _tuto=null;
+}
+
+// ─────────────────────────────────────────
 // RÉSERVATION D'UN COACHING (Cal.com)
 // ─────────────────────────────────────────
 const CAL_LIEN='https://cal.com/margot-coaching-h11oia/coaching-en-salle';
+
+// ─────────────────────────────────────────
+// ABONNEMENT « APPLI UNIQUEMENT » (Stripe)
+// Coller ici les deux liens une fois créés dans Stripe :
+//  - STRIPE_LIEN_ABONNEMENT : le « lien de paiement » (Payment Link) de l'abonnement
+//  - STRIPE_LIEN_GESTION    : le lien du « portail client » (gérer / arrêter l'abonnement)
+// ─────────────────────────────────────────
+const STRIPE_LIEN_ABONNEMENT='https://buy.stripe.com/5kQaEYdpC3ryf6615GbjW0q';
+const STRIPE_LIEN_GESTION='https://billing.stripe.com/p/login/9B614ofxK0fm4rs5lWbjW00';
+
+// Abonnement coupé = formule « Appli uniquement » + interrupteur éteint par la coach (ou par Stripe)
+function abonnementCoupe(c){return !!c && c.formule==='appli' && c.abonnement_actif===false;}
+
+// Ajoute le mail de la cliente au lien Stripe pour lui éviter de le retaper
+function _lienStripe(base){
+  if(!base) return '';
+  const e=((S.client&&S.client.email)||currentUserEmail||'').trim();
+  return e?base+(base.includes('?')?'&':'?')+'prefilled_email='+encodeURIComponent(e):base;
+}
+function ouvrirReabonnement(){
+  const l=_lienStripe(STRIPE_LIEN_ABONNEMENT);
+  if(!l){toast('Contacte ta coach pour te réabonner');return;}
+  window.open(l,'_blank','noopener');
+}
+function ouvrirGestionAbonnement(){
+  const l=_lienStripe(STRIPE_LIEN_GESTION);
+  if(!l){toast('Contacte ta coach pour gérer ton abonnement');return;}
+  window.open(l,'_blank','noopener');
+}
+
+// Menu Options côté cliente : thèmes, jour/nuit, abonnement, déconnexion
+function showClientMenuOptions(btn){
+  const nuit=(localStorage.getItem('c_theme')||'day')==='night';
+  const appli=!!(S.client&&S.client.formule==='appli');
+  openModal(
+    '<div class="modal-title">⚙️ Options</div>'
+    +'<div style="margin-top:6px">'
+    + optionRow('🎨','Thèmes','Style et couleurs de l\'application',
+        "closeModal();setTimeout(openThemeModal,200)")
+    + optionRow(nuit?'☀️':'🌙', nuit?'Passer en mode jour':'Passer en mode nuit',
+        nuit?'Actuellement en mode nuit':'Actuellement en mode jour',
+        "toggleTheme();closeModal()")
+    + (appli?optionRow('💳','Mon abonnement',
+        abonnementCoupe(S.client)?'Me réabonner':'Gérer ou arrêter mon abonnement',
+        abonnementCoupe(S.client)?"closeModal();ouvrirReabonnement()":"closeModal();ouvrirGestionAbonnement()"):'')
+    + (appli&&!abonnementCoupe(S.client)?optionRow('📘','Revoir le tuto','Le guide pas à pas de l\'appli',"tutoRevoir()"):'')
+    + optionRow('🚪','Déconnexion','','closeModal();setTimeout(logout,200)','var(--red,#c0392b)')
+    +'</div>'
+  ,{from:btn});
+}
+
+// Écran affiché à une cliente dont l'abonnement est terminé
+function afficherAbonnementTermine(){
+  setTopbar('Mon abonnement','');
+  document.getElementById('back-btn').style.display='none';
+  document.getElementById('topbar-action').innerHTML=`<div class="icon-btn" onclick="showClientMenuOptions(this)" title="Options">⚙️</div>`;
+  const c=S.client||{};
+  document.getElementById('menu-grid').innerHTML=`<div class="empty" style="grid-column:span 2">
+    <div class="empty-icon">🔒</div>
+    <div class="empty-title">Ton abonnement est terminé</div>
+    <div class="empty-sub">${c.prenom?c.prenom+', t':'T'}es programmes, ta diète et ton suivi sont gardés bien au chaud. Réabonne-toi pour tout retrouver.</div>
+    <div style="padding:0 32px;margin-top:14px;display:flex;flex-direction:column;gap:8px">
+      ${STRIPE_LIEN_ABONNEMENT?`<button class="btn btn-primary" onclick="ouvrirReabonnement()">💳 Me réabonner</button>`:`<div class="empty-sub">Contacte ta coach pour te réabonner.</div>`}
+      <button class="btn btn-secondary" onclick="location.reload()">🔄 J'ai payé, actualiser</button>
+    </div>
+  </div>`;
+}
+
+// Coach : allume / coupe l'abonnement d'une cliente « Appli uniquement »
+async function setClientAbonnement(clientId,actif){
+  const c=S.clients.find(x=>x.id===clientId)||S.archivedClients?.find(x=>x.id===clientId);
+  if(!c)return;
+  c.abonnement_actif=actif;
+  persist();
+  await supa('PATCH','clients',{abonnement_actif:actif},`?id=eq.${clientId}`);
+  showClientOptionsModal(clientId);
+  toast(actif?'✓ Abonnement actif':'🔒 Abonnement coupé');
+}
 
 // Pré-remplit le formulaire Cal.com avec le nom et l'email de la cliente,
 // pour qu'elle n'ait plus qu'à choisir son créneau et valider.
@@ -4366,19 +4700,19 @@ function goTraining(){navigate('training');}
 // ─────────────────────────────────────────
 render.training=function(){
   const recapBtn=currentIsCoach?`<div class="icon-btn" onclick="showWeeklyRecap()" title="Récap semaine">📊</div>`:'';
-  setTopbar('Entraînement',S.client.prenom+' '+S.client.nom,`<div style="display:flex;gap:6px">${recapBtn}<div class="icon-btn" onclick="navigate('exercices')" title="Base exercices">📋</div><div class="icon-btn" onclick="showNewProgModal()">＋</div></div>`);
+  setTopbar('Entraînement',S.client.prenom+' '+S.client.nom,`<div style="display:flex;gap:6px">${recapBtn}<div class="icon-btn" onclick="navigate('exercices')" title="Base exercices">📋</div>${peutGerer()?`<div class="icon-btn" onclick="showNewProgModal()">＋</div>`:''}</div>`);
   const progs=S.programmes.filter(p=>p.client_id===S.client.id);
   // Ouvrir tous les programmes par défaut
   progs.forEach(p=>{if(p._open===undefined) p._open=true;});
   const el=document.getElementById('training-content');
-  if(!progs.length){el.innerHTML=`<div class="empty"><div class="empty-icon">💪</div><div class="empty-title">Pas encore de programme</div><div class="empty-sub">Crée un programme d'entraînement pour ${S.client.prenom}</div><div style="padding:0 32px;margin-top:8px"><button class="btn btn-primary" onclick="showNewProgModal()">+ Créer un programme</button></div></div>`;return;}
+  if(!progs.length){el.innerHTML=`<div class="empty"><div class="empty-icon">💪</div><div class="empty-title">Pas encore de programme</div>${peutGerer()?`<div class="empty-sub">Crée un programme d'entraînement pour ${S.client.prenom}</div><div style="padding:0 32px;margin-top:8px"><button class="btn btn-primary" onclick="showNewProgModal()">+ Créer un programme</button></div>`:`<div class="empty-sub">Ta coach prépare ton programme</div>`}</div>`;return;}
   el.innerHTML=progs.map(prog=>{
     const seances=S.seancesType.filter(s=>s.programme_id===prog.id).sort((a,b)=>a.ordre-b.ordre);
     return `<div class="prog-card">
       <div class="prog-header" onclick="toggleProg('${prog.id}')">
         <div class="prog-icon">📋</div>
         <div class="prog-info">
-          <div class="prog-name">${prog.nom}${currentIsCoach?` <button class="reorder-btn" style="vertical-align:middle" onclick="event.stopPropagation();renameProg('${prog.id}')" title="Renommer">✏️</button>`:''}</div>
+          <div class="prog-name">${prog.nom}${peutGerer()?` <button class="reorder-btn" style="vertical-align:middle" onclick="event.stopPropagation();renameProg('${prog.id}')" title="Renommer">✏️</button>`:''}</div>
           <div class="prog-meta">${prog.nb_seances} séance${prog.nb_seances>1?'s':''} · ${seances.length} configurée${seances.length>1?'s':''}</div>
         </div>
         <div class="prog-chevron${prog._open?' open':''}" id="chev-${prog.id}">›</div>
@@ -4390,24 +4724,24 @@ render.training=function(){
             <div class="seance-name">${s.nom}</div>
             <div style="display:flex;align-items:center;gap:4px">
               ${(()=>{const al=lsGet('c_activeLog');return al&&al.seance_type_id===s.id?'<span style="font-size:10px;font-weight:700;color:var(--amber);background:var(--amber-light);padding:2px 7px;border-radius:10px">en cours</span>':''})()}
-              ${currentIsCoach?`<button class="reorder-btn" onclick="event.stopPropagation();renameSeance('${s.id}')" title="Renommer">✏️</button>`:''}
-              ${currentIsCoach&&seances.length>1?`
+              ${peutGerer()?`<button class="reorder-btn" onclick="event.stopPropagation();renameSeance('${s.id}')" title="Renommer">✏️</button>`:''}
+              ${peutGerer()&&seances.length>1?`
                 <button class="reorder-btn" onclick="event.stopPropagation();moveSeance('${s.id}','${prog.id}',-1)" ${i===0?'disabled':''}>↑</button>
                 <button class="reorder-btn" onclick="event.stopPropagation();moveSeance('${s.id}','${prog.id}',1)" ${i===seances.length-1?'disabled':''}>↓</button>
               `:''}
-              ${currentIsCoach?`<button class="reorder-btn" onclick="event.stopPropagation();shakeIcon(this);deleteSeance('${s.id}','${prog.id}')" title="Supprimer la séance"><span class="ico-fx">🗑</span></button>`:''}
+              ${peutGerer()?`<button class="reorder-btn" onclick="event.stopPropagation();shakeIcon(this);deleteSeance('${s.id}','${prog.id}')" title="Supprimer la séance"><span class="ico-fx">🗑</span></button>`:''}
               <div class="seance-exo-count">${(s.exercices||[]).length} exo${(s.exercices||[]).length>1?'s':''} ›</div>
             </div>
           </div>`).join('')}
-        ${seances.length<prog.nb_seances?`<div class="seance-row" onclick="showAddSeanceModal('${prog.id}')">
+        ${peutGerer()&&seances.length<prog.nb_seances?`<div class="seance-row" onclick="showAddSeanceModal('${prog.id}')">
           <div class="seance-num" style="background:var(--bg3);color:var(--text3)">+</div>
           <div class="seance-name" style="color:var(--green)">Ajouter une séance</div>
         </div>`:''}
-        <div style="padding:8px 14px;display:flex;gap:8px">
+        ${peutGerer()?`<div style="padding:8px 14px;display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" style="flex:1" onclick="showAddSeanceModal('${prog.id}')">➕ Ajouter une séance</button>
           ${currentIsCoach?`<button class="btn btn-secondary btn-sm" style="width:auto;padding:8px 12px" onclick="showCopyProgModal('${prog.id}')" title="Copier ce programme vers une autre cliente">📑 Copier</button>`:''}
           <button class="btn btn-danger btn-sm" style="width:auto;padding:8px 12px" onclick="shakeIcon(this);deleteProg('${prog.id}')"><span class="ico-fx">🗑</span></button>
-        </div>
+        </div>`:''}
       </div>`:''}
     </div>`;
   }).join('');
@@ -4688,7 +5022,7 @@ function chronoHtml(log){
 render.seance=function(){
   const s=S.seanceType;
   const prog=S.programmes.find(p=>p.id===s.programme_id);
-  setTopbar(s.nom,prog?prog.nom:'',`<div style="display:flex;gap:6px">${currentIsCoach?`<div class="icon-btn" onclick="renameSeance('${s.id}')" title="Renommer la séance">✏️</div>`:''}<div class="icon-btn" onclick="showAddExoModal()">＋</div></div>`);
+  setTopbar(s.nom,prog?prog.nom:'',`<div style="display:flex;gap:6px">${peutGerer()?`<div class="icon-btn" onclick="renameSeance('${s.id}')" title="Renommer la séance">✏️</div>`:''}${peutGerer()?`<div class="icon-btn" onclick="showAddExoModal()">＋</div>`:''}</div>`);
   const el=document.getElementById('seance-content');
   const exos=s.exercices||[];
   const activeLog=lsGet('c_activeLog');
@@ -4723,7 +5057,7 @@ render.seance=function(){
   </div>`:'';
 
   if(!exos.length){
-    el.innerHTML=notesHtml+`<div class="empty" style="padding:40px 24px"><div class="empty-icon">📋</div><div class="empty-title">Séance vide</div><div class="empty-sub">Ajoute des exercices à cette séance</div><div style="padding:0 32px;margin-top:8px"><button class="btn btn-primary" onclick="showAddExoModal()">+ Ajouter un exercice</button></div></div>`;
+    el.innerHTML=notesHtml+`<div class="empty" style="padding:40px 24px"><div class="empty-icon">📋</div><div class="empty-title">Séance vide</div><div class="empty-sub">${peutGerer()?'Ajoute des exercices à cette séance':'Ta coach n\'a pas encore rempli cette séance'}</div><div style="padding:0 32px;margin-top:8px;${peutGerer()?'':'display:none'}"><button class="btn btn-primary" onclick="showAddExoModal()">+ Ajouter un exercice</button></div></div>`;
     return;
   }
 
@@ -4769,7 +5103,7 @@ render.seance=function(){
     return `<div class="exo-card" id="exo-card-${ei}">
       <div class="exo-card-name">${exo.nom}</div>
       <div class="exo-card-header" style="padding-top:4px">
-        <div class="exo-order-actions">${isBottom?placeholder:upBtn}${isTop?placeholder:downBtn}<button class="exo-mini-btn drag-handle" title="Glisser pour réordonner" onpointerdown="startExoDrag(event,${gi})" style="cursor:grab;touch-action:none">⠿</button></div>
+        ${peutGerer()?`<div class="exo-order-actions">${isBottom?placeholder:upBtn}${isTop?placeholder:downBtn}<button class="exo-mini-btn drag-handle" title="Glisser pour réordonner" onpointerdown="startExoDrag(event,${gi})" style="cursor:grab;touch-action:none">⠿</button></div>`:''}
         <div class="exo-num-badge" style="${badgeStyle}">${ei+1}</div>
         <div class="exo-card-info">
           <div class="exo-card-cat" style="${catStyle}">${isCardio?exo.cat+' · '+(exo.duree_min||'?')+' min':(exo.repsPerSeries && exo.repsPerSeries.length > 0)?exo.cat+' · '+exo.nb_series+' séries':exo.cat+' · '+exo.nb_series+' séries · '+exo.reps_min+'-'+exo.reps_max+' reps'}</div>
@@ -4777,21 +5111,21 @@ render.seance=function(){
         <div class="exo-card-actions">
           ${videoUrl?`<a class="video-pill" href="${videoUrl}" target="_blank" rel="noopener noreferrer" title="Vidéo" style="width:28px;padding:0;justify-content:center"><svg width="9" height="11" viewBox="0 0 10 12" fill="currentColor" aria-hidden="true"><path d="M1.2.3A1 1 0 0 0 0 1.28v9.44a1 1 0 0 0 1.55.84l7.62-4.72a1 1 0 0 0 0-1.68L1.55.44A1 1 0 0 0 1.2.3Z"/></svg></a>`:''}
           <button class="exo-mini-btn" onclick="openHistorique('${exo.exo_id}')">📈</button>
-          <button class="exo-mini-btn" onclick="spinIcon(this);showSwapExoSeanceModal(${ei},this)" title="Remplacer"><span class="ico-swap">🔄</span></button>
+          ${peutGerer()?`<button class="exo-mini-btn" onclick="spinIcon(this);showSwapExoSeanceModal(${ei},this)" title="Remplacer"><span class="ico-swap">🔄</span></button>
           <button class="exo-mini-btn" onclick="editExoConfig(${ei})">✏️</button>
           <button class="intens-picker-btn" onclick="showExoOptionsMenu(${ei},'seance')">⚙️</button>
-          <button class="exo-mini-btn" onclick="removeExoFromSeance(${ei})">✕</button>
+          <button class="exo-mini-btn" onclick="removeExoFromSeance(${ei})">✕</button>`:''}
         </div>
       </div>
       ${exo.notes?`<div style="padding:0 12px 8px;font-size:12px;color:var(--text2)">📝 ${exo.notes}</div>`:''}
       ${repsDetail}
       ${renderIntensBadge(exo.methode,'seance',ei)}
-      <div style="padding:6px 12px 10px">
+      ${peutGerer()?`<div style="padding:6px 12px 10px">
         <button onclick="toggleVideoDemandee(${ei})" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid ${exo.videoDemandee?'var(--green)':'var(--border)'};background:${exo.videoDemandee?'rgba(29,158,117,.12)':'transparent'};color:${exo.videoDemandee?'var(--green)':'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer">
           <span style="font-size:13px">${exo.videoDemandee?'✓':'📹'}</span>
           ${exo.videoDemandee?'Vidéo demandée':'Demander une vidéo'}
         </button>
-      </div>
+      </div>`:''}
       ${exo.videoDemandee?renderExoVideoSection(exo,ei,'config',null):''}
     </div>`;
   }
@@ -4818,9 +5152,9 @@ render.seance=function(){
     const [i]=group;
     return `<div id="exo-group-${gi}" style="position:relative">${cardHTML(exos[i],i,gi,false,false)}</div>`;
   }).join('')+`
-  <div style="padding:0 16px;margin-top:4px">
+  ${peutGerer()?`<div style="padding:0 16px;margin-top:4px">
     <button class="btn btn-primary" onclick="showAddExoModal()">+ Ajouter un exercice</button>
-  </div>`;
+  </div>`:''}`;
 };
 
 function openSeanceType(id){
@@ -8998,6 +9332,13 @@ function getSemaineBilanStr(input){
 
 // Retourne le jour de la semaine (0=Dim..6=Sam) qui sert de début de semaine
 // selon le mode et le jour de bilan du client.
+// Découpage du tableau des check-ins. Une cliente « Appli uniquement » voit
+// par défaut ses semaines du lundi au dimanche (tant qu'elle n'a rien choisi).
+function suiviModeActuel(){
+  if(estAutonome() && !lsGet('c_suiviWeekMode') && S.client && S.client.jourBilan) return 'bilan';
+  return S.suiviWeekMode||'standard';
+}
+
 function getStartDow(mode, jourBilan){
   if(mode==='bilan' && jourBilan){
     const map={Dimanche:0,Lundi:1,Mardi:2,Mercredi:3,Jeudi:4,Vendredi:5,Samedi:6};
@@ -9027,7 +9368,7 @@ function positionSuiviThumb(){
   const seg=document.getElementById('suivi-seg');
   if(!seg) return;
   const thumb=seg.querySelector('.suivi-seg-thumb');
-  const cur=S.suiviWeekMode||'standard';
+  const cur=suiviModeActuel();
   const target=seg.querySelector('button[data-mode="'+cur+'"]');
   if(!thumb||!target) return;
   const prev=positionSuiviThumb._last;
@@ -9220,7 +9561,7 @@ render.suivi=function(){
   const c=S.client;
   if(!c) return;
   setTopbar('Suivi des check-ins', c.prenom+' '+c.nom, '');
-  const mode=S.suiviWeekMode||'standard';
+  const mode=suiviModeActuel();
   const startDow=getStartDow(mode, c.jourBilan);
   const rows=(S.checkIns||[])
     .filter(ci=>ci.client_id===c.id)
@@ -9671,7 +10012,7 @@ function getDieteBaseDate(clientId,day){
 
 // Coach uniquement : fige la diète affichée comme base de référence.
 function saveDieteBase(){
-  if(!currentIsCoach){toast('⚠ Réservé à la coach');return;}
+  if(!peutGerer()){toast('⚠ Réservé à la coach');return;}
   const clientId=S.client.id, day=S.dieteState.day;
   const d=getClientDiete(clientId,day);
   if(!d||!d.meals||!d.meals.length){toast('⚠ Aucune diète à figer');return;}
@@ -9709,7 +10050,7 @@ function restoreDieteBase(){
   const label=day==='on'?'Day ON':'Day OFF';
   const dateTxt=getDieteBaseDate(clientId,day);
   confirmDialog(
-    currentIsCoach?'Revenir à la diète de base '+label+' ?':'Revenir à la diète de ta coach ?',
+    peutGerer()?'Revenir à la diète de base '+label+' ?':'Revenir à la diète de ta coach ?',
     'Le '+label+' sera remis exactement comme dans la base'+(dateTxt?' du '+dateTxt:'')+'. Les modifications actuelles seront perdues.',
     'Restaurer',
     async function(){
@@ -9776,7 +10117,7 @@ render.diete=function(){
   const isDietStrict=(c.dietMode||'flexible')==='stricte';
   setTopbar('Diète', c.prenom+' '+c.nom,
     `<div class="diet-toggle-container">
-      ${currentIsCoach?`<div class="diet-toggle-switch" onclick="toggleDietMode()" style="background:${isDietStrict?'#E24B4A':'#1D9E75'}" title="Mode: ${isDietStrict?'Stricte':'Flexible'}"><div class="diet-toggle-switch-circle" style="transform:translateX(${isDietStrict?'22px':'0px'})"></div></div>`:''}
+      ${peutGerer()?`<div class="diet-toggle-switch" onclick="toggleDietMode()" style="background:${isDietStrict?'#E24B4A':'#1D9E75'}" title="Mode: ${isDietStrict?'Stricte':'Flexible'}"><div class="diet-toggle-switch-circle" style="transform:translateX(${isDietStrict?'22px':'0px'})"></div></div>`:''}
       <div class="diet-icon-btn ${isDietStrict?'hidden':''}" onclick="navigate('ia')" title="Assistant IA">🤖</div>
       <div class="diet-icon-btn ${isDietStrict?'hidden':''}" onclick="navigate('aliments')" title="Créateur aliments">🥑</div>
       <div class="diet-icon-btn ${isDietStrict?'hidden':''}" onclick="navigate('recettes')" title="Recettes">👩‍🍳</div>
@@ -9810,7 +10151,7 @@ render.diete=function(){
         <button class="day-tab${ds.day==='off'?' active':''}" onclick="dSetDay('off')">Day OFF</button>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
-        ${currentIsCoach?`<button class="cible-btn" onclick="copyDieteToOtherDay()" title="Copier vers l'autre jour">📋</button>`:''}
+        ${peutGerer()?`<button class="cible-btn" onclick="copyDieteToOtherDay()" title="Copier vers l'autre jour">📋</button>`:''}
         <button class="cible-btn" onclick="showCiblesModal()">⚙️ Cibles</button>
       </div>
     </div>`;
@@ -9876,7 +10217,7 @@ render.diete=function(){
       </div>
     </div>`).join('')+`
     ${isDietStrict?'':'<button class="btn btn-ghost" style="margin-bottom:10px" onclick="dAddMeal()">+ Ajouter un repas</button>'}
-    ${currentIsCoach?`<button class="btn btn-primary" onclick="saveDieteBase()">📌 Sauvegarder la base</button>`:''}
+    ${peutGerer()?`<button class="btn btn-primary" onclick="saveDieteBase()">📌 Sauvegarder la base</button>`:''}
     ${getDieteBase(c.id,ds.day)?`<button class="btn btn-secondary" style="margin-top:8px" onclick="restoreDieteBase()">↩ Revenir à la diète de base</button>`:''}
     <button class="btn btn-secondary" style="margin-top:8px" onclick="showListeCoursesModal(this)">🛒 Générer ma liste de courses</button>`;
 };
@@ -12703,8 +13044,13 @@ function showClientOptionsModal(clientId){
         <div style="display:flex;gap:4px;background:var(--bg);border-radius:999px;padding:3px">
           <button onclick="setClientFormule('${clientId}','suivi')" style="flex:1;padding:8px 10px;border-radius:999px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:${formule==='suivi'?'var(--green)':'transparent'};color:${formule==='suivi'?'#fff':'var(--text3)'};box-shadow:${formule==='suivi'?'0 1px 3px rgba(0,0,0,.15)':'none'}">✓ Suivi complet</button>
           <button onclick="setClientFormule('${clientId}','pack')" style="flex:1;padding:8px 10px;border-radius:999px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:${formule==='pack'?'#9a75e8':'transparent'};color:${formule==='pack'?'#fff':'var(--text3)'};box-shadow:${formule==='pack'?'0 1px 3px rgba(0,0,0,.15)':'none'}">🏋️ Pack séances</button>
+          <button onclick="setClientFormule('${clientId}','appli')" style="flex:1;padding:8px 10px;border-radius:999px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:${formule==='appli'?'#e8a23a':'transparent'};color:${formule==='appli'?'#fff':'var(--text3)'};box-shadow:${formule==='appli'?'0 1px 3px rgba(0,0,0,.15)':'none'}">📱 Appli uniquement</button>
         </div>
-        <div style="font-size:11px;color:var(--text3);line-height:1.35">${formule==='pack'?'Accès limité à Entraînement uniquement':'Accès à tous les onglets'}</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.35">${formule==='pack'?'Accès limité à Entraînement uniquement':formule==='appli'?'Abonnement à l\'appli, sans suivi coach':'Accès à tous les onglets'}</div>
+        ${formule==='appli'?(()=>{const actif=c.abonnement_actif!==false;return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;padding-top:8px;border-top:1px solid var(--border)">
+          <div><div style="font-size:13px;font-weight:600">Abonnement actif</div><div style="font-size:11px;color:var(--text3);line-height:1.35">${actif?'Elle a accès à l\'appli':'Accès bloqué : elle voit « Ton abonnement est terminé »'}</div></div>
+          <div class="diet-toggle-switch" onclick="setClientAbonnement('${clientId}',${!actif})" style="background:${actif?'#1D9E75':'var(--border2)'};flex-shrink:0"><div class="diet-toggle-switch-circle" style="transform:translateX(${actif?'22px':'0px'})"></div></div>
+        </div>`;})():''}
       </div>
       ${!isArchived?`<button class="btn btn-secondary" onclick="archiveClient('${clientId}')">📦 Archiver ce client</button>`:''}
       ${isArchived?`<button class="btn btn-secondary" onclick="restoreClient('${clientId}')">♻️ Restaurer ce client</button>`:''}
@@ -12734,13 +13080,15 @@ function setClientFormule(clientId,formule){
   const c=S.clients.find(x=>x.id===clientId)||S.archivedClients?.find(x=>x.id===clientId);
   if(!c)return;
   c.formule=formule;
+  // Appli uniquement : semaine du lundi au dimanche si aucun jour de bilan n'est choisi
+  if(formule==='appli' && !c.jourBilan) c.jourBilan='Lundi';
   persist();
   saveClientToSupa(c);
   // Re-render le modal pour montrer le nouvel état
   showClientOptionsModal(clientId);
   // Si on est en train de regarder le menu de ce client, le rafraîchir
   if(S.client && S.client.id===clientId && S.screen==='menu') render.menu();
-  toast(formule==='pack'?'🏋️ Pack séances activé':'✓ Suivi complet activé');
+  toast(formule==='pack'?'🏋️ Pack séances activé':formule==='appli'?'📱 Appli uniquement activé':'✓ Suivi complet activé');
 }
 
 async function archiveClient(id){
@@ -13353,6 +13701,7 @@ async function initApp(){
 
   S.client=clientRecord;
   S.clients=[S.client];
+  if(abonnementCoupe(clientRecord)){ afficherAbonnementTermine(); return; }
   await syncCustomAliments();
   await syncRecettes();
   await syncPresets();
@@ -13377,6 +13726,8 @@ async function initApp(){
   flushOutbox();
   // Pop-up nouveautés : une seule fois, uniquement côté client (cette branche n'est jamais atteinte par la coach)
   setTimeout(maybeShowWhatsNew, 600);
+  // Tuto guidé de l'accueil (1re connexion, clientes « Appli uniquement ») — attend la fin des pop-up
+  if(S.screen==='menu') tutoAuto('menu');
 }
 
 // ─────────────────────────────────────────
