@@ -6,7 +6,7 @@
 //    Change le numéro ci-dessous (v1 -> v2 -> v3…) avant d'uploader sur GitHub.
 //    Ça force l'appli à jeter l'ancien cache et à prendre la nouvelle version.
 
-const CACHE_NAME = 'coaching-app-v6';
+const CACHE_NAME = 'coaching-app-v7';
 
 // Réception d'une notification push envoyée par le serveur (rappels check-in / bilan)
 self.addEventListener('push', event => {
@@ -36,6 +36,9 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // On ne s'occupe que des lectures normales (GET). Les autres (comme la petite
+  // vérification « y a-t-il une nouvelle version ? ») vont directement sur internet.
+  if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
   // Pour la page principale : toujours réseau d'abord, sans cache navigateur
