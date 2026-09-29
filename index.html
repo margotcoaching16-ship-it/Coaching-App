@@ -2239,6 +2239,35 @@ svg.pousse .po-arm{animation:poArm 1.2s ease-in-out infinite;transform-origin:36
 @keyframes iaSend{35%{transform:scale(.8) rotate(-12deg)}}
 @media (prefers-reduced-motion: reduce){.iam.anim,.iaw,.iaplan.anim,.ia-chips,.iaplan-apply::after{animation:none !important;opacity:1}}
 </style>
+<style>
+/* ═══ Scan de code-barres en direct ═══ */
+#bc-scan{position:fixed;inset:0;z-index:100000;background:#000;animation:bcIn .25s ease both}
+@keyframes bcIn{from{opacity:0}to{opacity:1}}
+#bc-scan video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bc-cadre{position:absolute;left:50%;top:42%;width:min(78vw,320px);height:150px;transform:translate(-50%,-50%);border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.55);transition:box-shadow .2s}
+.bc-cadre i{position:absolute;width:30px;height:30px;border:4px solid #fff;transition:border-color .2s}
+.bc-cadre .tl{top:-2px;left:-2px;border-right:none;border-bottom:none;border-radius:18px 0 0 0}
+.bc-cadre .tr{top:-2px;right:-2px;border-left:none;border-bottom:none;border-radius:0 18px 0 0}
+.bc-cadre .bl{bottom:-2px;left:-2px;border-right:none;border-top:none;border-radius:0 0 0 18px}
+.bc-cadre .br{bottom:-2px;right:-2px;border-left:none;border-top:none;border-radius:0 0 18px 0}
+.bc-ligne{position:absolute;left:12px;right:12px;height:2px;top:50%;background:#ff5a5a;box-shadow:0 0 12px #ff5a5a;animation:bcLigne 1.6s ease-in-out infinite}
+@keyframes bcLigne{0%,100%{transform:translateY(-55px)}50%{transform:translateY(55px)}}
+.bc-ok{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:54px;font-weight:900;color:#fff;opacity:0;transform:scale(.5);transition:all .25s cubic-bezier(.34,1.6,.64,1)}
+.bc-cadre.lu i{border-color:#2ecc71}
+.bc-cadre.lu .bc-ligne{display:none}
+.bc-cadre.lu .bc-ok{opacity:1;transform:none;text-shadow:0 2px 12px rgba(0,0,0,.4)}
+.bc-cadre.lu{box-shadow:0 0 0 9999px rgba(0,0,0,.55),inset 0 0 0 999px rgba(46,204,113,.25)}
+.bc-x{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;width:42px;height:42px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:20px;cursor:pointer;backdrop-filter:blur(6px)}
+.bc-bas{position:absolute;left:0;right:0;bottom:calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:14px;padding:0 20px;text-align:center}
+.bc-txt{color:#fff;font-size:16px;font-weight:700;text-shadow:0 1px 6px rgba(0,0,0,.6);max-width:340px;line-height:1.4}
+.bc-tab{border:none;border-radius:16px;padding:13px 18px;font:inherit;font-size:15px;font-weight:800;background:rgba(255,255,255,.92);color:#1a1e16;cursor:pointer}
+.bc-tab.pulse{animation:bcPulse 1.2s ease-in-out infinite}
+@keyframes bcPulse{50%{transform:scale(1.06);box-shadow:0 0 0 8px rgba(255,255,255,.25)}}
+/* créateur d'aliments : les cases remplies clignotent en vert */
+.bc-rempli{animation:bcRempli 1.2s ease}
+@keyframes bcRempli{0%,40%{box-shadow:0 0 0 3px rgba(46,204,113,.55);background:rgba(46,204,113,.12)}100%{box-shadow:none}}
+@media (prefers-reduced-motion: reduce){.bc-rempli,.bc-ligne,.bc-tab.pulse{animation:none}}
+</style>
 </head>
 <body>
 
@@ -11377,7 +11406,7 @@ function dAddItemToMeal(mi){
   },100);
 }
 
-function dScanAddToMeal(mi){
+function _dScanPhotoAddToMeal(mi){
   // Créer un input caméra temporaire pour scanner le code-barres
   let inp=document.getElementById('meal-scan-input');
   if(!inp){
@@ -11391,7 +11420,7 @@ function dScanAddToMeal(mi){
   inp.click();
 }
 
-async function _processMealBarcodeScan(input,mi){
+async function _processMealBarcodeScan(input,mi,tableauSeulement){
   const file=input.files[0];if(!file)return;
   input.value='';
   const {base64,mediaType}=await fileToBase64(file);
@@ -11399,8 +11428,9 @@ async function _processMealBarcodeScan(input,mi){
 
   try{
     // Essayer d'abord le code-barres
-    toast('⏳ Scan du code-barres…');
+    if(!tableauSeulement) toast('⏳ Scan du code-barres…');
     try{
+      if(tableauSeulement) throw new Error('tableau');
       const reply=await callAnthropicVision(base64,mediaType,
         `Extrais le code-barres de cette image. Réponds UNIQUEMENT avec le numéro du code-barres, sans texte supplémentaire. Format: "123456789012"`,
         'Tu es expert en lecture de codes-barres. Tu extrais juste le numéro, rien d\'autre.'
@@ -11438,6 +11468,15 @@ async function _processMealBarcodeScan(input,mi){
       vals.source='tableau';
     }
 
+    _openMealScanModal(vals,mi);
+  } catch(e){
+    toast('⚠ Erreur : '+e.message);
+  }
+}
+
+
+// Fiche de l'aliment scanné (déjà remplie), à confirmer en un geste
+function _openMealScanModal(vals,mi){
     // Afficher modal de confirmation
     // Open Food Facts renvoie parfois "30 g" au lieu de 30 : on nettoie, sinon le bouton
     // « Ajouter au repas » était généré avec du texte invalide et ne réagissait plus.
@@ -11478,9 +11517,8 @@ async function _processMealBarcodeScan(input,mi){
     `);
     // Repartir en mode « grammes » à chaque scan (sinon le mode du scan précédent restait actif)
     document.currentMealScanMode='gram';
-  } catch(e){
-    toast('⚠ Erreur : '+e.message);
-  }
+  // Si le produit a une portion connue, on propose directement « 1 portion »
+  if(pu){ setTimeout(()=>{ if(document.getElementById('ms-mode-unit')) dSetMealScanMode('unit'); },30); }
 }
 
 function dSetMealScanMode(mode){
@@ -12113,13 +12151,15 @@ function buildIASystemPrompt(){
 
   // Current plan summary — inclut les kcal calculés depuis la DB locale
   const planSummary = diete.meals.map(m =>
-    m.name + ': ' + m.items.filter(i=>i.food&&i.enabled!==false).map(i=>{
+    'Repas "'+m.name + '" : ' + (m.items.filter(i=>i.food&&i.enabled!==false).map(i=>{
       const r=lookupFood(i.food);
       const cv=calcFoodItem(i);
-      const isUnit=i.type==='Unité'||(r&&r.f&&r.f.gpu&&r.f.gpu>1);
-      return i.food+' '+i.qty+(isUnit?' u':'g')+' ('+cv.kcal+'kcal, P'+cv.prot+'g G'+cv.gluc+'g L'+cv.lip+'g)';
-    }).join(', ')
-  ).filter(s=>!s.endsWith(': ')).join(' | ');
+      const isUnit=(i.type||'').toUpperCase()==='UNITÉ';
+      const gpu=r&&r.f&&r.f.gpu;
+      const q=isUnit?(i.qty+' unité'+(i.qty>1?'s':'')+(gpu?' (1 unité = '+gpu+' g)':'')):(i.qty+' g');
+      return i.food+' — '+q+' ('+cv.kcal+'kcal, P'+cv.prot+'g G'+cv.gluc+'g L'+cv.lip+'g)';
+    }).join(', ')||'(vide)')
+  ).join('\n');
 
   // Qui utilise l'assistante ? Margot (coach), une cliente qui gère seule sa diète, ou une cliente suivie
   const _coach=currentIsCoach;
@@ -12130,7 +12170,7 @@ function buildIASystemPrompt(){
   const _regle2=_gere
     ? `2. Tu es un outil au service de ${_coach?'Margot':c.prenom} : tu exécutes les modifications de diète demandées. Tu ne renvoies JAMAIS vers une autre personne (ni vers Margot, ni vers un coach, ni vers un professionnel).`
     : `2. Tu n'es PAS un coach nutritionnel. Tu es un outil de calcul et de réponse. Le coaching appartient à Margot, pas à toi.`;
-  const _regle9=_gere
+  const _regle9_ancienne=_gere
     ? `9. Dès qu'on te demande de modifier la diète (changer, ajouter, retirer ou remplacer un aliment, ajuster une quantité, refaire un repas ou toute la journée), ou qu'on te demande le bouton pour appliquer une modification, termine TOUJOURS ton message avec un bloc JSON contenant la journée COMPLÈTE mise à jour : TOUS les repas du plan actuel, y compris ceux qui ne changent pas (avec leurs aliments et quantités actuels), plus les changements demandés. Ce bloc fait apparaître le bouton « Appliquer » : ne l'oublie jamais. Structure (invisible dans la conversation) :`
     : `9. Quand tu proposes une modification complète du plan journalier (toute la journée), termine TOUJOURS ton message avec un bloc JSON structuré comme ceci (invisible dans la conversation) :`;
 
@@ -12151,14 +12191,18 @@ RÈGLES ABSOLUES :
 ${_regle2}
 3. Sois TRÈS concis : uniquement ce qui est demandé, sans introduction ni conclusion. Pas de Markdown (*, **, #, tirets en début de ligne). Retours à la ligne et emojis uniquement si nécessaire.
 4. PRIORITÉ des sources nutritionnelles : 1) Base de données locale (noms exacts), 2) Données Open Food Facts si fournies ci-dessous (valeurs réelles, utilise-les sans dire "(estimation)"), 3) Tes connaissances en dernier recours (précise alors "(estimation)"). Ne dis JAMAIS que tu n'as pas accès à internet si des données OFFF sont fournies dans ce prompt. IMPORTANT : quand tu calcules des totaux kcal/macros pour des aliments déjà dans la base, utilise TOUJOURS les valeurs indiquées dans la base (le plan actuel les affiche déjà calculées) — ne recalcule pas depuis tes propres connaissances.
-5. Donne des quantités précises en grammes. Pour les plats de resto, estime en portions réalistes.
+5. Donne des quantités précises en grammes (ou en unités pour les aliments qui se comptent à l'unité : œuf, croissant, banane…). Pour les plats de resto, estime en portions réalistes.
 6. Quand tu mentionnes des macros, affiche-les ainsi : Nkcal | PXg | GXg | LXg
 7. Pour les suggestions de repas : "🍽️ [Nom]\n- Aliment : Xg\n→ Total : Nkcal | PXg | GXg | LXg"
 8. Pose une question seulement si une info essentielle manque pour répondre. Une seule question à la fois.
-${_regle9}
-[MODIF_PLAN]{"meals":[{"name":"Petit-déjeuner","items":[{"food":"Flocons d'avoine","cat":"Céréales","qty":80}]},{"name":"Déjeuner","items":[{"food":"Burger restaurant","cat":"Plats préparés","qty":250}]}],"new_foods":[{"nom":"Burger restaurant","cat":"Plats préparés","kcal_total":850,"poids_g":250,"proteines_total":35,"glucides_total":45,"lipides_total":30}]}[/MODIF_PLAN]
-RÈGLES pour le bloc JSON :
-- Dans "meals" : utilise les noms EXACTS de la base pour les aliments existants. Pour les absents, invente un nom clair. "qty" = poids en grammes dans l'assiette. N'utilise type:"Unité" que pour des aliments de la base avec gpu défini (œuf, tranche de jambon…).
+9. Dès qu'on te demande de modifier la diète (ajouter, retirer ou remplacer un aliment, changer une quantité) ou qu'on te demande le bouton pour l'appliquer, termine TOUJOURS ton message par un bloc de changements (invisible dans la conversation) : c'est lui qui fait apparaître le bouton « Appliquer ». Tu n'y mets QUE les changements demandés : tout le reste de la diète reste exactement comme il est, tu n'y touches jamais.
+[MODIF_DIETE]{"changes":[{"action":"ajouter","repas":"Petit déjeuner","food":"Croissant","qty":1,"unite":"u"},{"action":"modifier","repas":"Déjeuner","food":"Riz blanc cuit","qty":150,"unite":"g"},{"action":"remplacer","repas":"Collation","food":"Skyr","par":"Fromage blanc 0%","qty":150,"unite":"g"},{"action":"retirer","repas":"Dîner","food":"Avocat"}],"new_foods":[]}[/MODIF_DIETE]
+RÈGLES pour ce bloc :
+- "repas" = le nom EXACT d'un repas du plan actuel (celui écrit entre guillemets). Si on te demande un repas qui n'existe pas encore, mets le nom demandé : il sera créé.
+- "food" (et "par" pour un remplacement) = le nom EXACT d'un aliment du plan ou de la base. Pour un aliment absent de la base, invente un nom clair et déclare-le dans "new_foods".
+- UNITÉS : si l'aliment se compte à l'unité (écrit « unité » dans le plan, ou avec « g/unité » dans la base : œuf, croissant, banane, tranche…), mets "unite":"u" et "qty" = le NOMBRE d'unités (1, 2…). Sinon "unite":"g" et "qty" = les grammes. Ne transforme JAMAIS des unités en grammes.
+- "modifier" change seulement la quantité. "remplacer" met un aliment à la place d'un autre, avec une quantité cohérente.
+- Seulement si on te demande explicitement de refaire TOUTE la journée, tu peux donner la journée complète à la place : [MODIF_PLAN]{"meals":[{"name":"Petit déjeuner","items":[{"food":"Croissant","qty":1,"unite":"u"}]}],"new_foods":[]}[/MODIF_PLAN] (avec TOUS les repas et la même règle d'unités).
 - Dans "new_foods" : UNIQUEMENT les aliments de "meals" ABSENTS de la base. Pour chaque nouveau :
   • "kcal_total" = calories TOTALES de la portion
   • "poids_g" = poids réaliste de la portion selon tes connaissances culinaires. Estime toujours intelligemment selon le plat — exemples : burger≈250g, sandwich≈180g, pizza part≈150g, salade repas≈300g, gâteau part≈100g, moules marinières≈400g (avec coquilles), filet de poisson≈150g, bol de soupe≈300g, risotto≈350g, steak≈180g, wraps≈200g. Adapte selon le contexte (entrée vs plat, taille mentionnée…).
@@ -12266,7 +12310,7 @@ Si c'est par portion et non par 100g, convertis en 100g. Arrondis à 1 décimale
   } catch(e){
     toast('⚠ Impossible d\'extraire : '+e.message);
   } finally {
-    if(btn){btn.innerHTML='<span>📷</span><span>Scanner une étiquette nutritionnelle</span>';btn.style.pointerEvents='';btn.style.opacity='';}
+    if(btn){btn.innerHTML='<span>📷</span><span>Scanner un code-barres ou une étiquette</span>';btn.style.pointerEvents='';btn.style.opacity='';}
     input.value='';
   }
 }
@@ -12340,12 +12384,77 @@ Sois concis, pratique et adapté aux objectifs du client.`,
   }
 }
 
+// ── IA : unités et changements ciblés ──
+// Bonne quantité + bon type (unité ou grammes) pour un aliment proposé par l'IA
+function iaUniteQty(nom,qty,unite,prev){
+  const r=lookupFood(nom||'');const gpu=r&&r.f&&r.f.gpu;
+  qty=+qty||0;
+  const enUnites=gpu||(prev&&(prev.type||'').toUpperCase()==='UNITÉ');
+  if(enUnites){
+    // l'IA a donné des grammes pour un aliment qui se compte à l'unité : on convertit
+    if(gpu&&(unite==='g'||(!unite&&qty>15))) qty=Math.max(0.5,Math.round(qty/gpu*2)/2);
+    return {type:'Unité',qty:qty||1};
+  }
+  return {type:null,qty:qty||100};
+}
+function _iaNorm(s){return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[-_]/g,' ').replace(/\s+/g,' ');}
+function _iaTrouveRepas(meals,nom){
+  const n=_iaNorm(nom);if(!n)return -1;
+  let i=meals.findIndex(m=>_iaNorm(m.name)===n);
+  if(i<0)i=meals.findIndex(m=>_iaNorm(m.name).includes(n)||n.includes(_iaNorm(m.name)));
+  return i;
+}
+function _iaTrouveAliment(items,nom){
+  const n=_iaNorm(nom);if(!n)return -1;
+  let i=items.findIndex(it=>_iaNorm(it.food)===n);
+  if(i<0)i=items.findIndex(it=>_iaNorm(it.food).includes(n)||n.includes(_iaNorm(it.food)));
+  return i;
+}
+// Applique la liste de changements de l'IA sur une copie de la diète actuelle
+function iaAppliquerChangements(meals,changes){
+  const out=JSON.parse(JSON.stringify(meals||[]));
+  const cat=nom=>{const r=lookupFood(nom||'');return r?r.cat:'';};
+  (changes||[]).forEach(ch=>{
+    const action=_iaNorm(ch.action);
+    let mi=_iaTrouveRepas(out,ch.repas);
+    if(mi<0){
+      if(action==='retirer'||action==='supprimer')return;
+      out.push({name:ch.repas||'Repas',items:[]});mi=out.length-1;
+    }
+    const items=out[mi].items;
+    const ii=_iaTrouveAliment(items,ch.food);
+    if(action==='retirer'||action==='supprimer'){ if(ii>=0)items.splice(ii,1); return; }
+    if(action==='remplacer'&&ii>=0&&ch.par){
+      const prev=items[ii];
+      const memeUnite=!!lookupFood(ch.par)&&!!(lookupFood(ch.par).f.gpu)===((prev.type||'').toUpperCase()==='UNITÉ');
+      const uq=iaUniteQty(ch.par,ch.qty!=null?ch.qty:(memeUnite?prev.qty:null),ch.unite,null);
+      items[ii]={food:ch.par,cat:cat(ch.par)||prev.cat||'',type:uq.type,qty:uq.qty,enabled:true};
+      return;
+    }
+    if((action==='modifier'||action==='remplacer')&&ii>=0){
+      const prev=items[ii];
+      const uq=iaUniteQty(prev.food,ch.qty!=null?ch.qty:prev.qty,ch.unite,prev);
+      prev.type=uq.type;prev.qty=uq.qty;
+      return;
+    }
+    // ajouter (ou modifier / remplacer un aliment qui n'était pas là)
+    const nom=action==='remplacer'&&ch.par?ch.par:ch.food;
+    if(!nom)return;
+    const uq=iaUniteQty(nom,ch.qty,ch.unite,null);
+    items.push({food:nom,cat:cat(nom)||ch.cat||'',type:uq.type,qty:uq.qty,enabled:true});
+  });
+  out.forEach(m=>(m.items||[]).forEach(it=>{it._ok=true;}));
+  return out;
+}
+
 // Appliquer une modification de plan proposée par l'IA
 function applyIaDietModification(modIdx){
   try{
     const jsonStr=(S._iaPendingMods||[])[modIdx];
     if(!jsonStr) throw new Error('Données introuvables');
     const data=JSON.parse(jsonStr);
+    // Nouveau format : seulement les changements → on les applique sur la diète actuelle
+    if(Array.isArray(data.changes)){const _cur=getClientDiete(S.client.id,S.dieteState.day);data.meals=iaAppliquerChangements((_cur&&_cur.meals)||[],data.changes);}
     if(!data.meals||!Array.isArray(data.meals)) throw new Error('Format invalide');
 
     // Nouveaux aliments déclarés par l'IA
@@ -12368,9 +12477,15 @@ function applyIaDietModification(modIdx){
         const found=allFoods[it.food];
         const nf=newFoodMap[(it.food||'').trim().toLowerCase()];
         // Pour les nouveaux aliments : qty = poids_g de la portion ; type toujours null
-        const qty=nf?(nf.poids_g||it.qty||100):(it.qty||100);
-        const type=nf?null:(it.type||null);
-        return {food:it.food,cat:found?found.cat:(it.cat||''),type,qty,enabled:true};
+        if(nf) return {food:it.food,cat:found?found.cat:(it.cat||''),type:null,qty:nf.poids_g||it.qty||100,enabled:true};
+        // Changements ciblés : l'aliment est déjà prêt (type, quantité, coché ou non)
+        if(it._ok){const o={food:it.food,cat:found?found.cat:(it.cat||''),type:it.type||null,qty:it.qty,enabled:it.enabled!==false};if(it.ia)o.ia=true;return o;}
+        // Journée complète : on respecte les unités (jamais « 100 g » à la place de « 1 unité »)
+        const _cur=getClientDiete(S.client.id,S.dieteState.day);
+        const _prevMeal=((_cur&&_cur.meals)||[]).find(x=>_iaNorm(x.name)===_iaNorm(m.name));
+        const _prev=_prevMeal?_prevMeal.items.find(x=>_iaNorm(x.food)===_iaNorm(it.food)):null;
+        const uq=iaUniteQty(it.food,it.qty,it.unite||((it.type||'').toUpperCase()==='UNITÉ'?'u':null),_prev);
+        return {food:it.food,cat:found?found.cat:(it.cat||''),type:uq.type,qty:uq.qty,enabled:true};
       })
     }));
 
@@ -12507,13 +12622,15 @@ render.ia=function(){
     if(m.role==='user'){
       return `<div class="iam me${anim}"><div class="iab">${esc(m.content).replace(/\n/g,'<br>').replace(/•/g,'·')}</div></div>`;
     }
-    let modifMatch=m.content.match(/\[MODIF_PLAN\]([\s\S]*?)\[\/MODIF_PLAN\]/);
-    if(!modifMatch&&m.content.includes('[MODIF_PLAN]')){
-      const brut=m.content.split('[MODIF_PLAN]')[1]||'';
+    // Bloc de changements : [MODIF_DIETE] (changements ciblés) ou [MODIF_PLAN] (journée complète)
+    let modifMatch=m.content.match(/\[(MODIF_DIETE|MODIF_PLAN)\]([\s\S]*?)\[\/\1\]/);
+    if(modifMatch) modifMatch=[null,modifMatch[2]];
+    else if(/\[(MODIF_DIETE|MODIF_PLAN)\]/.test(m.content)){
+      const brut=m.content.split(/\[(?:MODIF_DIETE|MODIF_PLAN)\]/)[1]||'';
       const fin=brut.lastIndexOf('}');
       modifMatch=[null,fin>0?brut.slice(0,fin+1):''];
     }
-    const cleanContent=m.content.replace(/\[MODIF_PLAN\][\s\S]*?\[\/MODIF_PLAN\]/g,'').replace(/\[MODIF_PLAN\][\s\S]*$/,'').trim();
+    const cleanContent=m.content.replace(/\[(MODIF_DIETE|MODIF_PLAN)\][\s\S]*?\[\/\1\]/g,'').replace(/\[(MODIF_DIETE|MODIF_PLAN)\][\s\S]*$/,'').trim();
     // Le texte d'un nouveau message s'écrit petit à petit
     let texte, finTexte=0;
     if(m._new){
@@ -12527,6 +12644,8 @@ render.ia=function(){
     let carte='';
     if(modifMatch){
       let d=null;try{d=JSON.parse(modifMatch[1]);}catch(e){}
+      // changements ciblés : on calcule la journée qui en résulte, pour l'aperçu
+      if(d&&Array.isArray(d.changes)&&typeof iaAppliquerChangements==='function'){const _cur=getClientDiete(c.id,S.dieteState.day);d={meals:iaAppliquerChangements((_cur&&_cur.meals)||[],d.changes),new_foods:d.new_foods};}
       if(d&&Array.isArray(d.meals)&&d.meals.length){
         const modIdx=S._iaPendingMods.length;
         S._iaPendingMods.push(modifMatch[1]);S._iaPendingMsg.push(idx);
@@ -12587,6 +12706,9 @@ function iaCartePlan(d,modIdx,applique,delai){
   const anciens=(diete&&diete.meals)||[];
   const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const u=it=>((it.type||'').toUpperCase()==='UNITÉ'?' u':' g');
+  // quantité affichée : les nouveaux aliments inventés par l'IA comptent pour 1 portion
+  const nfs={};(d.new_foods||[]).forEach(f=>{if(f&&f.nom)nfs[String(f.nom).trim().toLowerCase()]=f;});
+  const qt=it=>{const f=nfs[String(it.food||'').trim().toLowerCase()];return f?'1 portion ('+(f.poids_g||'?')+' g)':(it.qty||'')+u(it);};
   const lignes=[];
   d.meals.forEach((m,mi)=>{
     const om=anciens.find(x=>x.name===m.name)||anciens[mi];
@@ -12598,8 +12720,8 @@ function iaCartePlan(d,modIdx,applique,delai){
       if(prev&&+prev.qty!==+it.qty) lignes.push(`<div class="iaplan-r"><span class="new">${esc(it.food)}</span><span class="old">${prev.qty}${u(prev)}</span><span class="arr">→</span><span class="new">${it.qty}${u(it)}</span></div>`);});
     // remplacés (un retiré + un ajouté), puis ajoutés et retirés restants
     const n=Math.min(retires.length,ajoutes.length);
-    for(let i=0;i<n;i++) lignes.push(`<div class="iaplan-r"><span class="old">${esc(retires[i].food)}</span><span class="arr">→</span><span class="new">${esc(ajoutes[i].food)} ${ajoutes[i].qty||''}${u(ajoutes[i])}</span></div>`);
-    ajoutes.slice(n).forEach(it=>lignes.push(`<div class="iaplan-r"><span class="plus">＋</span><span class="new">${esc(it.food)} ${it.qty||''}${u(it)}</span></div>`));
+    for(let i=0;i<n;i++) lignes.push(`<div class="iaplan-r"><span class="old">${esc(retires[i].food)}</span><span class="arr">→</span><span class="new">${esc(ajoutes[i].food)} ${qt(ajoutes[i])}</span></div>`);
+    ajoutes.slice(n).forEach(it=>lignes.push(`<div class="iaplan-r"><span class="plus">＋</span><span class="new">${esc(it.food)} ${qt(it)}</span></div>`));
     retires.slice(n).forEach(o=>lignes.push(`<div class="iaplan-r"><span class="moins">−</span><span class="old">${esc(o.food)}</span></div>`));
   });
   let total=0;
@@ -12779,8 +12901,8 @@ render.aliments=function(){
       </div>
     </div>
     <input type="file" accept="image/*" capture="environment" id="food-scan-input" style="display:none" onchange="handleFoodCreatorScan(this)">
-    <div class="scan-btn-inline" id="food-scan-btn" onclick="document.getElementById('food-scan-input').click()" style="margin-bottom:16px">
-      <span>📷</span><span>Scanner une étiquette nutritionnelle</span>
+    <div class="scan-btn-inline" id="food-scan-btn" onclick="scanCreateur()" style="margin-bottom:16px">
+      <span>📷</span><span>Scanner un code-barres ou une étiquette</span>
     </div>
     <button class="btn btn-primary" onclick="dSubmitAliment()">Ajouter l'aliment</button>
     <div style="margin-top:20px"><div class="form-label">Mes aliments créés</div><div id="custom-aliments-list"></div></div></div>
@@ -15316,6 +15438,196 @@ bootstrapAuth();
     setInterval(()=>{ if(document.visibilityState==='visible') verifier(true); },30*60*1000);
   }
 })();
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// SCAN DE CODE-BARRES EN DIRECT (comme Yazio)
+// La caméra s'ouvre en plein écran et lit le code-barres toute seule :
+// dès qu'il est lu, la caméra se ferme et la fiche de l'aliment s'affiche,
+// déjà remplie (Open Food Facts). Si le code ne se lit pas, ou si le produit
+// est inconnu, on propose de photographier le tableau nutritionnel.
+// ═══════════════════════════════════════════════════════════
+let _bc=null; // scanner en cours : {mi, stream, reader, timer, fini}
+
+// La bibliothèque qui lit les codes-barres sur iPhone (chargée seulement au 1er scan)
+function _bcChargerZXing(){
+  if(window.ZXing) return Promise.resolve(window.ZXing);
+  if(window._bcZXingPromesse) return window._bcZXingPromesse;
+  const essayer=src=>new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=()=>window.ZXing?ok(window.ZXing):ko();s.onerror=ko;document.head.appendChild(s);});
+  window._bcZXingPromesse=essayer('https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js')
+    .catch(()=>essayer('https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js'))
+    .catch(e=>{window._bcZXingPromesse=null;throw e;});
+  return window._bcZXingPromesse;
+}
+
+function dScanAddToMeal(mi){
+  // Pas de caméra possible (vieux téléphone, ordinateur…) : on garde l'ancienne méthode photo
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ _dScanPhotoAddToMeal(mi); return; }
+  bcOuvrir(mi);
+}
+
+function bcOuvrir(mi,mode){
+  bcFermer();
+  const ov=document.createElement('div');
+  ov.id='bc-scan';
+  ov.innerHTML=`<video id="bc-video" playsinline muted autoplay></video>
+    <div class="bc-cadre" id="bc-cadre"><i class="tl"></i><i class="tr"></i><i class="bl"></i><i class="br"></i><div class="bc-ligne"></div><div class="bc-ok">✓</div></div>
+    <button class="bc-x" onclick="bcFermer()" aria-label="Fermer">✕</button>
+    <div class="bc-bas">
+      <div class="bc-txt" id="bc-txt">Place le code-barres dans le cadre</div>
+      <button class="bc-tab" id="bc-tab" onclick="bcTableau()">📷 Photographier le tableau nutritionnel</button>
+    </div>`;
+  document.body.appendChild(ov);
+  _bc={mi,mode:mode||'repas',stream:null,timer:null,boucle:null,fini:false};
+  const video=ov.querySelector('#bc-video');
+  // Au bout de 10 secondes sans lecture : on propose le tableau nutritionnel
+  _bc.timer=setTimeout(()=>{ if(_bc&&!_bc.fini){ const t=document.getElementById('bc-txt'); if(t)t.textContent='Je n\'arrive pas à lire le code-barres… Rapproche-toi, ou photographie plutôt le tableau nutritionnel 👇'; document.getElementById('bc-tab')?.classList.add('pulse'); } },10000);
+  const surCode=code=>bcCodeLu(code);
+  // La caméra arrière
+  const cam=navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false})
+    .then(stream=>{
+      if(!_bc){stream.getTracks().forEach(t=>t.stop());return null;}
+      _bc.stream=stream;video.srcObject=stream;video.play().catch(()=>{});
+      return stream;
+    });
+  // Le lecteur : celui du téléphone s'il existe (Android), sinon ZXing (iPhone)
+  const lecteur=('BarcodeDetector' in window)
+    ? Promise.resolve().then(()=>{let det;try{det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128']});}catch(e){det=new BarcodeDetector();}
+        return async()=>{const r=await det.detect(video);return r&&r.length?r[0].rawValue:null;};})
+    : _bcChargerZXing().then(ZX=>{
+        const hints=new Map();
+        hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS,[ZX.BarcodeFormat.EAN_13,ZX.BarcodeFormat.EAN_8,ZX.BarcodeFormat.UPC_A,ZX.BarcodeFormat.UPC_E,ZX.BarcodeFormat.CODE_128]);
+        const rd=new ZX.MultiFormatReader();rd.setHints(hints);
+        const cv=document.createElement('canvas');const g=cv.getContext('2d',{willReadFrequently:true});
+        return async()=>{
+          const w=video.videoWidth,h=video.videoHeight;if(!w||!h)return null;
+          // on ne lit que la bande du milieu (là où est le cadre) : plus rapide
+          const bh=Math.round(h*0.5),by=Math.round((h-bh)/2);
+          cv.width=w;cv.height=bh;g.drawImage(video,0,by,w,bh,0,0,w,bh);
+          try{const src=new ZX.HTMLCanvasElementLuminanceSource(cv);const res=rd.decodeWithState(new ZX.BinaryBitmap(new ZX.HybridBinarizer(src)));return res?res.getText():null;}
+          catch(e){return null;}
+        };
+      });
+  Promise.all([cam,lecteur]).then(([stream,lire])=>{
+    if(!stream||!_bc)return;
+    const tour=async()=>{
+      if(!_bc||_bc.fini)return;
+      try{ if(video.readyState>=2){ const code=await lire(); if(code){ surCode(code); return; } } }catch(e){}
+      if(_bc&&!_bc.fini) _bc.boucle=setTimeout(tour,150);
+    };
+    tour();
+  }).catch(err=>{
+    if(err&&err.name&&/NotAllowed|NotFound|NotReadable|Overconstrained|Security/.test(err.name)) bcCameraRefusee(err);
+    else { const mi=_bc?_bc.mi:0, mode=_bc?_bc.mode:'repas'; bcFermer(); _bcPhotoSecours(mi,mode); } // lecteur introuvable (pas de réseau…)
+  });
+}
+
+function bcCameraRefusee(err){
+  const mi=_bc?_bc.mi:0, mode=_bc?_bc.mode:'repas';
+  bcFermer();
+  toast('📷 Caméra indisponible : prends une photo à la place');
+  _bcPhotoSecours(mi,mode);
+}
+// L'ancienne méthode photo, selon l'endroit d'où on a lancé le scan
+function _bcPhotoSecours(mi,mode){
+  if(mode==='createur'){ document.getElementById('food-scan-input')?.click(); return; }
+  _dScanPhotoAddToMeal(mi);
+}
+
+function bcFermer(){
+  if(!_bc){ document.getElementById('bc-scan')?.remove(); return; }
+  _bc.fini=true;
+  clearTimeout(_bc.timer);clearTimeout(_bc.boucle);
+  try{ if(_bc.stream) _bc.stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  try{ const v=document.getElementById('bc-video'); if(v&&v.srcObject){ v.srcObject.getTracks().forEach(t=>t.stop()); v.srcObject=null; } }catch(e){}
+  document.getElementById('bc-scan')?.remove();
+  _bc=null;
+}
+
+// Code lu : petit « bip » visuel, la caméra se ferme, on cherche le produit
+function bcCodeLu(code){
+  if(!_bc||_bc.fini)return;
+  _bc.fini=true;
+  const mi=_bc.mi, mode=_bc.mode;
+  try{ if(navigator.vibrate) navigator.vibrate(60); }catch(e){}
+  document.getElementById('bc-cadre')?.classList.add('lu');
+  const t=document.getElementById('bc-txt'); if(t) t.textContent='Code-barres lu ✓';
+  setTimeout(()=>{ bcFermer(); const c=String(code).replace(/\D/g,''); if(mode==='createur') _createurFromBarcode(c); else _mealScanFromBarcode(c,mi); },380);
+}
+
+// Photographier le tableau nutritionnel (lecture par l'IA)
+function bcTableau(){
+  const mi=_bc?_bc.mi:0, mode=_bc?_bc.mode:'repas';
+  bcFermer();
+  if(mode==='createur'){ document.getElementById('food-scan-input')?.click(); return; }
+  let inp=document.getElementById('meal-scan-input-tab');
+  if(!inp){ inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.capture='environment'; inp.id='meal-scan-input-tab'; inp.style.display='none'; document.body.appendChild(inp); }
+  inp.value='';
+  inp.onchange=()=>_processMealBarcodeScan(inp,mi,true);
+  inp.click();
+}
+
+// Recherche du produit sur Open Food Facts, puis fiche déjà remplie
+// Cherche le produit sur Open Food Facts. Renvoie ses valeurs pour 100 g, ou null s'il est inconnu.
+async function _bcChercherProduit(code){
+  const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,product_name_fr,brands,nutriments,serving_quantity,product_quantity`);
+  const data=r.ok?await r.json():null;
+  const p=data&&data.product;
+  const n=p&&p.nutriments;
+  const kcal=n?(n['energy-kcal_100g']??n['energy-kcal']??(n['energy_100g']?n['energy_100g']/4.184:null)):null;
+  if(!p||kcal==null) return null;
+  return {
+    nom:(p.product_name_fr||p.product_name||'Produit')+(p.brands?' – '+String(p.brands).split(',')[0].trim():''),
+    kcal:Math.round(kcal),
+    proteines:Math.round((n.proteins_100g??n.proteins??0)*10)/10,
+    glucides:Math.round((n.carbohydrates_100g??n.carbohydrates??0)*10)/10,
+    lipides:Math.round((n.fat_100g??n.fat??0)*10)/10,
+    poids_unite:p.serving_quantity||null,
+    source:'barcode'
+  };
+}
+
+async function _mealScanFromBarcode(code,mi){
+  if(!code||code.length<6){ _bcIntrouvable(mi,'Ce code-barres n\'a pas pu être lu.'); return; }
+  toast('⏳ Recherche du produit…');
+  try{
+    const vals=await _bcChercherProduit(code);
+    if(!vals){ _bcIntrouvable(mi,'Ce produit n\'est pas encore connu (ou ses valeurs manquent).'); return; }
+    _openMealScanModal(vals,mi);
+  }catch(e){
+    _bcIntrouvable(mi,'Impossible de joindre la base des produits (connexion ?).');
+  }
+}
+// Produit introuvable : on propose le tableau nutritionnel (ou de réessayer)
+function _bcIntrouvable(mi,raison,mode){
+  openModal(`
+    <div style="text-align:center;padding:6px 4px 2px">
+      ${typeof pousseSVG==='function'?`<div style="display:flex;justify-content:center;margin-bottom:6px">${pousseSVG('curieux',84)}</div>`:''}
+      <div class="modal-title" style="margin-bottom:6px">Produit introuvable</div>
+      <div style="font-size:15px;color:var(--text2);line-height:1.5;margin-bottom:16px">${raison}<br>Photographie le <b>tableau nutritionnel</b> du paquet : je lis les valeurs pour toi.</div>
+      <button class="btn btn-primary" onclick="closeModal();setTimeout(()=>{_bc={mi:${mi},mode:'${mode||'repas'}'};bcTableau();},250)">📷 Photographier le tableau</button>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="closeModal();setTimeout(()=>${mode==='createur'?'scanCreateur()':'dScanAddToMeal('+mi+')'},250)">↻ Rescanner le code-barres</button>
+    </div>`);
+}
+
+// ── Créateur d'aliments : même scanner, les valeurs remplissent le formulaire ──
+function scanCreateur(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ document.getElementById('food-scan-input')?.click(); return; }
+  bcOuvrir(0,'createur');
+}
+async function _createurFromBarcode(code){
+  if(!code||code.length<6){ _bcIntrouvable(0,'Ce code-barres n\'a pas pu être lu.','createur'); return; }
+  toast('⏳ Recherche du produit…');
+  try{
+    const v=await _bcChercherProduit(code);
+    if(!v){ _bcIntrouvable(0,'Ce produit n\'est pas encore connu (ou ses valeurs manquent).','createur'); return; }
+    const mettre=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null){el.value=val;el.classList.remove('bc-rempli');void el.offsetWidth;el.classList.add('bc-rempli');}};
+    mettre('fa-name',v.nom);mettre('fa-kcal',v.kcal);mettre('fa-prot',v.proteines);mettre('fa-gluc',v.glucides);mettre('fa-lip',v.lipides);
+    toast('✓ '+v.nom+' : valeurs remplies');
+  }catch(e){
+    _bcIntrouvable(0,'Impossible de joindre la base des produits (connexion ?).','createur');
+  }
+}
 </script>
 </body>
 </html>
