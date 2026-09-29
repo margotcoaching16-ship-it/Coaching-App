@@ -12196,12 +12196,13 @@ ${_regle2}
 7. Pour les suggestions de repas : "🍽️ [Nom]\n- Aliment : Xg\n→ Total : Nkcal | PXg | GXg | LXg"
 8. Pose une question seulement si une info essentielle manque pour répondre. Une seule question à la fois.
 9. Dès qu'on te demande de modifier la diète (ajouter, retirer ou remplacer un aliment, changer une quantité) ou qu'on te demande le bouton pour l'appliquer, termine TOUJOURS ton message par un bloc de changements (invisible dans la conversation) : c'est lui qui fait apparaître le bouton « Appliquer ». Tu n'y mets QUE les changements demandés : tout le reste de la diète reste exactement comme il est, tu n'y touches jamais.
-[MODIF_DIETE]{"changes":[{"action":"ajouter","repas":"Petit déjeuner","food":"Croissant","qty":1,"unite":"u"},{"action":"modifier","repas":"Déjeuner","food":"Riz blanc cuit","qty":150,"unite":"g"},{"action":"remplacer","repas":"Collation","food":"Skyr","par":"Fromage blanc 0%","qty":150,"unite":"g"},{"action":"retirer","repas":"Dîner","food":"Avocat"}],"new_foods":[]}[/MODIF_DIETE]
+[MODIF_DIETE]{"changes":[{"action":"ajouter","repas":"Petit déjeuner","food":"Croissant","qty":1,"unite":"u","poids_unite_g":60},{"action":"modifier","repas":"Déjeuner","food":"Riz blanc cuit","qty":150,"unite":"g"},{"action":"remplacer","repas":"Collation","food":"Skyr","par":"Fromage blanc 0%","qty":150,"unite":"g"},{"action":"retirer","repas":"Dîner","food":"Avocat"}],"new_foods":[]}[/MODIF_DIETE]
 RÈGLES pour ce bloc :
 - "repas" = le nom EXACT d'un repas du plan actuel (celui écrit entre guillemets). Si on te demande un repas qui n'existe pas encore, mets le nom demandé : il sera créé.
 - "food" (et "par" pour un remplacement) = le nom EXACT d'un aliment du plan ou de la base. Pour un aliment absent de la base, invente un nom clair et déclare-le dans "new_foods".
-- UNITÉS : si l'aliment se compte à l'unité (écrit « unité » dans le plan, ou avec « g/unité » dans la base : œuf, croissant, banane, tranche…), mets "unite":"u" et "qty" = le NOMBRE d'unités (1, 2…). Sinon "unite":"g" et "qty" = les grammes. Ne transforme JAMAIS des unités en grammes.
+- UNITÉS : si l'aliment se compte à l'unité (écrit « unité » dans le plan, ou avec « g/unité » dans la base : œuf, croissant, banane, tranche…), mets "unite":"u", "qty" = le NOMBRE d'unités (1, 2…) et "poids_unite_g" = le poids d'UNE unité en grammes (ex : croissant 60, œuf 55, banane 120). Sinon "unite":"g" et "qty" = les grammes. Ne transforme JAMAIS des unités en grammes.
 - "modifier" change seulement la quantité. "remplacer" met un aliment à la place d'un autre, avec une quantité cohérente.
+- N'utilise JAMAIS [MODIF_PLAN] pour ajouter, retirer ou changer un ou deux aliments : c'est toujours [MODIF_DIETE].
 - Seulement si on te demande explicitement de refaire TOUTE la journée, tu peux donner la journée complète à la place : [MODIF_PLAN]{"meals":[{"name":"Petit déjeuner","items":[{"food":"Croissant","qty":1,"unite":"u"}]}],"new_foods":[]}[/MODIF_PLAN] (avec TOUS les repas et la même règle d'unités).
 - Dans "new_foods" : UNIQUEMENT les aliments de "meals" ABSENTS de la base. Pour chaque nouveau :
   • "kcal_total" = calories TOTALES de la portion
@@ -12386,7 +12387,7 @@ Sois concis, pratique et adapté aux objectifs du client.`,
 
 // ── IA : unités et changements ciblés ──
 // Bonne quantité + bon type (unité ou grammes) pour un aliment proposé par l'IA
-function iaUniteQty(nom,qty,unite,prev){
+function iaUniteQty(nom,qty,unite,prev,poidsUnite){
   const r=lookupFood(nom||'');const gpu=r&&r.f&&r.f.gpu;
   qty=+qty||0;
   const enUnites=gpu||(prev&&(prev.type||'').toUpperCase()==='UNITÉ');
@@ -12394,6 +12395,12 @@ function iaUniteQty(nom,qty,unite,prev){
     // l'IA a donné des grammes pour un aliment qui se compte à l'unité : on convertit
     if(gpu&&(unite==='g'||(!unite&&qty>15))) qty=Math.max(0.5,Math.round(qty/gpu*2)/2);
     return {type:'Unité',qty:qty||1};
+  }
+  // Aliment pesé en grammes, mais l'IA parle d'unités (« 1 croissant ») : on transforme en grammes
+  if(unite==='u'||(!unite&&qty>0&&qty<=6)){
+    const pu=+poidsUnite||0;
+    if(pu>0) return {type:null,qty:Math.round(qty*pu)};
+    if(qty<=6) return {type:null,qty:Math.round(qty*100)}; // poids inconnu : 1 unité ≈ 100 g (à ajuster)
   }
   return {type:null,qty:qty||100};
 }
@@ -12411,7 +12418,9 @@ function _iaTrouveAliment(items,nom){
   return i;
 }
 // Applique la liste de changements de l'IA sur une copie de la diète actuelle
-function iaAppliquerChangements(meals,changes){
+function iaAppliquerChangements(meals,changes,newFoods){
+  const _nf={};(newFoods||[]).forEach(f=>{if(f&&f.nom)_nf[_iaNorm(f.nom)]=f;});
+  const pu=(nom,ch)=>ch.poids_unite_g||(_nf[_iaNorm(nom)]&&_nf[_iaNorm(nom)].poids_g)||null;
   const out=JSON.parse(JSON.stringify(meals||[]));
   const cat=nom=>{const r=lookupFood(nom||'');return r?r.cat:'';};
   (changes||[]).forEach(ch=>{
@@ -12427,25 +12436,49 @@ function iaAppliquerChangements(meals,changes){
     if(action==='remplacer'&&ii>=0&&ch.par){
       const prev=items[ii];
       const memeUnite=!!lookupFood(ch.par)&&!!(lookupFood(ch.par).f.gpu)===((prev.type||'').toUpperCase()==='UNITÉ');
-      const uq=iaUniteQty(ch.par,ch.qty!=null?ch.qty:(memeUnite?prev.qty:null),ch.unite,null);
+      const uq=iaUniteQty(ch.par,ch.qty!=null?ch.qty:(memeUnite?prev.qty:null),ch.unite,null,pu(ch.par,ch));
       items[ii]={food:ch.par,cat:cat(ch.par)||prev.cat||'',type:uq.type,qty:uq.qty,enabled:true};
       return;
     }
     if((action==='modifier'||action==='remplacer')&&ii>=0){
       const prev=items[ii];
-      const uq=iaUniteQty(prev.food,ch.qty!=null?ch.qty:prev.qty,ch.unite,prev);
+      const uq=iaUniteQty(prev.food,ch.qty!=null?ch.qty:prev.qty,ch.unite,prev,pu(prev.food,ch));
       prev.type=uq.type;prev.qty=uq.qty;
       return;
     }
     // ajouter (ou modifier / remplacer un aliment qui n'était pas là)
     const nom=action==='remplacer'&&ch.par?ch.par:ch.food;
     if(!nom)return;
-    const uq=iaUniteQty(nom,ch.qty,ch.unite,null);
+    const uq=iaUniteQty(nom,ch.qty,ch.unite,null,pu(nom,ch));
     items.push({food:nom,cat:cat(nom)||ch.cat||'',type:uq.type,qty:uq.qty,enabled:true});
   });
   out.forEach(m=>(m.items||[]).forEach(it=>{it._ok=true;}));
   return out;
 }
+// Transforme une « journée complète » proposée par l'IA en liste de changements.
+// Sans demande explicite de refaire la journée : on n'enlève rien et on ne touche pas aux repas absents.
+function iaPlanVersChangements(meals,planMeals,journeeDemandee,demande){
+  // un aliment dont on a parlé dans la demande (un de ses mots de 4 lettres ou plus)
+  const dem=_iaNorm(demande);
+  const cite=nom=>_iaNorm(nom).split(' ').some(w=>w.length>=4&&dem.includes(w.replace(/s$/,'')));
+  const ch=[];
+  (planMeals||[]).forEach((pm,pi)=>{
+    const mi=_iaTrouveRepas(meals||[],pm.name);
+    const vieux=mi>=0?meals[mi].items:[];
+    (pm.items||[]).forEach(it=>{
+      const ii=_iaTrouveAliment(vieux,it.food);
+      if(ii<0) ch.push({action:'ajouter',repas:pm.name,food:it.food,qty:it.qty,unite:it.unite||((it.type||'').toUpperCase()==='UNITÉ'?'u':null),poids_unite_g:it.poids_unite_g});
+      else if(+vieux[ii].qty!==+it.qty&&(journeeDemandee||cite(vieux[ii].food))){
+        const uq=iaUniteQty(vieux[ii].food,it.qty,it.unite,vieux[ii],it.poids_unite_g);
+        if(+uq.qty!==+vieux[ii].qty) ch.push({action:'modifier',repas:pm.name,food:vieux[ii].food,qty:it.qty,unite:it.unite,poids_unite_g:it.poids_unite_g});
+      }
+    });
+    if(journeeDemandee&&mi>=0) vieux.forEach(o=>{ if(_iaTrouveAliment(pm.items||[],o.food)<0) ch.push({action:'retirer',repas:pm.name,food:o.food}); });
+  });
+  return ch;
+}
+// La personne a-t-elle demandé de refaire toute la journée ?
+function iaJourneeDemandee(texte){return /journ[ée]e|tous les repas|plan complet|di[èe]te compl[èe]te|toute (ma|sa|la) di[èe]te|refai[st]|refaire|nouveau plan|nouvelle di[èe]te|recommence/i.test(String(texte||''));}
 
 // Appliquer une modification de plan proposée par l'IA
 function applyIaDietModification(modIdx){
@@ -12454,7 +12487,14 @@ function applyIaDietModification(modIdx){
     if(!jsonStr) throw new Error('Données introuvables');
     const data=JSON.parse(jsonStr);
     // Nouveau format : seulement les changements → on les applique sur la diète actuelle
-    if(Array.isArray(data.changes)){const _cur=getClientDiete(S.client.id,S.dieteState.day);data.meals=iaAppliquerChangements((_cur&&_cur.meals)||[],data.changes);}
+    const _cur=getClientDiete(S.client.id,S.dieteState.day);
+    // Journée complète : sans demande explicite, on la transforme en simples ajouts / changements de quantité
+    if(!Array.isArray(data.changes)&&Array.isArray(data.meals)){
+      const _mi=(S._iaPendingMsg||[])[modIdx];
+      let _dem='';for(let k=(_mi!=null?_mi:S.iaChat.length)-1;k>=0;k--){if(S.iaChat[k]&&S.iaChat[k].role==='user'){_dem=S.iaChat[k].content;break;}}
+      data.changes=iaPlanVersChangements((_cur&&_cur.meals)||[],data.meals,iaJourneeDemandee(_dem),_dem);
+    }
+    if(Array.isArray(data.changes)){data.meals=iaAppliquerChangements((_cur&&_cur.meals)||[],data.changes,data.new_foods);}
     if(!data.meals||!Array.isArray(data.meals)) throw new Error('Format invalide');
 
     // Nouveaux aliments déclarés par l'IA
@@ -12645,7 +12685,12 @@ render.ia=function(){
     if(modifMatch){
       let d=null;try{d=JSON.parse(modifMatch[1]);}catch(e){}
       // changements ciblés : on calcule la journée qui en résulte, pour l'aperçu
-      if(d&&Array.isArray(d.changes)&&typeof iaAppliquerChangements==='function'){const _cur=getClientDiete(c.id,S.dieteState.day);d={meals:iaAppliquerChangements((_cur&&_cur.meals)||[],d.changes),new_foods:d.new_foods};}
+      if(d&&typeof iaAppliquerChangements==='function'){
+        const _cur=getClientDiete(c.id,S.dieteState.day);
+        // journée complète non demandée → seulement ajouts et quantités (comme à l'application)
+        if(!Array.isArray(d.changes)&&Array.isArray(d.meals)){let _dem='';for(let k=idx-1;k>=0;k--){if(S.iaChat[k].role==='user'){_dem=S.iaChat[k].content;break;}}d.changes=iaPlanVersChangements((_cur&&_cur.meals)||[],d.meals,iaJourneeDemandee(_dem),_dem);}
+        if(Array.isArray(d.changes))d={meals:iaAppliquerChangements((_cur&&_cur.meals)||[],d.changes,d.new_foods),new_foods:d.new_foods};
+      }
       if(d&&Array.isArray(d.meals)&&d.meals.length){
         const modIdx=S._iaPendingMods.length;
         S._iaPendingMods.push(modifMatch[1]);S._iaPendingMsg.push(idx);
